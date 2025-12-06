@@ -1,0 +1,208 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: infohub-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-infohub_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-infohub_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-infohub_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - infohub-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: infohub-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - infohub-network
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: infohub-chromadb
+    environment:
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenAuthCredentialsProvider
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_AUTH_TOKEN:-changeme}
+      - CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER=X-Chroma-Token
+    volumes:
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - infohub-network
+
+  # Backend API Service
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: infohub-backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-infohub_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-infohub_ai}
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - CHROMA_AUTH_TOKEN=${CHROMA_AUTH_TOKEN:-changeme}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    volumes:
+      - ../backend:/app
+      - backend_logs:/app/logs
+    ports:
+      - "8080:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - infohub-network
+
+  # Celery Worker for Background Tasks
+  celery-worker:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: infohub-celery-worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-infohub_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-infohub_ai}
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - CHROMA_AUTH_TOKEN=${CHROMA_AUTH_TOKEN:-changeme}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../backend:/app
+      - worker_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    command: celery -A scraper.tasks worker --loglevel=info
+    networks:
+      - infohub-network
+
+  # Celery Beat for Scheduled Tasks
+  celery-beat:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: infohub-celery-beat
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-infohub_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-infohub_ai}
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ../backend:/app
+      - beat_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - celery-worker
+    command: celery -A scraper.tasks beat --loglevel=info
+    networks:
+      - infohub-network
+
+  # Frontend Next.js Application
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: infohub-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NODE_ENV=${NODE_ENV:-development}
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: npm run dev
+    networks:
+      - infohub-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: infohub-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - infohub-network
+
+  # Flower for Celery Monitoring (Optional)
+  flower:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: infohub-flower
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    command: celery -A scraper.tasks flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - infohub-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chroma_data:
+    driver: local
+  backend_logs:
+    driver: local
+  worker_logs:
+    driver: local
+  beat_logs:
+    driver: local
+
+networks:
+  infohub-network:
+    driver: bridge
