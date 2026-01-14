@@ -22,8 +22,9 @@ class EmbeddingsGenerator:
             self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
             print(f"✓ Embedding model loaded (dimension: {settings.EMBEDDING_DIMENSION})")
         except Exception as e:
-            print(f"✗ Error loading embedding model: {e}")
-            raise
+            print(f"⚠ Warning: Could not load embedding model: {e}")
+            print(f"⚠ Embeddings will not work until model is downloaded")
+            self.model = None
 
     def encode(self, texts: Union[str, List[str]], batch_size: int = 32) -> List[List[float]]:
         """

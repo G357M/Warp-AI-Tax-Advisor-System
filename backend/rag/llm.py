@@ -4,7 +4,7 @@ LLM integration for generating responses.
 from typing import List, Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from backend.core.config import settings
 
@@ -47,7 +47,8 @@ class LLMClient:
                 print(f"✓ Anthropic LLM initialized: {settings.LLM_MODEL}")
 
         except Exception as e:
-            print(f"✗ Error initializing LLM: {e}")
+            print(f"⚠ Warning: Could not initialize LLM: {e}")
+            print(f"⚠ LLM responses will not work until API keys are configured")
 
     def generate_response(
         self,

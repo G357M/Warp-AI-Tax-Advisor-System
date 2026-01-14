@@ -43,8 +43,10 @@ class VectorStore:
             print(f"✓ Vector store initialized: {self.collection.count()} documents")
 
         except Exception as e:
-            print(f"✗ Error initializing vector store: {e}")
-            raise
+            print(f"⚠ Warning: Could not initialize vector store: {e}")
+            print(f"⚠ Vector search will not work until ChromaDB is running")
+            self.client = None
+            self.collection = None
 
     def add_documents(
         self,
