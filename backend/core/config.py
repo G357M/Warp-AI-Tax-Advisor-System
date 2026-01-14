@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     
     # Vector Database
     VECTOR_DB_TYPE: str = Field(default="chromadb", env="VECTOR_DB_TYPE")
-    CHROMA_HOST: str = Field(default="localhost", env="CHROMA_HOST")
-    CHROMA_PORT: int = Field(default=8000, env="CHROMA_PORT")
+    CHROMA_HOST: Optional[str] = Field(default=None, env="CHROMA_HOST")
+    CHROMA_PORT: Optional[int] = Field(default=None, env="CHROMA_PORT")
     CHROMA_AUTH_TOKEN: Optional[str] = Field(default=None, env="CHROMA_AUTH_TOKEN")
     
     # AI/ML

@@ -32,8 +32,10 @@ class VectorStore:
                     ) if settings.CHROMA_AUTH_TOKEN else None,
                 )
             else:
-                # Local ChromaDB
-                self.client = chromadb.Client()
+                # Local ChromaDB with persistent storage
+                import os
+                persist_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chromadb")
+                self.client = chromadb.PersistentClient(path=persist_directory)
 
             # Get or create collection
             self.collection = self.client.get_or_create_collection(
