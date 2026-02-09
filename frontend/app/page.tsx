@@ -1,41 +1,89 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { PaperPlaneIcon, RocketIcon, LightningBoltIcon, MagnifyingGlassIcon, StarIcon } from '@radix-ui/react-icons'
+import { motion } from 'framer-motion';
+import { RocketIcon, LightningBoltIcon, StarIcon } from '@radix-ui/react-icons';
+import { QueryForm } from '@/components/QueryForm';
+import { Response } from '@/components/Response';
+import { Sources } from '@/components/Sources';
+import { useQuery } from '@/hooks/useQuery';
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [query, setQuery] = useState('')
+  const { data, loading, error, submitQuery } = useQuery();
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Animated Background */}
+      <div style={{ position: 'absolute', width: '100%', height: '100%', overflow: 'hidden', zIndex: 0 }}>
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          style={{
+            position: 'absolute',
+            top: '10%',
+            left: '10%',
+            width: '300px',
+            height: '300px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(240,147,251,0.3) 0%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], rotate: [360, 180, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+          style={{
+            position: 'absolute',
+            bottom: '10%',
+            right: '10%',
+            width: '400px',
+            height: '400px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(118,75,162,0.3) 0%, transparent 70%)',
+            filter: 'blur(70px)',
+          }}
+        />
+      </div>
+
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         style={{
+          position: 'relative',
+          zIndex: 10,
           padding: '1.5rem 2rem',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           backgroundColor: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(10px)',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
               style={{
                 background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                 padding: '1rem',
                 borderRadius: '1rem',
-                boxShadow: '0 10px 25px rgba(240,147,251,0.3)'
+                boxShadow: '0 10px 25px rgba(240,147,251,0.3)',
               }}
             >
               <RocketIcon style={{ width: '24px', height: '24px', color: 'white' }} />
@@ -45,56 +93,36 @@ export default function Home() {
               <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Tax Assistant</p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {!isLoggedIn ? (
-              <>
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href="/login"
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '0.75rem',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontWeight: '500'
-                  }}
-                >
-                  Login
-                </motion.a>
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href="/register"
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '0.75rem',
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontWeight: 'bold',
-                    boxShadow: '0 10px 25px rgba(240,147,251,0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <StarIcon style={{ width: '16px', height: '16px' }} />
-                  Get Started
-                </motion.a>
-              </>
-            ) : (
-              <button style={{ color: 'white', background: 'none', border: 'none', cursor: 'pointer' }}>
-                Logout
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.875rem' }}>
+            <div
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '0.75rem',
+                background: 'rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }} />
+              <span>Public Beta</span>
+            </div>
           </div>
         </div>
       </motion.header>
 
       {/* Main Content */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 200px)', padding: '3rem 1.5rem' }}>
-        <div style={{ maxWidth: '1200px', width: '100%' }}>
-          {/* Hero */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          padding: '3rem 1.5rem',
+          maxWidth: '1200px',
+          margin: '0 auto',
+        }}
+      >
+        {/* Hero Section - only show when no data */}
+        {!data && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -106,164 +134,168 @@ export default function Home() {
               transition={{ duration: 3, repeat: Infinity }}
               style={{ marginBottom: '2rem' }}
             >
-              <LightningBoltIcon style={{ width: '80px', height: '80px', color: '#f5576c', filter: 'drop-shadow(0 0 20px rgba(245,87,108,0.5))' }} />
+              <LightningBoltIcon
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  color: '#f5576c',
+                  filter: 'drop-shadow(0 0 20px rgba(245,87,108,0.5))',
+                }}
+              />
             </motion.div>
-            
-            <h2 style={{ fontSize: '3.5rem', fontWeight: '900', marginBottom: '1.5rem', lineHeight: '1.2' }}>
-              Georgian Tax Law<br />
-              <span style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>
+
+            <h2
+              style={{
+                fontSize: '3.5rem',
+                fontWeight: '900',
+                marginBottom: '1.5rem',
+                lineHeight: '1.2',
+              }}
+            >
+              Georgian Tax Law
+              <br />
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
                 AI Assistant
               </span>
             </h2>
-            
-            <p style={{ fontSize: '1.25rem', opacity: 0.9, maxWidth: '800px', margin: '0 auto 2rem' }}>
-              Get instant AI-powered answers from official tax documents, court decisions, and regulatory guidelines
+
+            <p
+              style={{
+                fontSize: '1.25rem',
+                opacity: 0.9,
+                maxWidth: '800px',
+                margin: '0 auto 2rem',
+              }}
+            >
+              Получайте мгновенные ответы от AI на основе официальных налоговых документов Грузии
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '2rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }}></div>
-                <span>AI Ready</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '2rem' }}>
-                <MagnifyingGlassIcon style={{ width: '16px', height: '16px' }} />
-                <span>1000+ Documents</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '2rem' }}>
-                <StarIcon style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
-                <span>Instant Answers</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Examples */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}
-          >
-            <motion.div
-              whileHover={{ scale: 1.03, y: -5 }}
-              onClick={() => setQuery('When do I need to register for VAT in Georgia?')}
+            <div
               style={{
-                padding: '2rem',
-                borderRadius: '1.5rem',
-                background: 'rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer'
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '2rem',
+                flexWrap: 'wrap',
+                marginBottom: '3rem',
               }}
             >
-              <div style={{ marginBottom: '1rem', padding: '1rem', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: '1rem', display: 'inline-block' }}>
-                <RocketIcon style={{ width: '24px', height: '24px', color: 'white' }} />
-              </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>VAT Registration</h3>
-              <p style={{ opacity: 0.8, margin: 0 }}>When do I need to register for VAT in Georgia?</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.03, y: -5 }}
-              onClick={() => setQuery('What is the corporate tax rate for companies?')}
-              style={{
-                padding: '2rem',
-                borderRadius: '1.5rem',
-                background: 'rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{ marginBottom: '1rem', padding: '1rem', background: 'linear-gradient(135deg, #f5576c 0%, #f093fb 100%)', borderRadius: '1rem', display: 'inline-block' }}>
-                <LightningBoltIcon style={{ width: '24px', height: '24px', color: 'white' }} />
-              </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Corporate Tax</h3>
-              <p style={{ opacity: 0.8, margin: 0 }}>What is the corporate tax rate for companies?</p>
-            </motion.div>
-          </motion.div>
-
-          {/* Input */}
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
-            style={{
-              padding: '2rem',
-              borderRadius: '1.5rem',
-              background: 'rgba(255,255,255,0.1)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}
-          >
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask anything about Georgian tax law..."
-                disabled={!isLoggedIn}
+              <div
                 style={{
-                  flex: '1',
-                  minWidth: '300px',
-                  padding: '1.25rem 1.5rem',
-                  borderRadius: '1rem',
-                  border: '2px solid rgba(255,255,255,0.2)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
-                  fontSize: '1rem',
-                  outline: 'none'
-                }}
-              />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={!isLoggedIn || !query.trim()}
-                style={{
-                  padding: '1.25rem 2.5rem',
-                  borderRadius: '1rem',
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  color: 'white',
-                  border: 'none',
-                  fontWeight: 'bold',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  boxShadow: '0 10px 25px rgba(240,147,251,0.3)',
-                  opacity: (!isLoggedIn || !query.trim()) ? 0.5 : 1
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '2rem',
                 }}
               >
-                <span>Send</span>
-                <PaperPlaneIcon style={{ width: '18px', height: '18px' }} />
-              </motion.button>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }} />
+                <span>AI Powered</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '2rem',
+                }}
+              >
+                <StarIcon style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                <span>Мгновенные ответы</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '2rem',
+                }}
+              >
+                <span>🇬🇪 🇷🇺 🇬🇧</span>
+                <span>3 языка</span>
+              </div>
             </div>
-            
-            {!isLoggedIn && (
-              <p style={{ marginTop: '1rem', textAlign: 'center', opacity: 0.8 }}>
-                Please <a href="/login" style={{ color: '#f5576c', textDecoration: 'underline' }}>login</a> or{' '}
-                <a href="/register" style={{ color: '#f093fb', textDecoration: 'underline' }}>create an account</a> to ask questions
-              </p>
-            )}
           </motion.div>
-        </div>
+        )}
+
+        {/* Query Form */}
+        <QueryForm onSubmit={submitQuery} loading={loading} />
+
+        {/* Error Display */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              maxWidth: '800px',
+              margin: '24px auto',
+              padding: '16px 24px',
+              borderRadius: '16px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#fca5a5',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <span style={{ fontSize: '24px' }}>⚠️</span>
+            <div>
+              <strong>Ошибка:</strong> {error}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Response Display */}
+        {data && (
+          <>
+            <Response response={data.response} processingTime={data.processing_time} />
+            <Sources sources={data.sources} retrievedCount={data.retrieved_count} />
+          </>
+        )}
       </div>
 
       {/* Footer */}
-      <footer style={{
-        padding: '2rem',
-        borderTop: '1px solid rgba(255,255,255,0.1)',
-        background: 'rgba(255,255,255,0.05)',
-        textAlign: 'center'
-      }}>
+      <footer
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          padding: '2rem',
+          borderTop: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.05)',
+          textAlign: 'center',
+        }}
+      >
         <p style={{ margin: '0 0 1rem 0', opacity: 0.8 }}>
           <strong>InfoHub AI Tax Advisor</strong> • AI-powered assistant for Georgian tax law
         </p>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(251,191,36,0.1)', borderRadius: '2rem', fontSize: '0.875rem', color: '#fbbf24' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: 'rgba(251,191,36,0.1)',
+            borderRadius: '2rem',
+            fontSize: '0.875rem',
+            color: '#fbbf24',
+          }}
+        >
           <span>⚠️</span>
-          <span>This is an AI assistant. Always consult with a professional tax advisor.</span>
+          <span>Это AI-помощник. Всегда консультируйтесь с профессиональным налоговым консультантом.</span>
         </div>
       </footer>
     </div>
-  )
+  );
 }

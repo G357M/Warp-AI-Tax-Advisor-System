@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from backend.core.config import settings
 from backend.core.database import init_db
-from backend.api.routes import auth, query
+from backend.api.routes import auth, query, public
 
 
 # Create FastAPI app
@@ -33,6 +33,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Include routers
+app.include_router(public.router, prefix=settings.API_PREFIX)  # Public endpoints (no auth)
 app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(query.router, prefix=settings.API_PREFIX)
 
