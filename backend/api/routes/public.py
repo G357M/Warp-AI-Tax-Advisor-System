@@ -42,21 +42,53 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
-def health_check():
+async def health_check():
     """
     Public health check endpoint.
     
-    Returns system status and component availability.
+    Returns system status and component availability with connection checks.
     """
     from backend.core.config import settings
+    from backend.core.database import SessionLocal
+    from backend.core.cache import cache
     from backend.rag.embeddings import embeddings_generator
     from backend.rag.vector_store import vector_store
     from backend.rag.llm import llm_client
+    import sqlalchemy
+    
+    # Check database connection
+    database_healthy = False
+    try:
+        db = SessionLocal()
+        db.execute(sqlalchemy.text("SELECT 1"))
+        db.close()
+        database_healthy = True
+    except Exception as e:
+        print(f"Database health check failed: {e}")
+    
+    # Check Redis connection
+    redis_healthy = False
+    try:
+        await cache.ping()
+        redis_healthy = True
+    except Exception as e:
+        print(f"Redis health check failed: {e}")
+    
+    # Overall health status
+    all_healthy = (
+        database_healthy and
+        redis_healthy and
+        embeddings_generator.model is not None and
+        vector_store.client is not None and
+        llm_client.client is not None
+    )
     
     return {
-        "status": "healthy",
+        "status": "healthy" if all_healthy else "degraded",
         "version": settings.APP_VERSION,
         "components": {
+            "database": database_healthy,
+            "redis": redis_healthy,
             "embeddings": embeddings_generator.model is not None,
             "vector_store": vector_store.client is not None,
             "llm": llm_client.client is not None,
