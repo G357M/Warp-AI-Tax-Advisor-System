@@ -9,6 +9,9 @@ from fastapi.responses import JSONResponse
 from backend.core.config import settings
 from backend.core.database import init_db
 from backend.api.routes import auth, query, public, scraper
+from backend.core.metrics import metrics_middleware, get_metrics
+from backend.core.logging_config import setup_logging, logging_middleware
+from prometheus_client import CONTENT_TYPE_LATEST
 
 
 # Create FastAPI app
@@ -32,6 +35,12 @@ app.add_middleware(
 # Add GZip middleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# Add metrics middleware
+app.middleware("http")(metrics_middleware)
+
+# Add logging middleware
+app.middleware("http")(logging_middleware)
+
 # Include routers
 app.include_router(public.router, prefix=settings.API_PREFIX)  # Public endpoints (no auth)
 app.include_router(auth.router, prefix=settings.API_PREFIX)
@@ -42,6 +51,12 @@ app.include_router(scraper.router, prefix=settings.API_PREFIX)
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
+    # Setup logging
+    setup_logging(
+        log_level=settings.LOG_LEVEL,
+        json_logs=settings.ENVIRONMENT == "production"
+    )
+    
     # Initialize database
     init_db()
     print(f"✓ {settings.APP_NAME} v{settings.APP_VERSION} started")
@@ -77,9 +92,9 @@ async def health_check():
 
 @app.get("/metrics")
 async def metrics():
-    """Metrics endpoint for monitoring."""
-    # TODO: Implement Prometheus metrics
-    return {"message": "Metrics endpoint - to be implemented"}
+    """Prometheus metrics endpoint."""
+    metrics_data = get_metrics()
+    return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
 
 
 # Error handlers

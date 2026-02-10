@@ -1,0 +1,159 @@
+{
+  "dashboard": {
+    "title": "InfoHub AI Tax Advisor - System Monitoring",
+    "tags": ["infohub", "ai", "tax-advisor"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (per minute)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m]) * 60",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Response Time (p95)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Active Requests",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "active_requests",
+            "legendFormat": "Active Requests",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "HTTP Status Codes",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m])) by (status)",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "CPU Usage",
+        "type": "gauge",
+        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "system_cpu_usage_percent",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Query Performance",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(query_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{language}} - p95",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(query_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{language}} - p50",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Query Rate by Language",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(queries_total[1m])) by (language)",
+            "legendFormat": "{{language}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Document Retrieval Count",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(document_retrieval_count_bucket[5m]))",
+            "legendFormat": "p95 documents",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Scraper Tasks",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(scraper_tasks_total[5m])) by (status)",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))",
+            "legendFormat": "Hit Rate",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "system_memory_usage_bytes / 1024 / 1024 / 1024",
+            "legendFormat": "Memory (GB)",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}
