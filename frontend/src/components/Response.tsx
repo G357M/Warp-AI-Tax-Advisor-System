@@ -62,7 +62,10 @@ export function Response({ response, processingTime }: ResponseProps) {
       </div>
 
       {/* Response Content */}
-      <div
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
         style={{
           fontSize: '16px',
           lineHeight: '1.7',
@@ -72,7 +75,7 @@ export function Response({ response, processingTime }: ResponseProps) {
         }}
       >
         {response}
-      </div>
+      </motion.div>
 
       {/* Footer */}
       <div

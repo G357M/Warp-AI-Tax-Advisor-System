@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class InfoHubScraper(BaseScraper):
-    """Scraper for infohub.ge tax documents."""
+    """Scraper for infohub.rs.ge tax documents."""
     
     def __init__(self):
-        super().__init__(base_url="https://infohub.ge")
+        super().__init__(base_url="https://infohub.rs.ge")
         self.visited_urls = set()
         self.documents_scraped = 0
     

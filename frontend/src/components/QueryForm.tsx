@@ -57,12 +57,17 @@ export function QueryForm({ onSubmit, loading = false }: QueryFormProps) {
             flexWrap: 'wrap',
           }}
         >
-          {LANGUAGES.map((lang) => (
-            <button
+          {LANGUAGES.map((lang, index) => (
+            <motion.button
               key={lang.value}
               type="button"
               onClick={() => setLanguage(lang.value)}
               disabled={loading}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
+              whileHover={!loading && language !== lang.value ? { scale: 1.05, y: -2 } : {}}
+              whileTap={!loading ? { scale: 0.95 } : {}}
               style={{
                 padding: '8px 16px',
                 borderRadius: '12px',
@@ -73,25 +78,13 @@ export function QueryForm({ onSubmit, loading = false }: QueryFormProps) {
                 color: '#ffffff',
                 fontSize: '14px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s ease',
                 backdropFilter: 'blur(10px)',
                 opacity: loading ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!loading && language !== lang.value) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (language !== lang.value) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }
+                boxShadow: language === lang.value ? '0 4px 16px rgba(102, 126, 234, 0.3)' : 'none',
               }}
             >
               {lang.flag} {lang.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
