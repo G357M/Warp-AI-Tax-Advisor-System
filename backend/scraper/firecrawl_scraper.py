@@ -349,5 +349,5 @@ class FirecrawlScraper:
         return {
             'documents_scraped': self.documents_scraped,
             'pages_scraped': self.pages_scraped,
-            'documents': [{'id': doc.id, 'title': doc.title, 'url': doc.url} for doc in all_documents],
+            'documents': [{'id': doc.id, 'title': doc.title, 'url': doc.source_url} for doc in all_documents],
         }

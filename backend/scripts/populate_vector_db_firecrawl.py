@@ -104,7 +104,7 @@ async def main():
                 result = {
                     'documents_scraped': len(documents),
                     'pages_scraped': scraper.pages_scraped,
-                    'documents': [{'id': doc.id, 'title': doc.title, 'url': doc.url} for doc in documents],
+                    'documents': [{'id': doc.id, 'title': doc.title, 'url': doc.source_url} for doc in documents],
                 }
             finally:
                 db.close()
