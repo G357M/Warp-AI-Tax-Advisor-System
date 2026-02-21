@@ -177,7 +177,7 @@ class FirecrawlScraper:
                         document_id=document.id,
                         chunk_index=i,
                         content=chunk_text,
-                        metadata_={'position': i, 'total_chunks': len(chunks)},
+                        metadata_json={'position': i, 'total_chunks': len(chunks)},
                     )
                     db.add(chunk)
                     db.flush()
