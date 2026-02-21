@@ -121,7 +121,7 @@ class FirecrawlScraper:
             content_hash = hashlib.md5(markdown_content.encode()).hexdigest()
             
             # Check if exists
-            existing = db.query(Document).filter_by(url=url).first()
+            existing = db.query(Document).filter_by(source_url=url).first()
             if existing:
                 logger.info(f"Document already exists: {url}")
                 return existing
@@ -136,24 +136,24 @@ class FirecrawlScraper:
                         title = line.lstrip('#').strip()
                         break
             
-            # Create document
+            # Create document metadata
             doc_metadata = {
-                'url': url,
                 'source': 'infohub.rs.ge',
                 'scraped_at': datetime.utcnow().isoformat(),
-                'language': language,
-                'title': title,
-                **metadata
+                'species': metadata.get('species'),
+                'page': metadata.get('page'),
+                'firecrawl': True,
             }
             
             document = Document(
-                url=url,
                 title=title,
-                content=markdown_content,
+                document_type='guideline',  # InfoHub documents are tax guidelines
                 language=language,
-                source='infohub.rs.ge',
-                metadata_=doc_metadata,
-                content_hash=content_hash,
+                source_url=url,
+                full_text=markdown_content,
+                file_hash=content_hash,
+                metadata_json=doc_metadata,
+                status='active',
             )
             db.add(document)
             db.flush()
@@ -185,8 +185,8 @@ class FirecrawlScraper:
                     vector_ids.append(f"doc_{document.id}_chunk_{chunk.id}")
                     vector_embeddings.append(embedding)
                     vector_metadatas.append({
-                        'document_id': document.id,
-                        'chunk_id': chunk.id,
+                        'document_id': str(document.id),
+                        'chunk_id': str(chunk.id),
                         'title': title,
                         'url': url,
                         'language': language,
