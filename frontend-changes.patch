@@ -1,0 +1,107 @@
+diff --git a/frontend/app/admin/settings/page.tsx b/frontend/app/admin/settings/page.tsx
+index 68d608d..31f8cb4 100644
+--- a/frontend/app/admin/settings/page.tsx
++++ b/frontend/app/admin/settings/page.tsx
+@@ -142,7 +142,7 @@ export default function SettingsPage() {
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <div>
+                 <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>Email Alerts</div>
+-                <div style={{ fontSize: '0.75rem', opacity: 0.6' }}>Receive email notifications for system events</div>
++                <div style={{ fontSize: '0.75rem', opacity: '0.6' }}>Receive email notifications for system events</div>
+               </div>
+               <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+                 <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0 }} />
+@@ -164,7 +164,7 @@ export default function SettingsPage() {
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <div>
+                 <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>Slack Integration</div>
+-                <div style={{ fontSize: '0.75rem', opacity: 0.6' }}>Send notifications to Slack</div>
++                <div style={{ fontSize: '0.75rem', opacity: '0.6' }}>Send notifications to Slack</div>
+               </div>
+               <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+                 <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0 }} />
+diff --git a/frontend/src/components/Sources.tsx b/frontend/src/components/Sources.tsx
+index 3b0201b..0ebbde8 100644
+--- a/frontend/src/components/Sources.tsx
++++ b/frontend/src/components/Sources.tsx
+@@ -113,17 +113,59 @@ export function Sources({ sources, retrievedCount }: SourcesProps) {
+               </div>
+             </div>
+ 
+-            {/* Source Text */}
+-            <p
+-              style={{
+-                margin: 0,
+-                fontSize: '14px',
+-                lineHeight: '1.6',
+-                color: '#e0e0e0',
+-              }}
+-            >
+-              {source.text}
+-            </p>
++            {/* Source Title with Link */}
++            <div style={{ marginBottom: '8px' }}>
++              {source.metadata?.source_url ? (
++                <a
++                  href={source.metadata.source_url}
++                  target="_blank"
++                  rel="noopener noreferrer"
++                  style={{
++                    fontSize: '15px',
++                    fontWeight: '500',
++                    color: '#667eea',
++                    textDecoration: 'none',
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: '6px',
++                    transition: 'color 0.2s',
++                  }}
++                  onMouseEnter={(e) => {
++                    e.currentTarget.style.color = '#7c91f7';
++                  }}
++                  onMouseLeave={(e) => {
++                    e.currentTarget.style.color = '#667eea';
++                  }}
++                >
++                  <span>{source.text}</span>
++                  <span style={{ fontSize: '12px' }}>🔗</span>
++                </a>
++              ) : (
++                <p
++                  style={{
++                    margin: 0,
++                    fontSize: '14px',
++                    fontWeight: '500',
++                    color: '#e0e0e0',
++                  }}
++                >
++                  {source.text}
++                </p>
++              )}
++            </div>
++            
++            {/* Document Type */}
++            {source.metadata?.document_type && (
++              <p
++                style={{
++                  margin: '4px 0 0 0',
++                  fontSize: '12px',
++                  color: 'rgba(255, 255, 255, 0.5)',
++                }}
++              >
++                Тип: {source.metadata.document_type}
++              </p>
++            )}
+ 
+             {/* Metadata */}
+             {source.metadata && Object.keys(source.metadata).length > 0 && (
+@@ -138,7 +180,8 @@ export function Sources({ sources, retrievedCount }: SourcesProps) {
+                 }}
+               >
+                 {Object.entries(source.metadata).map(([key, value]) => {
+-                  if (key === 'text' || key === 'title' || !value) return null;
++                  // Skip fields that are already displayed
++                  if (key === 'text' || key === 'title' || key === 'source_url' || key === 'document_type' || !value) return null;
+                   
+                   return (
+                     <span

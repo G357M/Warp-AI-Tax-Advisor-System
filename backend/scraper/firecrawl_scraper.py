@@ -126,15 +126,29 @@ class FirecrawlScraper:
                 logger.info(f"Document already exists: {url}")
                 return existing
             
-            # Extract title from metadata or markdown
-            title = metadata.get('title', 'Untitled')
-            if not title or title == 'Untitled':
-                # Try to get first heading from markdown
-                lines = markdown_content.split('\n')
-                for line in lines:
-                    if line.startswith('#'):
-                        title = line.lstrip('#').strip()
+            # Extract title from markdown content
+            # First line usually contains the document title (before " - infohub.rs.ge")
+            lines = markdown_content.split('\n')
+            title = 'Untitled'
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Remove common suffixes
+                if ' - infohub.rs.ge' in line:
+                    title = line.split(' - infohub.rs.ge')[0].strip()
+                    break
+                elif line.startswith('#'):
+                    # Fallback to first heading
+                    title = line.lstrip('#').strip()
+                    if title and title != 'დოკუმენტის სტატისტიკა':
                         break
+                elif len(line) > 10 and not line.startswith('[') and not line.startswith('!'):
+                    # First substantial non-markdown line
+                    title = line[:200]  # Limit length
+                    break
             
             # Create document metadata
             doc_metadata = {
@@ -188,7 +202,8 @@ class FirecrawlScraper:
                         'document_id': str(document.id),
                         'chunk_id': str(chunk.id),
                         'title': title,
-                        'url': url,
+                        'source_url': url,
+                        'document_type': 'guideline',
                         'language': language,
                         'source': 'infohub.rs.ge',
                         'chunk_index': i,

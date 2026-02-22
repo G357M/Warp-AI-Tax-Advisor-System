@@ -113,17 +113,59 @@ export function Sources({ sources, retrievedCount }: SourcesProps) {
               </div>
             </div>
 
-            {/* Source Text */}
-            <p
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                lineHeight: '1.6',
-                color: '#e0e0e0',
-              }}
-            >
-              {source.text}
-            </p>
+            {/* Source Title with Link */}
+            <div style={{ marginBottom: '8px' }}>
+              {source.metadata?.source_url ? (
+                <a
+                  href={source.metadata.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#667eea',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#7c91f7';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#667eea';
+                  }}
+                >
+                  <span>{source.text}</span>
+                  <span style={{ fontSize: '12px' }}>🔗</span>
+                </a>
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#e0e0e0',
+                  }}
+                >
+                  {source.text}
+                </p>
+              )}
+            </div>
+            
+            {/* Document Type */}
+            {source.metadata?.document_type && (
+              <p
+                style={{
+                  margin: '4px 0 0 0',
+                  fontSize: '12px',
+                  color: 'rgba(255, 255, 255, 0.5)',
+                }}
+              >
+                Тип: {source.metadata.document_type}
+              </p>
+            )}
 
             {/* Metadata */}
             {source.metadata && Object.keys(source.metadata).length > 0 && (
@@ -138,7 +180,8 @@ export function Sources({ sources, retrievedCount }: SourcesProps) {
                 }}
               >
                 {Object.entries(source.metadata).map(([key, value]) => {
-                  if (key === 'text' || key === 'title' || !value) return null;
+                  // Skip fields that are already displayed
+                  if (key === 'text' || key === 'title' || key === 'source_url' || key === 'document_type' || !value) return null;
                   
                   return (
                     <span

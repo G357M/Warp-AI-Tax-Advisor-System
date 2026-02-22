@@ -6,7 +6,7 @@ from typing import Any, Optional
 import redis
 from redis import Redis
 
-from backend.core.config import settings
+from core.config import settings
 
 
 # Redis client
@@ -120,3 +120,19 @@ def cache_clear_pattern(pattern: str) -> int:
     except Exception as e:
         print(f"Cache clear pattern error: {e}")
         return 0
+
+
+class Cache:
+    """Cache wrapper with async methods for health checks."""
+    
+    async def ping(self) -> bool:
+        """Ping Redis to check if it's alive."""
+        try:
+            client = get_redis()
+            return client.ping()
+        except Exception:
+            return False
+
+
+# Global cache instance
+cache = Cache()

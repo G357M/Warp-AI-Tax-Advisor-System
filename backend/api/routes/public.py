@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
-from backend.rag.pipeline import rag_pipeline
+from rag.pipeline import rag_pipeline
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
@@ -48,12 +48,12 @@ async def health_check():
     
     Returns system status and component availability with connection checks.
     """
-    from backend.core.config import settings
-    from backend.core.database import SessionLocal
-    from backend.core.cache import cache
-    from backend.rag.embeddings import embeddings_generator
-    from backend.rag.vector_store import vector_store
-    from backend.rag.llm import llm_client
+    from core.config import settings
+    from core.database import SessionLocal
+    from core.cache import cache
+    from rag.embeddings import embeddings_generator
+    from rag.vector_store import vector_store
+    from rag.llm import llm_client
     import sqlalchemy
     
     # Check database connection
@@ -127,12 +127,18 @@ def process_public_query(query_data: PublicQueryRequest):
         
         # Format sources for public response
         formatted_sources = []
-        for chunk in result.get("sources", []):
-            # Use chunk data instead of requiring document_id
+        for source in result.get("sources", []):
+            # Map source dict to PublicSourceInfo
             formatted_sources.append(PublicSourceInfo(
-                text=chunk.get("title", "")[:200],  # First 200 chars
-                relevance=chunk.get("relevance", 0.0),
-                metadata=chunk or {}
+                text=source.get("title", "")[:200],  # First 200 chars
+                relevance=source.get("relevance", 0.0),
+                metadata={
+                    "document_id": source.get("document_id", ""),
+                    "title": source.get("title", ""),
+                    "document_type": source.get("document_type", ""),
+                    "source_url": source.get("url", ""),
+                    "relevance": source.get("relevance", 0.0),
+                }
             ))
         
         processing_time = time.time() - start_time
@@ -158,8 +164,8 @@ def get_public_stats():
     
     Returns basic information about the system without authentication.
     """
-    from backend.core.config import settings
-    from backend.rag.vector_store import vector_store
+    from core.config import settings
+    from rag.vector_store import vector_store
     
     return {
         "app_name": settings.APP_NAME,

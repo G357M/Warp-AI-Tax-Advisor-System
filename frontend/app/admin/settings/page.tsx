@@ -142,7 +142,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>Email Alerts</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.6' }}>Receive email notifications for system events</div>
+                <div style={{ fontSize: '0.75rem', opacity: '0.6' }}>Receive email notifications for system events</div>
               </div>
               <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
                 <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0 }} />
@@ -164,7 +164,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>Slack Integration</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.6' }}>Send notifications to Slack</div>
+                <div style={{ fontSize: '0.75rem', opacity: '0.6' }}>Send notifications to Slack</div>
               </div>
               <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
                 <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0 }} />

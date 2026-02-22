@@ -4,12 +4,12 @@ RAG (Retrieval-Augmented Generation) pipeline.
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
-from backend.core.config import settings
-from backend.core.database import SessionLocal
-from backend.models import Document, DocumentChunk
-from backend.rag.embeddings import embeddings_generator
-from backend.rag.vector_store import vector_store
-from backend.rag.llm import llm_client
+from core.config import settings
+from core.database import SessionLocal
+from models import Document, DocumentChunk
+from rag.embeddings import embeddings_generator
+from rag.vector_store import vector_store
+from rag.llm import llm_client
 
 
 class RAGPipeline:
@@ -41,6 +41,7 @@ class RAGPipeline:
         try:
             # Step 1: Generate query embedding
             query_embedding = self.embeddings.encode_query(query)
+            print(f"[RAG] Query: {query[:50]}..., Language: {language}")
 
             # Step 2: Search vector store
             search_results = self.vector_store.search(
@@ -48,9 +49,11 @@ class RAGPipeline:
                 n_results=settings.RAG_TOP_K,
                 where={"language": language} if language else None,
             )
+            print(f"[RAG] Search results: {len(search_results.get('ids', [[]])[0])} chunks found")
 
             # Step 3: Retrieve full documents from database
             retrieved_chunks = self._retrieve_chunks(search_results)
+            print(f"[RAG] Retrieved chunks: {len(retrieved_chunks)}")
 
             # Step 4: Assemble context
             context = self._assemble_context(retrieved_chunks)
@@ -64,6 +67,10 @@ class RAGPipeline:
 
             # Step 6: Prepare sources
             sources = self._prepare_sources(retrieved_chunks)
+            print(f"[RAG] Prepared sources: {len(sources)}")
+            if len(sources) == 0 and len(retrieved_chunks) > 0:
+                print(f"[RAG] WARNING: Retrieved {len(retrieved_chunks)} chunks but 0 sources!")
+                print(f"[RAG] First chunk metadata: {retrieved_chunks[0].get('metadata', {})}")
 
             return {
                 "response": response,
