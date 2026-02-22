@@ -11,12 +11,12 @@ from urllib.parse import urlparse, urljoin
 import aiohttp
 from sqlalchemy.orm import Session
 
-from backend.scraper.base_scraper import BaseScraper
-from backend.core.database import SessionLocal
-from backend.models.document import Document, DocumentChunk
-from backend.rag.embeddings import embeddings_generator
-from backend.rag.vector_store import vector_store
-from backend.core.config import settings
+from scraper.base_scraper import BaseScraper
+from core.database import SessionLocal
+from models.document import Document, DocumentChunk
+from rag.embeddings import embeddings_generator
+from rag.vector_store_pgvector import vector_store
+from core.config import settings
 
 
 logger = logging.getLogger(__name__)

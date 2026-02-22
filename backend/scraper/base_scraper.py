@@ -10,7 +10,7 @@ from urllib.robotparser import RobotFileParser
 import aiohttp
 from bs4 import BeautifulSoup
 
-from backend.core.config import settings
+from core.config import settings
 
 
 logger = logging.getLogger(__name__)

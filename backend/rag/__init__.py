@@ -1,10 +1,10 @@
 """
 RAG (Retrieval-Augmented Generation) module.
 """
-from backend.rag.embeddings import embeddings_generator, EmbeddingsGenerator
-from backend.rag.vector_store import vector_store, VectorStore
-from backend.rag.llm import llm_client, LLMClient
-from backend.rag.pipeline import rag_pipeline, RAGPipeline
+from rag.embeddings import embeddings_generator, EmbeddingsGenerator
+from rag.vector_store_pgvector import vector_store, PgVectorStore as VectorStore
+from rag.llm import llm_client, LLMClient
+from rag.pipeline import rag_pipeline, RAGPipeline
 
 __all__ = [
     "embeddings_generator",

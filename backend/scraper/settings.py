@@ -1,7 +1,7 @@
 """
 Scrapy settings for InfoHub spider.
 """
-from backend.core.config import settings
+from core.config import settings
 
 
 BOT_NAME = "infohub_scraper"

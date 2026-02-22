@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.api.main import app
-from backend.core.database import Base, get_db
-from backend.models.user import User
-from backend.core.security import get_password_hash
+from api.main import app
+from core.database import Base, get_db
+from models.user import User
+from core.security import get_password_hash
 
 
 # Test database setup

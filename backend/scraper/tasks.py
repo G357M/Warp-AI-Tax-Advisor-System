@@ -4,7 +4,7 @@ Celery tasks for background jobs.
 from celery import Celery
 from celery.schedules import crontab
 
-from backend.core.config import settings
+from core.config import settings
 
 # Initialize Celery app
 celery_app = Celery(
@@ -34,7 +34,7 @@ def scrape_infohub():
     from scrapy.utils.project import get_project_settings
     
     # Import spider settings
-    from backend.scraper import settings as scraper_settings
+    from scraper import settings as scraper_settings
     
     print("Starting InfoHub scraping task...")
     

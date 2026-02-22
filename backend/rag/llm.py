@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from backend.core.config import settings
+from core.config import settings
 
 
 class LLMClient:
@@ -73,6 +73,8 @@ class LLMClient:
         try:
             # Prepare system prompt
             system_prompt = self._build_system_prompt(context)
+            print(f"[LLM] Context length: {len(context)} chars")
+            print(f"[LLM] Context preview: {context[:200]}..." if len(context) > 200 else f"[LLM] Context: {context}")
 
             # Prepare messages
             messages = [SystemMessage(content=system_prompt)]

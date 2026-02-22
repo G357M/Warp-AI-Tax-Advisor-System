@@ -19,9 +19,10 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship
 
-from backend.core.database import Base
+from core.database import Base
 
 
 class Document(Base):
@@ -68,6 +69,7 @@ class DocumentChunk(Base):
     start_position = Column(Integer, nullable=True)
     end_position = Column(Integer, nullable=True)
     metadata_json = Column("metadata", JSON, nullable=True)
+    embedding = Column(Vector(768), nullable=True)  # pgvector for semantic search
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

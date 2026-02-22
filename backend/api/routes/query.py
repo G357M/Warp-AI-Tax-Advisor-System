@@ -6,12 +6,12 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.core.database import get_db
-from backend.core.security import get_current_user
-from backend.core.cache import cache_get, cache_set
-from backend.models import User, Conversation, Message
-from backend.api.schemas import QueryRequest, QueryResponse, SourceInfo
-from backend.rag.pipeline import rag_pipeline
+from core.database import get_db
+from core.security import get_current_user
+from core.cache import cache_get, cache_set
+from models import User, Conversation, Message
+from api.schemas import QueryRequest, QueryResponse, SourceInfo
+from rag.pipeline import rag_pipeline
 
 
 router = APIRouter(prefix="/query", tags=["Query"])

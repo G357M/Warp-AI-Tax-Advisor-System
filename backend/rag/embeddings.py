@@ -4,7 +4,7 @@ Embeddings generation using multilingual sentence transformers.
 from typing import List, Union
 from sentence_transformers import SentenceTransformer
 
-from backend.core.config import settings
+from core.config import settings
 
 
 class EmbeddingsGenerator:

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, Dict
 
-from backend.scraper.infohub_scraper import InfoHubScraper
+from scraper.infohub_scraper import InfoHubScraper
 
 
 router = APIRouter(prefix="/scraper", tags=["Scraper"])

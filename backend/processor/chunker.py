@@ -4,7 +4,7 @@ Text chunking utilities for document processing.
 from typing import List, Dict, Any
 import re
 
-from backend.core.config import settings
+from core.config import settings
 
 
 class TextChunker:

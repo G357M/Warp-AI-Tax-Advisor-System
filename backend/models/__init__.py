@@ -1,9 +1,9 @@
 """
 SQLAlchemy models.
 """
-from backend.models.document import Document, DocumentChunk, DocumentRelation
-from backend.models.user import User
-from backend.models.conversation import Conversation, Message
+from models.document import Document, DocumentChunk, DocumentRelation
+from models.user import User
+from models.conversation import Conversation, Message
 
 __all__ = [
     "Document",

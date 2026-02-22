@@ -6,8 +6,8 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from backend.core.database import SessionLocal
-from backend.models import Document
+from core.database import SessionLocal
+from models import Document
 
 
 class DocumentPipeline:

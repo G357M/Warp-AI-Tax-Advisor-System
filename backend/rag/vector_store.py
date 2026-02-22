@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Any
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
-from backend.core.config import settings
+from core.config import settings
 
 
 class VectorStore:

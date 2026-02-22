@@ -10,14 +10,16 @@ sqlalchemy==2.0.25
 alembic==1.13.1
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
+psycopg[binary]>=3.1.0
+pgvector>=0.2.0
 
 # Redis
 redis==5.0.1
 hiredis==2.3.2
 
-# Vector Database
-chromadb>=1.0.0
-# Alternative: qdrant-client>=1.7.0
+# Vector Database (pgvector via PostgreSQL)
+# chromadb>=1.0.0  # Removed - incompatible with Python 3.14+
+# Using pgvector extension instead
 
 # AI/ML
 langchain>=1.0.0

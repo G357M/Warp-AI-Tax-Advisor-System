@@ -6,11 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.core.config import settings
-from backend.core.database import init_db
-from backend.api.routes import auth, query, public, scraper
-from backend.core.metrics import metrics_middleware, get_metrics
-from backend.core.logging_config import setup_logging, logging_middleware
+from core.config import settings
+from core.database import init_db
+from api.routes import auth, query, public, scraper
+from core.metrics import metrics_middleware, get_metrics
+from core.logging_config import setup_logging, logging_middleware
 from prometheus_client import CONTENT_TYPE_LATEST
 
 
