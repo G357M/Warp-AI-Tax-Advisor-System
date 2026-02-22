@@ -33,7 +33,7 @@ export function useQuery(): UseQueryReturn {
         language,
       };
 
-      const response = await apiClient.query(request);
+      const { data: response } = await apiClient.post<QueryResponse>('/query', request);
 
       setState({
         data: response,
