@@ -5,7 +5,7 @@ import requests
 import json
 import os
 
-FIRECRAWL_API_KEY = "fc-77900ef0e837476985d88650596d0ec7"
+FIRECRAWL_API_KEY = os.environ["FIRECRAWL_API_KEY"]
 BASE_URL = "https://api.firecrawl.dev/v2/scrape"
 
 def scrape_page(url):

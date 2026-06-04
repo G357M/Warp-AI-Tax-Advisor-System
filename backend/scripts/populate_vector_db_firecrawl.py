@@ -40,7 +40,7 @@ async def main():
     )
     parser.add_argument(
         "--api-key",
-        default=os.getenv("FIRECRAWL_API_KEY", "fc-77900ef0e837476985d88650596d0ec7"),
+        default=os.getenv("FIRECRAWL_API_KEY"),
         help="Firecrawl API key (default: from FIRECRAWL_API_KEY env var)"
     )
     parser.add_argument(

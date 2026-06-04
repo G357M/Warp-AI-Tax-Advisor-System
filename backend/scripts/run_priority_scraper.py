@@ -33,7 +33,7 @@ async def main():
     logger.info("=" * 80)
     
     # Initialize scraper
-    api_key = "fc-77900ef0e837476985d88650596d0ec7"  # Firecrawl API key
+    api_key = os.environ["FIRECRAWL_API_KEY"]  # set in environment / .env
     scraper = EnhancedInfoHubScraper(api_key)
     
     # Run scraping with priorities
