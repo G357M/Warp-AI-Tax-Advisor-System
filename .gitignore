@@ -184,3 +184,18 @@ coverage.xml
 .sass-cache/
 connect.lock
 typings/
+
+# Scratch scrapers / exploration scripts (root only)
+/explore_infohub.py
+/test_playwright_scraper.py
+/test_playwright_simple.py
+/test_scraper_simple.py
+/test_search_api.py
+/test_tax_code_doc.py
+
+# Scraped data dumps (root only)
+/infohub_links.json
+/infohub_main_page.md
+/infohub_species.json
+/tax_code_sample.md
+/Улучшение InfoHub Scraper - Релевантные документы.md
