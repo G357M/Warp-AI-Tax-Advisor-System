@@ -13,8 +13,13 @@ import logging
 import argparse
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Load FIRECRAWL_API_KEY (and other vars) from the nearest .env into os.environ
+load_dotenv()
 
 from scraper.firecrawl_scraper import FirecrawlScraper
 from rag.vector_store import vector_store

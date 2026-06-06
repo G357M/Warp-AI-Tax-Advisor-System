@@ -6,8 +6,13 @@ import sys
 import os
 import logging
 
+from dotenv import load_dotenv
+
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Load FIRECRAWL_API_KEY (and other vars) from the nearest .env into os.environ
+load_dotenv()
 
 from scraper.enhanced_scraper import EnhancedInfoHubScraper
 from core.config import settings
