@@ -28,7 +28,7 @@ def scrape_infohub():
     """
     Task to run InfoHub spider.
     
-    This task crawls infohub.ge and saves documents to database.
+    This task crawls infohub.rs.ge (or compatible export sources) and saves documents to database.
     """
     from scrapy.crawler import CrawlerProcess
     from scrapy.utils.project import get_project_settings

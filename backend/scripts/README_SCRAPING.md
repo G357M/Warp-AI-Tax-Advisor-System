@@ -1,13 +1,13 @@
-# InfoHub RAG System - Web Scraping Setup
+# tax-advisor.ge / InfoHub - Web Scraping Setup
 
-Инструкции по настройке автоматического scraping для наполнения векторной базы данных.
+Инструкции по настройке scraping/export для наполнения production corpus и pgvector-индекса.
 
 ## 📋 Обзор
 
 Система scraping предназначена для:
 - Сбора налоговых документов с infohub.rs.ge
 - Обработки и создания embeddings
-- Загрузки в ChromaDB для RAG
+- Загрузки в PostgreSQL/pgvector для RAG
 - Автоматического ежедневного обновления
 
 ## 🚀 Быстрый старт
@@ -27,8 +27,8 @@ python scripts/populate_vector_db.py --max-pages 5 --initial-run
 # Показать состояние scraper
 python scripts/populate_vector_db.py --show-state
 
-# Проверить количество документов в vector store
-python -c "from rag.vector_store import vector_store; print(f'Documents: {vector_store.get_count()}')"
+# Проверить количество документов/чанков в vector store facade
+python -c "from rag.vector_store import vector_store; print(f'Indexed chunks/documents: {vector_store.get_count()}')"
 ```
 
 ### 2. Развёртывание на сервере (Hetzner)
@@ -148,7 +148,7 @@ docker exec infohub-backend-1 tail -f /app/logs/scraper.log
 
 ```bash
 # Через docker exec
-docker exec infohub-backend-1 python -c "from rag.vector_store import vector_store; print(f'Documents in ChromaDB: {vector_store.get_count()}')"
+docker exec infohub-backend-1 python -c "from rag.vector_store import vector_store; print(f'Indexed rows via vector facade: {vector_store.get_count()}')"
 
 # Проверить через API
 curl https://tax-advisor.ge/api/v1/public/query \
@@ -219,14 +219,15 @@ curl -I https://infohub.rs.ge/ka
 curl https://infohub.rs.ge/robots.txt
 ```
 
-### ChromaDB не подключается
+### pgvector / vector facade не подключается
 
 ```bash
-# Проверить контейнер ChromaDB
-docker ps | grep chroma
+# Отдельного ChromaDB контейнера в production нет
+# Проверьте postgres/pgvector и backend env
+docker ps | egrep "infohub-postgres|infohub-backend"
 
-# Проверить настройки в .env
-docker exec infohub-backend-1 env | grep CHROMA
+# Проверить настройки backend
+docker exec infohub-backend-1 env | egrep "DATABASE_URL|VECTOR_DB_TYPE"
 
 # Проверить подключение
 docker exec infohub-backend-1 python -c "from rag.vector_store import vector_store; print(vector_store.client)"
@@ -314,3 +315,45 @@ backend/
 6. 🔄 Настроить cron job
 7. 🔄 Мониторить первые несколько дней
 8. 🔄 Проверить качество RAG ответов
+
+## Scrapling operational status (2026-05-07)
+
+Targeted live audits on the real `tax-advisor.ge` corpus did **not** justify promoting Scrapling to a preferred extractor. This includes:
+- long `law` / `regulation`
+- short/card-like `news`
+- metadata-heavy anomaly patterns
+- hard short-document outliers
+
+Operational decision:
+- keep Scrapling as **audit / debug / fallback / repair** tooling
+- keep the native InfoHub extraction path as the **primary** production path
+- do **not** roll Scrapling out as the default extractor unless a new, concrete production failure pattern appears
+
+See also:
+- `docs/SCRAPLING_AUDIT_SUMMARY_2026-05-07.md`
+- `docs/CURRENT_STATE.md`
+
+## Scrapling pilot path
+
+В проект добавлен **pilot/fallback extractor** на базе Scrapling:
+- `backend/scraper/scrapling_scraper.py`
+- `backend/scripts/scrapling_probe.py`
+
+### Зачем он нужен
+Не как замена основному ingestion pipeline, а как вспомогательный слой для:
+- repair extraction проблемных документов;
+- audit/debug, когда нужно сравнить source page и наш normalized corpus;
+- fallback extraction, если текущий parser даёт шумный или неполный текст.
+
+### Что он делает сейчас
+- использует текущий `aiohttp` fetch path;
+- прогоняет HTML через `scrapling.parser.Selector`;
+- пытается взять лучший контейнер (`main`, `article`, `.content`, `body` и т.д.);
+- возвращает очищенный текст, заголовок и extraction mode.
+
+### Быстрый тест
+
+```bash
+cd /root/infohub/backend
+python scripts/scrapling_probe.py "https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0"
+```

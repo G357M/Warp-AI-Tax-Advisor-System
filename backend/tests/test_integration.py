@@ -218,13 +218,13 @@ class TestScraperEndpoints:
         response = client.post(
             "/api/v1/scraper/start",
             json={
-                "url": "https://google.com",  # Not infohub.ge
+                "url": "https://google.com",  # Not an allowed infohub domain
                 "max_depth": 2,
                 "max_pages": 10
             }
         )
         assert response.status_code == 400
-        assert "infohub.ge" in response.json()["detail"]
+        assert "infohub" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

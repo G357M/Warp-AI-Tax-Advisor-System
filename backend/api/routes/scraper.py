@@ -77,15 +77,15 @@ async def start_scraping(request: ScrapeRequest, background_tasks: BackgroundTas
     
     The task will run in the background and can be monitored via `/scraper/status/{task_id}`.
     
-    - **url**: Starting URL (must be from infohub.ge)
+    - **url**: Starting URL (must be from infohub.rs.ge or a compatible infohub domain)
     - **max_depth**: Maximum depth to follow links (1-5)
     - **max_pages**: Maximum number of pages to scrape (1-500)
     """
-    # Validate URL is from infohub.ge
-    if 'infohub.ge' not in str(request.url):
+    # Validate URL is from infohub.rs.ge / legacy infohub domain
+    if 'infohub.rs.ge' not in str(request.url) and 'infohub.ge' not in str(request.url):
         raise HTTPException(
             status_code=400,
-            detail="URL must be from infohub.ge domain"
+            detail="URL must be from infohub.rs.ge or infohub.ge domain"
         )
     
     # Generate task ID

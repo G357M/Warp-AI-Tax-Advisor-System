@@ -184,3 +184,20 @@ coverage.xml
 .sass-cache/
 connect.lock
 typings/
+
+# OpenClaw / local operator artifacts
+.state/
+state/
+.tmp_*.py
+.venv-*/
+OPENCLAW_VISIBLE_TEST_*.txt
+*.bak-20*
+*.pre-*
+reports/
+
+# Generated audit / corpus outputs
+corpus/
+audits/
+full_corpus_state_*.csv
+full_corpus_state_*.json
+full_corpus_state_*.md

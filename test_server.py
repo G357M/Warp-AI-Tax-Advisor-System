@@ -20,7 +20,7 @@ app.add_middleware(
 def root():
     return {
         "status": "running",
-        "message": "InfoHub AI Tax Advisor Test Server"
+        "message": "tax-advisor.ge / InfoHub Test Server"
     }
 
 @app.get("/health")
@@ -33,7 +33,7 @@ def public_health():
         "status": "healthy",
         "database": "not connected (test mode)",
         "redis": "not connected (test mode)",
-        "chromadb": "not connected (test mode)"
+        "vector_store": "not connected (test mode)"
     }
 
 @app.post("/api/v1/public/query")
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     port = int(os.getenv("API_PORT", "8000"))
     
     print("=" * 60)
-    print("🚀 InfoHub AI Test Server Starting...")
+    print("🚀 tax-advisor.ge / InfoHub Test Server Starting...")
     print("=" * 60)
     print(f"\n📍 Server will run on: http://localhost:{port}")
     print(f"📖 API Docs: http://localhost:{port}/docs")

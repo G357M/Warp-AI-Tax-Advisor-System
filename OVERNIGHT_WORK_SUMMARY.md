@@ -1,3 +1,5 @@
+> Historical note: этот файл описывает ранний pre-production этап проекта и может содержать устаревшие ссылки на infohub.ge и ChromaDB. Для текущего состояния см. `docs/CURRENT_STATE.md` и `README.md`.
+
 # 🌙 Overnight Development Summary
 ## InfoHub AI Tax Advisor - Work Completed
 

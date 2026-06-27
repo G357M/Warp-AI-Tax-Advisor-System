@@ -1,390 +1,303 @@
-# InfoHub.ge AI Tax Advisor
+> **Актуальное production-состояние:** см. `docs/CURRENT_STATE.md`
 
-## 📋 Описание проекта
+# tax-advisor.ge / InfoHub
 
-AI-система для работы с налоговой базой данных Грузии из [infohub.ge](https://infohub.ge). Проект предоставляет интеллектуальный поиск и консультации по налоговому законодательству Грузии с использованием технологий RAG (Retrieval-Augmented Generation) и больших языковых моделей.
+## Что это
 
-## 🎯 Основные возможности
+`tax-advisor.ge` — это боевой AI-проект по сбору, нормализации, индексации и поиску по грузинскому налоговому и смежному правовому корпусу.
 
-- **Автоматический сбор данных**: Извлечение и индексация всех документов с infohub.ge
-- **Интеллектуальный поиск**: Семантический поиск по налоговому законодательству
-- **AI-консультант**: Точные ответы на вопросы с цитированием источников
-- **Многоязычность**: Поддержка грузинского, русского и английского языков
-- **Актуальность**: Автоматическое обновление базы данных
-- **Источники**: Каждый ответ содержит ссылки на официальные документы
+Главный источник данных:
+- `https://infohub.rs.ge`
+- native API: `https://infohubapi.rs.ge/api`
 
-## 🏗️ Архитектура системы
+Цель проекта:
+1. выкачать и поддерживать у себя полную или практически полную базу релевантных документов;
+2. построить собственную searchable knowledge base;
+3. давать ответы через AI с опорой на документы, фрагменты и цитаты;
+4. обслуживать это на домене `https://tax-advisor.ge`.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frontend Layer                          │
-│              (Next.js + React + TypeScript)                  │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────┴────────────────────────────────────────┐
-│                       API Layer                              │
-│                  (FastAPI + WebSocket)                       │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────┴────────────────────────────────────────┐
-│                     AI/ML Layer                              │
-│           (LangChain + RAG + LLM Integration)                │
-└──────┬──────────────────────────────────────────┬───────────┘
-       │                                           │
-┌──────┴─────────────┐                  ┌─────────┴──────────┐
-│  Storage Layer     │                  │ Data Processing    │
-│  - PostgreSQL      │                  │ - Document Parser  │
-│  - Vector DB       │                  │ - Text Chunking    │
-│  - Redis Cache     │                  │ - OCR Support      │
-└────────────────────┘                  └─────────┬──────────┘
-                                                  │
-                                        ┌─────────┴──────────┐
-                                        │ Data Collection    │
-                                        │ - Web Scraper      │
-                                        │ - infohub.ge       │
-                                        └────────────────────┘
-```
-
-## 🛠️ Технологический стек
-
-### Backend
-- **Python 3.11+**: Основной язык разработки
-- **FastAPI**: REST API framework
-- **LangChain**: RAG pipeline и orchestration
-- **Scrapy/BeautifulSoup4**: Web scraping
-- **SQLAlchemy**: ORM для работы с БД
-- **Celery**: Асинхронные задачи и scheduled jobs
-
-### Databases
-- **PostgreSQL**: Хранение метаданных и полных текстов документов
-- **ChromaDB/Qdrant**: Векторная база для семантического поиска
-- **Redis**: Кеширование и управление очередями
-
-### AI/ML
-- **OpenAI API** или **Anthropic Claude**: Генерация ответов
-- **sentence-transformers**: Multilingual embeddings
-- **LangChain**: RAG framework
-
-### Frontend
-- **Next.js 14+**: React framework с App Router
-- **TypeScript**: Типизация
-- **TailwindCSS**: Styling
-- **shadcn/ui**: UI компоненты
-- **React Query**: Управление состоянием
-
-### DevOps
-- **Docker & Docker Compose**: Контейнеризация
-- **GitHub Actions**: CI/CD
-- **Nginx**: Reverse proxy
-
-## 📁 Структура проекта
-
-```
-infohub-ai-tax-advisor/
-├── backend/
-│   ├── scraper/              # Модуль сбора данных с infohub.ge
-│   │   ├── spiders/          # Scrapy spiders
-│   │   ├── parsers/          # Парсеры документов
-│   │   └── scheduler.py      # Планировщик обновлений
-│   ├── processor/            # Обработка документов
-│   │   ├── chunker.py        # Разбиение на chunks
-│   │   ├── embeddings.py     # Генерация embeddings
-│   │   └── ocr.py            # OCR для сканов
-│   ├── api/                  # FastAPI endpoints
-│   │   ├── routes/           # API routes
-│   │   ├── middleware/       # Middleware
-│   │   └── dependencies.py   # DI containers
-│   ├── rag/                  # RAG система
-│   │   ├── retriever.py      # Поиск релевантных документов
-│   │   ├── generator.py      # Генерация ответов
-│   │   └── chains.py         # LangChain chains
-│   ├── models/               # Database models
-│   │   ├── document.py
-│   │   ├── user.py
-│   │   └── conversation.py
-│   ├── core/                 # Ядро приложения
-│   │   ├── config.py         # Конфигурация
-│   │   ├── security.py       # Аутентификация
-│   │   └── database.py       # DB connection
-│   └── utils/                # Утилиты
-├── frontend/
-│   ├── app/                  # Next.js App Router
-│   │   ├── (auth)/          # Auth routes
-│   │   ├── (chat)/          # Chat interface
-│   │   └── (admin)/         # Admin panel
-│   ├── components/           # React компоненты
-│   │   ├── ui/              # shadcn/ui
-│   │   ├── chat/            # Chat компоненты
-│   │   └── admin/           # Admin компоненты
-│   ├── lib/                  # Утилиты
-│   │   ├── api.ts           # API client
-│   │   └── utils.ts         # Helpers
-│   └── types/                # TypeScript types
-├── database/
-│   ├── migrations/           # Alembic migrations
-│   └── seeds/                # Начальные данные
-├── docker/
-│   ├── backend.Dockerfile
-│   ├── frontend.Dockerfile
-│   ├── nginx.conf
-│   └── docker-compose.yml
-├── docs/                     # Документация
-│   ├── API.md               # API документация
-│   ├── DEPLOYMENT.md        # Инструкции по развертыванию
-│   └── ARCHITECTURE.md      # Архитектура системы
-├── tests/                    # Тесты
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-├── scripts/                  # Utility scripts
-│   ├── setup.py             # Начальная настройка
-│   ├── scrape.py            # Запуск scraper
-│   └── migrate.py           # DB миграции
-├── .env.example              # Пример конфигурации
-├── .gitignore
-├── pyproject.toml            # Python dependencies
-├── package.json              # Node dependencies
-└── README.md
-```
-
-## 🚀 Быстрый старт
-
-### Предварительные требования
-
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 15+
-- Redis 7+
-
-### Установка с Docker (рекомендуется)
-
-1. **Клонируйте репозиторий**
-```bash
-git clone <repository-url>
-cd infohub-ai-tax-advisor
-```
-
-2. **Создайте файл .env**
-```bash
-cp .env.example .env
-# Отредактируйте .env и добавьте ваши API ключи
-```
-
-3. **Запустите через Docker Compose**
-```bash
-docker-compose up -d
-```
-
-4. **Выполните миграции**
-```bash
-docker-compose exec backend python scripts/migrate.py
-```
-
-5. **Запустите первичный сбор данных**
-```bash
-docker-compose exec backend python scripts/scrape.py --initial
-```
-
-### Локальная установка
-
-#### Backend
-
-1. **Создайте виртуальное окружение**
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
-
-2. **Установите зависимости**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Настройте базу данных**
-```bash
-# Создайте PostgreSQL базу
-createdb infohub_ai
-
-# Запустите миграции
-alembic upgrade head
-```
-
-4. **Запустите сервер**
-```bash
-uvicorn api.main:app --reload
-```
-
-#### Frontend
-
-1. **Установите зависимости**
-```bash
-cd frontend
-npm install
-```
-
-2. **Запустите dev сервер**
-```bash
-npm run dev
-```
-
-## 🔧 Конфигурация
-
-### Переменные окружения
-
-Создайте файл `.env` на основе `.env.example`:
-
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/infohub_ai
-REDIS_URL=redis://localhost:6379/0
-
-# Vector Database
-VECTOR_DB_TYPE=chromadb  # или qdrant
-CHROMA_HOST=localhost
-CHROMA_PORT=8000
-
-# AI/ML
-OPENAI_API_KEY=your_openai_key
-# или
-ANTHROPIC_API_KEY=your_anthropic_key
-
-EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
-
-# API
-API_HOST=0.0.0.0
-API_PORT=8000
-SECRET_KEY=your_secret_key_here
-
-# Scraper
-SCRAPER_USER_AGENT=InfoHubAI-Bot/1.0
-SCRAPER_DELAY=2.0
-SCRAPER_CONCURRENT_REQUESTS=5
-
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-## 📚 Документация API
-
-После запуска backend API документация доступна по адресам:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-### Основные endpoints
-
-```
-POST   /api/v1/auth/login          # Аутентификация
-POST   /api/v1/auth/register       # Регистрация
-
-POST   /api/v1/query               # Отправить вопрос
-GET    /api/v1/conversations       # История разговоров
-GET    /api/v1/documents           # Список документов
-GET    /api/v1/documents/{id}      # Детали документа
-
-POST   /api/v1/admin/scrape        # Запустить scraping (admin)
-GET    /api/v1/admin/stats         # Статистика системы (admin)
-```
-
-## 🔄 Рабочий процесс системы
-
-### 1. Сбор данных (Data Collection)
-```python
-# Запуск scraper вручную
-python scripts/scrape.py --site infohub.ge --type all
-
-# Scheduled job через Celery
-celery -A backend.scraper.tasks beat --loglevel=info
-```
-
-### 2. Обработка документов (Processing)
-- Извлечение текста из различных форматов
-- Классификация по типам (законы, постановления, судебные решения)
-- Разбиение на семантические chunks
-- Генерация embeddings
-- Сохранение в векторную БД
-
-### 3. Query Processing
-```
-User Query → Embedding → Vector Search → Context Retrieval → 
-LLM Generation → Source Citation → Response
-```
-
-## 🧪 Тестирование
-
-```bash
-# Unit тесты
-pytest tests/unit
-
-# Integration тесты
-pytest tests/integration
-
-# E2E тесты
-pytest tests/e2e
-
-# С coverage
-pytest --cov=backend tests/
-```
-
-## 📊 Мониторинг и логирование
-
-- **Logs**: Доступны в `logs/` директории
-- **Metrics**: Prometheus metrics на `/metrics`
-- **Health**: Health check на `/health`
-
-## 🔒 Безопасность
-
-- JWT-based аутентификация
-- Rate limiting на API endpoints
-- CORS настройки
-- SQL injection защита через SQLAlchemy ORM
-- XSS защита на frontend
-- Шифрование sensitive данных
-- Regular security audits
-
-## 🌍 Многоязычность
-
-Система поддерживает:
-- 🇬🇪 Грузинский (основной язык документов)
-- 🇷🇺 Русский
-- 🇬🇧 Английский
-
-## 📈 Масштабирование
-
-- Horizontal scaling через Docker Swarm/Kubernetes
-- Database replication (PostgreSQL)
-- Vector DB sharding
-- Redis clustering
-- CDN для frontend assets
-
-## 🤝 Вклад в проект
-
-1. Fork репозитория
-2. Создайте feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit изменения (`git commit -m 'Add some AmazingFeature'`)
-4. Push в branch (`git push origin feature/AmazingFeature`)
-5. Откройте Pull Request
-
-## 📝 Лицензия
-
-Этот проект лицензирован под MIT License - см. [LICENSE](LICENSE) файл для деталей.
-
-## 👥 Авторы
-
-- Ваше имя - [@yourhandle](https://twitter.com/yourhandle)
-
-## 🙏 Благодарности
-
-- [infohub.ge](https://infohub.ge) за предоставление налоговой базы данных
-- LangChain community
-- OpenAI/Anthropic за LLM APIs
-
-## 📧 Контакты
-
-- Email: your.email@example.com
-- Project Link: https://github.com/yourusername/infohub-ai-tax-advisor
+> Важно: старые документы и заметки в репозитории местами ещё упоминают `infohub.ge`. Для текущего боевого контура правильный источник — `infohub.rs.ge`.
 
 ---
 
-**Примечание**: Это автоматизированная система для работы с публичными данными. Используйте ответы как справочную информацию, но всегда консультируйтесь с профессиональным налоговым консультантом для принятия важных решений.
+## Что именно хранит система
+
+Проект ориентирован не на «общий чат-бот», а на правовой корпус, в котором есть как минимум:
+- законодательные и подзаконные акты;
+- разъяснения и нормативные публикации;
+- налоговые и таможенные споры / судебно-административные материалы;
+- связанные метаданные, ссылки на источник и служебные поля для retrieval.
+
+На практике особенно важно различать как минимум две большие линии источников:
+- **normative lane** — нормы, кодексы, законы, приказы, разъяснения;
+- **dispute lane** — споры, судебные/квазисудебные решения и конфликтные кейсы.
+
+Это разделение критично для качества ответов: вопросы про ставки, статьи и правила не должны тонуть в массе dispute-документов.
+
+---
+
+## Текущий production контур
+
+Боевой проект расположен на Hetzner в:
+- `/root/infohub`
+
+Публичный домен:
+- `https://tax-advisor.ge`
+
+Основные контейнеры:
+- `infohub-backend`
+- `infohub-postgres`
+- `infohub-redis`
+- `infohub-frontend`
+- `infohub-nginx`
+
+### Проверенное live-состояние на 2026-05-07
+
+Проверено на production:
+- `documents`: **14153**
+- `document_chunks`: **259603**
+- public health: **healthy**
+
+Это уже не пустой MVP и не mock-база, а живая загруженная правовая система.
+
+---
+
+## Архитектура
+
+```text
+infohub.rs.ge / infohubapi.rs.ge
+              │
+              ▼
+     scraping / export / normalization
+              │
+              ▼
+   PostgreSQL + pgvector + metadata
+              │
+              ▼
+       RAG / retrieval / ranking
+              │
+              ▼
+        FastAPI public API
+              │
+              ▼
+      Next.js frontend on tax-advisor.ge
+```
+
+### Основные слои
+
+#### 1. Ingestion / scraping
+В репозитории есть несколько путей извлечения данных:
+- `backend/scraper/infohub_scraper.py`
+- `backend/scraper/enhanced_scraper.py`
+- `backend/scraper/playwright_scraper.py`
+- `backend/scraper/firecrawl_scraper.py`
+- `backend/scraper/spiders/infohub_spider.py`
+- `corpus-tools/` — утилиты экспорта/нормализации корпуса
+
+Задача ingestion-слоя:
+- получить документы и метаданные из `infohub.rs.ge` / `infohubapi.rs.ge`;
+- сохранить source URL, тип документа, заголовки, структуру и текст;
+- подготовить материал к нормализации и индексации.
+
+#### 2. Processing
+- очистка текста;
+- нормализация HTML/markdown/native payload;
+- разбиение на chunks;
+- подготовка метаданных для retrieval и цитирования.
+
+Основные файлы:
+- `backend/processor/chunker.py`
+- `corpus-tools/...`
+
+#### 3. Storage
+Текущий production storage:
+- **PostgreSQL** — документы, метаданные, full text;
+- **pgvector** — embeddings / similarity search;
+- **Redis** — cache и служебные runtime-задачи.
+
+> Исторически в коде ещё встречаются следы `ChromaDB`, но live-контур работает через Postgres/pgvector и именно его надо считать главным storage path.
+
+#### 4. Retrieval / RAG
+Backend ищет релевантные chunks, затем собирает контекст и формирует grounded answer.
+
+Основные файлы:
+- `backend/rag/pipeline.py`
+- `backend/rag/vector_store_pgvector.py`
+- `backend/rag/embeddings.py`
+- `backend/rag/llm.py`
+
+#### 5. API и frontend
+- **FastAPI** обслуживает public и internal endpoints;
+- **Next.js 14** — пользовательский фронтенд сайта `tax-advisor.ge`.
+
+---
+
+## Текущий стек
+
+### Backend
+- Python
+- FastAPI
+- SQLAlchemy
+- pgvector / PostgreSQL
+- Redis
+- sentence-transformers
+- OpenAI / Anthropic integration
+
+### Frontend
+- Next.js 14
+- React 18
+- TypeScript
+- TailwindCSS
+
+### Infra
+- Docker Compose
+- Nginx
+- Hetzner
+
+---
+
+## Ключевая продуктовая логика
+
+Проект решает не только задачу «найти похожие куски текста», но и более жёсткую задачу:
+- понять тип запроса;
+- отделить нормативные вопросы от dispute/case-law вопросов;
+- вытащить правильные статьи, ставки, пункты и документы;
+- ответить по-русски / по-грузински / по-английски;
+- по возможности сослаться на источник и релевантный документ.
+
+Особенно важные классы запросов:
+- ставки налогов;
+- конкретные статьи кодекса;
+- изменения законодательства;
+- таможенные и налоговые споры;
+- поиск точного документа по номеру / названию / типу.
+
+---
+
+## API
+
+Главный публичный путь:
+- `POST /api/v1/public/query`
+
+Проверка здоровья:
+- `GET /api/v1/public/health`
+- `GET /health`
+
+Примеры других маршрутов есть в:
+- `backend/api/routes/public.py`
+- `backend/api/routes/query.py`
+- `backend/api/routes/scraper.py`
+- `backend/api/routes/auth.py`
+
+### Пример health check
+
+```bash
+curl https://tax-advisor.ge/api/v1/public/health
+```
+
+### Пример public query
+
+```bash
+curl -X POST https://tax-advisor.ge/api/v1/public/query \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "Какая ставка НДС в Грузии?",
+    "language": "ru"
+  }'
+```
+
+---
+
+## Структура репозитория
+
+```text
+/root/infohub
+├── backend/           # API, RAG, storage adapters, scraper modules
+├── frontend/          # Next.js frontend
+├── corpus/            # экспортированный / нормализованный корпус
+├── corpus-tools/      # утилиты выгрузки, нормализации и переиндексации
+├── nginx/             # nginx config
+├── static-frontend/   # static assets used by nginx
+├── scripts/           # вспомогательные setup scripts
+├── audits/            # артефакты аудита корпуса и источников
+├── logs/              # runtime logs
+└── docker-compose.yml # production compose
+```
+
+---
+
+## Важные operational notes
+
+1. **Не путать локальные repair/labs-копии с боевым проектом.**
+   Источник истины для live-системы — `/root/infohub` на Hetzner.
+
+2. **Изменение host-файла не всегда меняет live-поведение.**
+   Backend работает из Docker image, поэтому реальные изменения backend-кода требуют rebuild/restart контейнера.
+
+3. **README ниже уровня `/root/infohub` может отставать.**
+   Некоторые docs в репозитории писались на более раннем этапе и содержат старые ссылки на `infohub.ge`, ChromaDB или ещё не реализованные части.
+
+4. **Retrieval quality важнее простого объёма corpus.**
+   После большой загрузки корпуса узким местом становится уже не только ingestion, а ranking, query intent и точность нормативных ответов.
+
+---
+
+## Приоритеты развития
+
+Текущие практические направления развития:
+- улучшение retrieval для нормативных вопросов;
+- более точное разделение normative vs dispute;
+- better exact lookup по номеру документа / статье / кодексу;
+- повышение качества цитирования и explainability;
+- аккуратное обновление корпуса без повторной слепой загрузки дублей.
+
+---
+
+## Быстрый старт для оператора
+
+### Проверить контейнеры
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+```
+
+### Проверить public health
+
+```bash
+curl https://tax-advisor.ge/api/v1/public/health
+```
+
+### Проверить число документов
+
+```bash
+docker exec infohub-postgres psql -U infohub_user -d infohub_ai -c "select count(*) from documents;"
+```
+
+### Пересобрать backend после backend-изменений
+
+```bash
+docker compose build backend
+docker compose up -d backend
+```
+
+---
+
+## Статус README
+
+Этот README обновлён под реальный production-контур проекта `tax-advisor.ge`.
+
+Если другие документы в репозитории противоречат ему по источнику данных (`infohub.ge` vs `infohub.rs.ge`) или по storage path (`ChromaDB` vs `pgvector`), ориентироваться нужно в первую очередь на:
+1. текущий код в `/root/infohub`;
+2. `docker-compose.yml`;
+3. live database state;
+4. этот README.
+
+
+## Public smoke quick checks
+
+- Operational note: `docs/PUBLIC_SMOKE_OPERATIONAL.md`
+- Browser/public trimmed smoke: `make smoke-public`
+- Browser/public core smoke: `make smoke-public-core`
+- API policy smoke: `make smoke-public-api`
+- Combined smoke: `make smoke-public-both`
+

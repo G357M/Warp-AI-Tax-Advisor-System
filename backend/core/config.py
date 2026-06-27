@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     CACHE_TTL_DOCUMENT: int = Field(default=7200, env="CACHE_TTL_DOCUMENT")
     
     # Vector Database
-    VECTOR_DB_TYPE: str = Field(default="chromadb", env="VECTOR_DB_TYPE")
+    VECTOR_DB_TYPE: str = Field(default="pgvector", env="VECTOR_DB_TYPE")
     CHROMA_HOST: Optional[str] = Field(default=None, env="CHROMA_HOST")
     CHROMA_PORT: Optional[int] = Field(default=None, env="CHROMA_PORT")
     CHROMA_AUTH_TOKEN: Optional[str] = Field(default=None, env="CHROMA_AUTH_TOKEN")
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
     LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")
-    LLM_MODEL: str = Field(default="gpt-4-turbo-preview", env="LLM_MODEL")
+    LLM_MODEL: str = Field(default="gpt-4o-mini", env="LLM_MODEL")
     LLM_TEMPERATURE: float = Field(default=0.3, env="LLM_TEMPERATURE")
     LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
     
@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_GUEST: str = Field(default="10/minute", env="RATE_LIMIT_GUEST")
     RATE_LIMIT_USER: str = Field(default="60/minute", env="RATE_LIMIT_USER")
     RATE_LIMIT_ADMIN: str = Field(default="1000/minute", env="RATE_LIMIT_ADMIN")
+    RATE_LIMIT_BYPASS_TOKEN: str = Field(default="", env="RATE_LIMIT_BYPASS_TOKEN")
     
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")

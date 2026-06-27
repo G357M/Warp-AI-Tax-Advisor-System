@@ -1,4 +1,6 @@
-# 🚀 Installation Guide - InfoHub AI Tax Advisor
+> **Актуальное production-состояние:** см. `docs/CURRENT_STATE.md`
+
+# 🚀 Installation Guide - tax-advisor.ge / InfoHub
 
 ## Quick Start (Test Mode)
 
@@ -48,7 +50,7 @@ pip install prometheus-client psutil
 
 ```bash
 pip install sentence-transformers torch
-pip install chromadb openai
+pip install openai
 pip install langchain langchain-core langchain-openai
 ```
 
@@ -240,7 +242,7 @@ curl http://localhost:8000/health
 
 3. **Start scraper:**
    - Go to Admin Panel > Scraper
-   - Enter URL: https://infohub.ge/tax
+   - Enter URL: https://infohub.rs.ge/ka
    - Click "Start Scraping"
 
 4. **Monitor metrics:**

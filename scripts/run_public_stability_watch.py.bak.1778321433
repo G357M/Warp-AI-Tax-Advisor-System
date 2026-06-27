@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import statistics
+import sys
+import time
+import socket
+import urllib.error
+import urllib.request
+from typing import Any, Dict, List, Optional
+
+DEFAULT_QUERIES = [
+    'Что говорит статья 166 Налогового кодекса?',
+    'Что говорит статья 168 Налогового кодекса?',
+    'Что говорит статья 169 Налогового кодекса?',
+    'Что говорит статья 170 Налогового кодекса?',
+    'Что говорит статья 172 Налогового кодекса?',
+    'Что говорит статья 166 пункт 1 Налогового кодекса?',
+    'Что говорит статья 168 пункт 1 Налогового кодекса?',
+    'Что говорит статья 169 пункт 1 Налогового кодекса?',
+    'Что говорит статья 170 пункт 1 Налогового кодекса?',
+    'Что говорит ст. 172 п. 1 Налогового кодекса?',
+    'Что говорит статья 169 часть 1 Налогового кодекса?',
+    'Что говорит ст. 170 ч. 1 Налогового кодекса?',
+    'Какие изменения в налоговом кодексе в 2026 году?',
+    'Какие изменения по НДС в 2026 году?',
+    'Какие изменения по налогу на прибыль в 2026 году?',
+    'Какие поправки в налоговом кодексе были приняты 1 апреля 2026 года?',
+]
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description='Run a public query stability watch and report 429 rate limits separately from weak answers.'
+    )
+    parser.add_argument('--url', default='http://localhost:8000/api/v1/public/query')
+    parser.add_argument('--language', default='ru')
+    parser.add_argument('--repeats', type=int, default=4)
+    parser.add_argument('--delay-ms', type=int, default=0)
+    parser.add_argument('--timeout', type=float, default=30.0)
+    parser.add_argument('--queries-file', help='Optional text file with one query per line.')
+    return parser.parse_args()
+
+
+def _load_queries(path: Optional[str]) -> List[str]:
+    if not path:
+        return list(DEFAULT_QUERIES)
+    with open(path, 'r', encoding='utf-8') as fh:
+        return [line.strip() for line in fh if line.strip()]
+
+
+def _post_json(url: str, payload: Dict[str, Any], timeout: float) -> Dict[str, Any]:
+    data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+    start = time.time()
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode('utf-8', errors='replace')
+            elapsed = round(time.time() - start, 3)
+            body = json.loads(raw) if raw.strip() else {}
+            return {
+                'http_status': response.status,
+                'elapsed_s': elapsed,
+                'body': body,
+                'headers': dict(response.headers.items()),
+            }
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode('utf-8', errors='replace')
+        elapsed = round(time.time() - start, 3)
+        try:
+            body = json.loads(raw) if raw.strip() else {}
+        except Exception:
+            body = {'raw_body': raw[:500]}
+        return {
+            'http_status': exc.code,
+            'elapsed_s': elapsed,
+            'body': body,
+            'headers': dict(exc.headers.items()) if exc.headers else {},
+        }
+    except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionResetError, OSError) as exc:
+        elapsed = round(time.time() - start, 3)
+        return {
+            'http_status': None,
+            'elapsed_s': elapsed,
+            'body': {'transport_error': str(exc)},
+            'headers': {},
+        }
+
+
+def _classify_response(query: str, attempt: int, result: Dict[str, Any]) -> Dict[str, Any]:
+    status = result['http_status']
+    body = result.get('body') or {}
+    response_text = body.get('response') or ''
+    source_title = ((body.get('sources') or [{}])[0].get('metadata', {}) or {}).get('title')
+    rate_limited = status == 429
+    success = (
+        status == 200
+        and bool(body.get('retrieved_count'))
+        and bool(response_text.strip())
+        and 'нет информации' not in response_text.lower()
+        and 'недостаточно' not in response_text.lower()
+        and bool(source_title)
+    )
+    weak_answer = status == 200 and not success
+    row = {
+        'query': query,
+        'attempt': attempt,
+        'http_status': status,
+        'elapsed_s': result['elapsed_s'],
+        'rate_limited': rate_limited,
+        'success': success,
+        'weak_answer': weak_answer,
+        'retrieved_count': body.get('retrieved_count'),
+        'has_response': bool(response_text.strip()),
+        'has_insufficient': ('нет информации' in response_text.lower() or 'недостаточно' in response_text.lower()),
+        'source_title': source_title,
+        'response_preview': response_text[:160],
+    }
+    if rate_limited:
+        row['rate_limit_remaining'] = result.get('headers', {}).get('x-ratelimit-remaining')
+        row['rate_limit_reset'] = result.get('headers', {}).get('x-ratelimit-reset')
+    if status != 200 and not rate_limited:
+        row['error_body'] = body
+    return row
+
+
+def _p95(values: List[float]) -> Optional[float]:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = max(0, int(len(ordered) * 0.95) - 1)
+    return round(ordered[index], 3)
+
+
+def main() -> int:
+    args = _parse_args()
+    queries = _load_queries(args.queries_file)
+    rows: List[Dict[str, Any]] = []
+
+    for query in queries:
+        for attempt in range(1, args.repeats + 1):
+            result = _post_json(
+                args.url,
+                {'query': query, 'language': args.language},
+                timeout=args.timeout,
+            )
+            row = _classify_response(query, attempt, result)
+            rows.append(row)
+            print(json.dumps(row, ensure_ascii=False), flush=True)
+            if args.delay_ms > 0:
+                time.sleep(args.delay_ms / 1000)
+
+    summary = []
+    for query in queries:
+        items = [row for row in rows if row['query'] == query]
+        ok_items = [row for row in items if row['http_status'] == 200]
+        latencies = [row['elapsed_s'] for row in ok_items]
+        summary.append({
+            'query': query,
+            'attempts': len(items),
+            'successes': sum(1 for row in items if row['success']),
+            'rate_limited': sum(1 for row in items if row['rate_limited']),
+            'http_errors': sum(1 for row in items if row['http_status'] not in (200, 429, None)),
+            'transport_errors': sum(1 for row in items if row['http_status'] is None),
+            'weak_answers': sum(1 for row in items if row['weak_answer']),
+            'avg_latency_s': round(statistics.mean(latencies), 3) if latencies else None,
+            'p95_latency_s': _p95(latencies),
+            'max_latency_s': max(latencies) if latencies else None,
+        })
+
+    report = {
+        'total_queries': len(queries),
+        'repeats': args.repeats,
+        'delay_ms': args.delay_ms,
+        'total_runs': len(rows),
+        'summary': summary,
+        'overall': {
+            'successes': sum(1 for row in rows if row['success']),
+            'rate_limited': sum(1 for row in rows if row['rate_limited']),
+            'http_errors': sum(1 for row in rows if row['http_status'] not in (200, 429, None)),
+            'transport_errors': sum(1 for row in rows if row['http_status'] is None),
+            'weak_answers': sum(1 for row in rows if row['weak_answer']),
+        },
+    }
+    print('===SUMMARY===')
+    print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

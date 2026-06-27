@@ -1,5 +1,5 @@
 """
-Scrapy spider for infohub.ge.
+Scrapy spider skeleton for infohub.rs.ge.
 """
 import scrapy
 from datetime import datetime
@@ -7,11 +7,11 @@ from typing import Iterator
 
 
 class InfoHubSpider(scrapy.Spider):
-    """Spider to crawl infohub.ge for tax documents."""
+    """Spider skeleton to crawl infohub.rs.ge for tax/legal documents."""
 
     name = "infohub"
-    allowed_domains = ["infohub.ge"]
-    start_urls = ["https://infohub.ge/"]
+    allowed_domains = ["infohub.rs.ge"]
+    start_urls = ["https://infohub.rs.ge/ka"]
 
     custom_settings = {
         "DOWNLOAD_DELAY": 2.0,
@@ -22,13 +22,13 @@ class InfoHubSpider(scrapy.Spider):
         """
         Parse main page and discover document categories.
         
-        TODO: Implement actual parsing logic based on infohub.ge structure
+        TODO: Implement actual parsing logic based on infohub.rs.ge structure
         This is a skeleton that needs to be filled in with actual selectors.
         """
         self.logger.info(f"Parsing: {response.url}")
 
         # TODO: Extract document categories and links
-        # Example structure (to be updated based on actual site):
+        # Example structure (to be updated based on actual infohub.rs.ge site structure):
         # for category_link in response.css('div.category a::attr(href)').getall():
         #     yield response.follow(category_link, self.parse_category)
 

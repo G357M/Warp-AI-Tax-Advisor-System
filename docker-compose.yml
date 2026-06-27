@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: infohub-postgres
+    environment:
+      POSTGRES_USER: infohub_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: infohub_ai
+    volumes:
+      - infohub_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infohub_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: infohub-redis
+    volumes:
+      - infohub_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: infohub-backend
+    environment:
+      - DATABASE_URL=postgresql://infohub_user:${POSTGRES_PASSWORD}@postgres:5432/infohub_ai
+      - INFOHUB_V2_BACKEND_MODE=${INFOHUB_V2_BACKEND_MODE:-db}
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - RATE_LIMIT_BYPASS_TOKEN=${RATE_LIMIT_BYPASS_TOKEN}
+      - SECRET_KEY=${SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - INFOHUB_RAG_V2_MODE=${INFOHUB_RAG_V2_MODE:-rollout}
+      - INFOHUB_RAG_V2_SHADOW_SAMPLE_RATE=${INFOHUB_RAG_V2_SHADOW_SAMPLE_RATE:-1.0}
+      - INFOHUB_RAG_V2_SHADOW_LOG_PATH=${INFOHUB_RAG_V2_SHADOW_LOG_PATH:-/tmp/rag_v2_shadow.jsonl}
+      - INFOHUB_RAG_V2_ROLLOUT_CLASSES=${INFOHUB_RAG_V2_ROLLOUT_CLASSES:-named_document_lookup,canonical_law_lookup,local_regulation_lookup,amendment_tracking}
+      - INFOHUB_RAG_V2_ROLLOUT_TOP_K=${INFOHUB_RAG_V2_ROLLOUT_TOP_K:-3}
+    volumes:
+      - ai_models:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: infohub-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=https://tax-advisor.ge/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: infohub-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static-frontend:/usr/share/nginx/html:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  infohub_postgres_data:
+    external: true
+  infohub_redis_data:
+    external: true
+  ai_models:
