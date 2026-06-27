@@ -1,23 +1,14 @@
 """
 Vector store implementation using pgvector (PostgreSQL extension).
 Compatible with Python 3.14+.
-
-Drop-in replacement for the previous ChromaDB-based store: it preserves the
-same public interface (``client`` availability flag, ``add_documents``,
-``search`` returning the ChromaDB-shaped nested dict, ``get_count``,
-``create_index``) so existing callers work unchanged.
 """
 import logging
-import uuid
 from typing import List, Dict, Optional, Any
 from uuid import UUID
 import numpy as np
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from sqlalchemy import text
-
-from core.config import settings
 from core.database import SessionLocal, engine
 from models.document import DocumentChunk
 
@@ -29,14 +20,12 @@ class PgVectorStore:
     """Vector store using PostgreSQL with pgvector extension."""
 
     def __init__(self):
-        self.dimension = settings.EMBEDDING_DIMENSION
-        # ``client`` mirrors the old ChromaDB store: truthy when the store is
-        # usable, ``None`` when unavailable. Callers gate on it.
-        self.client = None
+        self.dimension = 768  # sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+        self.session: Optional[Session] = None
         self._initialize()
 
     def _initialize(self):
-        """Verify pgvector is installed; degrade gracefully if not."""
+        """Initialize connection and verify pgvector is installed."""
         try:
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT extname FROM pg_extension WHERE extname = 'vector'"))
@@ -84,7 +73,7 @@ class PgVectorStore:
         except Exception as e:
             logger.error(f"Error adding documents to pgvector: {e}")
             db.rollback()
-            return False
+            raise
         finally:
             db.close()
 
@@ -200,7 +189,7 @@ class PgVectorStore:
             return results
         except Exception as e:
             logger.error(f"Error searching pgvector: {e}")
-            return empty
+            return []
         finally:
             db.close()
 
@@ -220,8 +209,8 @@ class PgVectorStore:
             db.commit()
             logger.info("Cleared all embeddings from pgvector")
         except Exception as e:
-            logger.error(f"Error getting document count: {e}")
-            return 0
+            logger.error(f"Error clearing embeddings: {e}")
+            db.rollback()
         finally:
             db.close()
 
@@ -229,8 +218,8 @@ class PgVectorStore:
         db = SessionLocal()
         try:
             db.execute(text("""
-                CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx
-                ON document_chunks
+                CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx 
+                ON document_chunks 
                 USING hnsw (embedding vector_cosine_ops)
                 WITH (m = 16, ef_construction = 64);
             """))
