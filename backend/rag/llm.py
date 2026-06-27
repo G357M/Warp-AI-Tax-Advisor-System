@@ -1,6 +1,7 @@
 """
 LLM integration for generating responses.
 """
+import re
 from typing import List, Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
@@ -91,11 +92,17 @@ class LLMClient:
 
             # Generate response
             response = self.client.invoke(messages)
-            return response.content
+            return self._clean_response_text(response.content)
 
         except Exception as e:
             print(f"Error generating LLM response: {e}")
             return f"Error generating response: {str(e)}"
+
+    def _clean_response_text(self, text: Any) -> str:
+        cleaned = str(text or "")
+        cleaned = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
 
     def _build_system_prompt(self, context: str) -> str:
         """
@@ -118,6 +125,8 @@ class LLMClient:
 5. Используйте язык запроса пользователя для ответа
 6. Структурируйте ответ четко и понятно
 7. При цитировании законов указывайте статьи и номера документов
+8. Не добавляйте markdown-ссылки, raw URL или выдуманные ссылки в текст ответа
+9. Источники указывайте только обычным текстом, например: "Источник: <название документа>, статья <номер>"
 
 Контекст из базы данных:
 {context}

@@ -12,6 +12,8 @@ from core.cache import cache_get, cache_set
 from models import User, Conversation, Message
 from api.schemas import QueryRequest, QueryResponse, SourceInfo
 from rag.pipeline import rag_pipeline
+from rag_v2.shadow_runtime import maybe_run_shadow
+from rag_v2.live_runtime import maybe_run_live_rollout
 
 
 router = APIRouter(prefix="/query", tags=["Query"])
@@ -83,11 +85,17 @@ def process_query(
     
     # Process query through RAG pipeline
     try:
-        result = rag_pipeline.process_query(
+        result = maybe_run_live_rollout(
             query=query_data.query,
+            language=query_data.language,
             conversation_history=conversation_history,
-            language=query_data.language
         )
+        if result is None:
+            result = rag_pipeline.process_query(
+                query=query_data.query,
+                conversation_history=conversation_history,
+                language=query_data.language
+            )
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -95,6 +103,14 @@ def process_query(
             detail=f"Error processing query: {str(e)}"
         )
     
+    maybe_run_shadow(
+        query=query_data.query,
+        language=query_data.language or "ru",
+        route="/api/v1/query",
+        legacy_result=result,
+        extra={"surface": "authenticated", "conversation_id": str(conversation.id)},
+    )
+
     # Save assistant message
     assistant_message = Message(
         conversation_id=conversation.id,

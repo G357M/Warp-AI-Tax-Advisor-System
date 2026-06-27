@@ -1,0 +1,12 @@
+# concise multilingual public canary
+[ru] Что говорит статья 168 Налогового кодекса?
+[en] What does Article 168 of the Tax Code say?
+[ka] რა წერია საქართველოს საგადასახადო კოდექსის 168-ე მუხლში?
+[en] What does Article 169 point 1 of the Tax Code say?
+[ka] რა წერია საქართველოს საგადასახადო კოდექსის 169-ე მუხლის 1-ელ პუნქტში?
+[en] What is in document N1432?
+[ka] რა წერია დოკუმენტში N1432?
+[en] What decision was made in dispute №19068/2/2023?
+[ka] რა გადაწყვეტილება მიიღეს დავაზე №19068/2/2023?
+[en] What changes to VAT were made in 2026?
+[ka] რა ცვლილებები შევიდა საგადასახადო კოდექსში 2026 წელს?

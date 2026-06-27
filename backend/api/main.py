@@ -1,7 +1,7 @@
 """
 Main FastAPI application entry point.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -11,6 +11,7 @@ from core.database import init_db
 from api.routes import auth, query, public, scraper
 from core.metrics import metrics_middleware, get_metrics
 from core.logging_config import setup_logging, logging_middleware
+from core.rate_limit import rate_limit_middleware
 from prometheus_client import CONTENT_TYPE_LATEST
 
 
@@ -40,6 +41,9 @@ app.middleware("http")(metrics_middleware)
 
 # Add logging middleware
 app.middleware("http")(logging_middleware)
+
+# Add rate limit middleware
+app.middleware("http")(rate_limit_middleware)
 
 # Include routers
 app.include_router(public.router, prefix=settings.API_PREFIX)  # Public endpoints (no auth)

@@ -1,0 +1,186 @@
+[
+  {
+    "id": "practical_property_tax_individual",
+    "query": "Как рассчитывается налог на имущество физлица?",
+    "expected_class": "practical_tax_guidance",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "N1432"
+  },
+  {
+    "id": "named_doc_1432",
+    "query": "Что в документе N1432?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["citation_resolver", "exact_doc_resolver"],
+    "expected_top_title_contains": "N1432"
+  },
+  {
+    "id": "named_doc_1432_full_title",
+    "query": "Что в документе ქონების გადასახადის მიზნებისთვის მეუღლეთა შემოსავლის გაანგარიშება N1432?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["citation_resolver", "exact_doc_resolver"],
+    "expected_top_title_contains": "N1432"
+  },
+  {
+    "id": "named_doc_1433",
+    "query": "Что в документе N1433?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["citation_resolver", "exact_doc_resolver"],
+    "expected_top_title_contains": "N1433"
+  },
+  {
+    "id": "named_doc_1433_full_title",
+    "query": "Что в документе მიწისა და მასზე განთავსებული შენობა-ნაგებობის დაბეგვრა ქონების გადასახადით N1433?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["citation_resolver", "exact_doc_resolver"],
+    "expected_top_title_contains": "N1433"
+  },
+  {
+    "id": "article_168_tax_code",
+    "query": "Что говорит статья 168 Налогового кодекса?",
+    "expected_class": "canonical_law_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "article_resolver",
+    "expected_top_title_contains": "168"
+  },
+  {
+    "id": "point_168_1_tax_code",
+    "query": "Что говорит ст. 168 п. 1 Налогового кодекса?",
+    "expected_class": "canonical_law_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "point_resolver",
+    "expected_top_title_contains": "168"
+  },
+  {
+    "id": "point_168_3_tax_code",
+    "query": "Что говорит статья 168 пункт 3 Налогового кодекса?",
+    "expected_class": "canonical_law_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel_any_of": ["point_resolver", "article_resolver"],
+    "expected_top_title_contains": "168"
+  },
+  {
+    "id": "article_169_tax_code",
+    "query": "Что говорит статья 169 Налогового кодекса?",
+    "expected_class": "canonical_law_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "article_resolver",
+    "expected_top_title_contains": "საგადასახადო კოდექსი"
+  },
+  {
+    "id": "point_169_1_tax_code",
+    "query": "Что говорит статья 169 пункт 1 Налогового кодекса?",
+    "expected_class": "canonical_law_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "point_resolver",
+    "expected_top_title_contains": "საგადასახადო კოდექსი"
+  },
+  {
+    "id": "dispute_19068",
+    "query": "Какое решение по спору №19068/2/2023?",
+    "expected_class": "dispute_practice",
+    "expected_top_document_type": "court_decision",
+    "expected_top_channel_any_of": ["citation_resolver", "exact_doc_resolver"],
+    "expected_top_title_contains": "19068/2/2023"
+  },
+  {
+    "id": "local_dmanisi_rate",
+    "query": "Какая ставка налога на имущество в Дманиси?",
+    "expected_class": "local_regulation_lookup",
+    "expected_top_document_type": "regulation",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "დმანისის"
+  },
+  {
+    "id": "local_dmanisi_rate_city_variant",
+    "query": "Какая ставка налога на имущество в городе Дманиси?",
+    "expected_class": "local_regulation_lookup",
+    "expected_top_document_type": "regulation",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "დმანისის"
+  },
+  {
+    "id": "local_dmanisi_rate_year_variant",
+    "query": "Какая ставка налога на имущество в Дманиси в 2023 году?",
+    "expected_class": "local_regulation_lookup",
+    "expected_top_document_type": "regulation",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "დმანისის"
+  },
+  {
+    "id": "vat_amendments_2026",
+    "query": "Какие изменения по НДС в 2026 году?",
+    "expected_class": "amendment_tracking",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "2026"
+  },
+  {
+    "id": "profit_tax_amendments_2026",
+    "query": "Какие изменения по налогу на прибыль в 2026 году?",
+    "expected_class": "amendment_tracking",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "2026"
+  },
+  {
+    "id": "tax_code_popravki_2026",
+    "query": "Какие поправки в налоговом кодексе были приняты 1 апреля 2026 года?",
+    "expected_class": "amendment_tracking",
+    "expected_top_document_type": "law",
+    "expected_top_channel": "metadata_search",
+    "expected_top_title_contains": "2026"
+  },
+  {
+    "id": "customs_handbook_named_doc",
+    "query": "Что в handbook customs clearance and customs control of goods?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains": "Handbook"
+  },
+  {
+    "id": "customs_handbook_full_title",
+    "query": "Что в документе CUSTOMS CLEARANCE AND CUSTOMS CONTROL OF DUAL USE GOODS (GUAM countries) Handbook 2021-2023?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains": "Handbook 2021-2023"
+  },
+  {
+    "id": "customs_handbook_short_alias",
+    "query": "Что в документе dual use goods handbook?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "guideline",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains_any_of": ["DUAL USE GOODS", "Handbook"]
+  },
+  {
+    "id": "tax_code_named_doc",
+    "query": "Что в документе Georgian Tax Code?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains": "საგადასახადო კოდექსი"
+  },
+  {
+    "id": "tax_code_named_doc_alt_english",
+    "query": "Что в документе Tax Code of Georgia?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains": "საგადასახადო კოდექსი"
+  },
+  {
+    "id": "tax_code_named_doc_georgian",
+    "query": "Что в документе საქართველოს საგადასახადო კოდექსი?",
+    "expected_class": "named_document_lookup",
+    "expected_top_document_type": "law",
+    "expected_top_channel_any_of": ["exact_doc_resolver"],
+    "expected_top_title_contains": "საგადასახადო კოდექსი"
+  }
+]

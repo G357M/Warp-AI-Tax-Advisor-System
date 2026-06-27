@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 from rag.pipeline import rag_pipeline
+from rag_v2.shadow_runtime import maybe_run_shadow
+from rag_v2.live_runtime import maybe_run_live_rollout
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
@@ -119,37 +121,48 @@ def process_public_query(query_data: PublicQueryRequest):
     
     try:
         # Process query through RAG pipeline
-        result = rag_pipeline.process_query(
+        result = maybe_run_live_rollout(
             query=query_data.query,
+            language=query_data.language,
             conversation_history=None,
-            language=query_data.language
         )
+        if result is None:
+            result = rag_pipeline.process_query(
+                query=query_data.query,
+                conversation_history=None,
+                language=query_data.language
+            )
         
+        maybe_run_shadow(
+            query=query_data.query,
+            language=query_data.language or "ru",
+            route="/api/v1/public/query",
+            legacy_result=result,
+            extra={"surface": "public"},
+        )
+
         # Format sources for public response
         formatted_sources = []
         for source in result.get("sources", []):
-            # Map source dict to PublicSourceInfo
             formatted_sources.append(PublicSourceInfo(
-                text=source.get("title", "")[:200],  # First 200 chars
+                text=source.get("title", "")[:200],
                 relevance=source.get("relevance", 0.0),
                 metadata={
-                    "document_id": source.get("document_id", ""),
                     "title": source.get("title", ""),
                     "document_type": source.get("document_type", ""),
                     "source_url": source.get("url", ""),
-                    "relevance": source.get("relevance", 0.0),
                 }
             ))
-        
+
         processing_time = time.time() - start_time
-        
+
         return PublicQueryResponse(
             response=result.get("response", ""),
             sources=formatted_sources,
-            retrieved_count=result.get("retrieved_count", 0),
+            retrieved_count=len(formatted_sources),
             processing_time=processing_time
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

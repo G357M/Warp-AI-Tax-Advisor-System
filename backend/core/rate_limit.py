@@ -153,6 +153,11 @@ async def rate_limit_middleware(
     Returns:
         Response
     """
+    # Trusted automation bypass (Graham public smoke checks)
+    bypass = settings.RATE_LIMIT_BYPASS_TOKEN
+    if bypass and request.headers.get("X-Smoke-Token") == bypass:
+        return await call_next(request)
+
     # Determine rate limit based on endpoint
     if not limit_string:
         path = request.url.path

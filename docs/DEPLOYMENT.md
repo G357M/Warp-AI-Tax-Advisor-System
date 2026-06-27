@@ -1,4 +1,6 @@
-# Руководство по развертыванию InfoHub.ge AI Tax Advisor
+> **Актуальное production-состояние:** см. `docs/CURRENT_STATE.md`
+
+# Руководство по развертыванию tax-advisor.ge / InfoHub
 
 ## Содержание
 1. [Предварительные требования](#предварительные-требования)
@@ -489,11 +491,9 @@ docker-compose exec backend alembic upgrade head
 ### Проблемы с векторной БД
 
 ```bash
-# Перезапустить ChromaDB
-docker-compose restart chromadb
-
-# Очистить и переиндексировать
-docker-compose exec backend python scripts/reindex.py
+# pgvector живёт внутри PostgreSQL, отдельного chromadb-контейнера нет
+# Если нужен recovery/reindex, используйте backend reindex/export scripts
+docker compose exec backend python scripts/reindex.py
 ```
 
 ### Медленная работа
@@ -521,8 +521,8 @@ docker-compose logs celery-worker
 # Запустить вручную
 docker-compose exec backend python scripts/scrape.py --verbose
 
-# Проверить доступность infohub.ge
-curl -I https://infohub.ge
+# Проверить доступность основного источника
+curl -I https://infohub.rs.ge/ka
 ```
 
 ## Обновление

@@ -33,9 +33,10 @@ transformers>=4.37.0
 torch>=2.1.0
 
 # Web Scraping
+scrapling>=0.4.7
 scrapy==2.11.0
 beautifulsoup4==4.12.3
-lxml==5.1.0
+lxml>=6.0.3,<7
 selenium==4.17.2
 playwright==1.41.1
 requests==2.31.0

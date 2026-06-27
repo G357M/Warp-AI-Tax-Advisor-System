@@ -10,6 +10,10 @@ same public interface (``client`` availability flag, ``add_documents``,
 import logging
 import uuid
 from typing import List, Dict, Optional, Any
+from uuid import UUID
+import numpy as np
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from sqlalchemy import text
 
@@ -35,63 +39,48 @@ class PgVectorStore:
         """Verify pgvector is installed; degrade gracefully if not."""
         try:
             with engine.connect() as conn:
-                result = conn.execute(
-                    text("SELECT extname FROM pg_extension WHERE extname = 'vector'")
-                )
+                result = conn.execute(text("SELECT extname FROM pg_extension WHERE extname = 'vector'"))
                 if not result.fetchone():
                     raise RuntimeError("pgvector extension is not installed")
-
-            self.client = engine
-            logger.info(f"✓ pgvector initialized (dimension: {self.dimension})")
+                logger.info(f"✓ pgvector initialized (dimension: {self.dimension})")
         except Exception as e:
-            self.client = None
-            logger.warning(f"⚠ Could not initialize pgvector: {e}")
-            logger.warning("⚠ Vector search will not work until pgvector is available")
+            logger.error(f"Failed to initialize pgvector: {e}")
+            raise
 
     def add_documents(
         self,
         ids: List[str],
         embeddings: List[List[float]],
         documents: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
-    ) -> bool:
-        """
-        Store embeddings on the corresponding document chunks.
-
-        Args:
-            ids: Chunk identifiers, format ``doc_{document_id}_chunk_{chunk_id}``
-                where ``chunk_id`` is the chunk's UUID.
-            embeddings: Embedding vectors aligned with ``ids``.
-            documents: Chunk texts (unused — content already lives on the row).
-            metadatas: Optional metadata (unused — sourced from the document at
-                search time via a JOIN).
-
-        Returns:
-            True if all embeddings were written, False on error.
-        """
-        if not (len(ids) == len(embeddings) == len(documents)):
-            raise ValueError("ids, embeddings and documents must have the same length")
+        metadatas: List[Dict[str, Any]]
+    ) -> None:
+        """Add embeddings by updating existing document_chunks rows."""
+        if not (len(ids) == len(embeddings) == len(documents) == len(metadatas)):
+            raise ValueError("All input lists must have the same length")
 
         db = SessionLocal()
+        updated_count = 0
         try:
-            for chunk_id_str, embedding in zip(ids, embeddings):
-                # Format is "doc_{document_uuid}_chunk_{chunk_uuid}"; UUIDs use
-                # hyphens, so the last underscore-delimited token is the chunk UUID.
+            for chunk_id_str, embedding, _text, _metadata in zip(ids, embeddings, documents, metadatas):
                 try:
-                    chunk_id = uuid.UUID(chunk_id_str.split("_")[-1])
-                except (ValueError, IndexError):
-                    logger.error(f"Could not parse chunk UUID from '{chunk_id_str}', skipping")
+                    chunk_uuid_str = chunk_id_str.split('_chunk_')[-1]
+                    chunk_id = UUID(chunk_uuid_str)
+                except Exception:
+                    logger.warning(f"Could not parse chunk UUID from {chunk_id_str}, skipping")
                     continue
 
                 chunk = db.query(DocumentChunk).filter_by(id=chunk_id).first()
-                if chunk:
-                    chunk.embedding = embedding
-                else:
-                    logger.warning(f"Chunk {chunk_id} not found in database, skipping")
+                if not chunk:
+                    logger.warning(f"Chunk {chunk_id} not found in database")
+                    continue
+
+                embedding_array = np.array(embedding, dtype=np.float32)
+                chunk.embedding = embedding_array.tolist()
+                db.merge(chunk)
+                updated_count += 1
 
             db.commit()
-            logger.info(f"Added {len(ids)} vectors to pgvector")
-            return True
+            logger.info(f"Added {updated_count} vectors to pgvector")
         except Exception as e:
             logger.error(f"Error adding documents to pgvector: {e}")
             db.rollback()
@@ -102,76 +91,113 @@ class PgVectorStore:
     def search(
         self,
         query_embedding: List[float],
-        n_results: int = 10,
-        where: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Search for similar chunks using cosine distance.
-
-        Returns the ChromaDB-shaped nested dict expected by the RAG pipeline:
-        ``{"ids": [[...]], "documents": [[...]], "metadatas": [[...]],
-        "distances": [[...]]}``.
-        """
-        empty: Dict[str, Any] = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+        limit: int = 10,
+        where: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Search for similar vectors using cosine similarity."""
         db = SessionLocal()
         try:
-            language = where.get("language") if where else None
-            language_clause = "AND d.language = :language" if language else ""
-
-            # ``metadata_json`` maps to the DB column "metadata"; title /
-            # document_type / source_url live on the documents table, so JOIN.
-            query = text(f"""
-                SELECT
-                    c.id AS chunk_id,
-                    c.document_id AS document_id,
-                    c.chunk_index AS chunk_index,
-                    c.content AS content,
-                    c.metadata AS chunk_metadata,
-                    d.title AS title,
+            query_vec = np.array(query_embedding, dtype=np.float32)
+            query_vec_str = "[" + ",".join(str(float(x)) for x in query_vec.tolist()) + "]"
+            query = text("""
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
                     d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
                     d.source_url AS source_url,
-                    d.language AS language,
-                    c.embedding <=> :query_embedding::vector AS distance
+                    1 - (c.embedding <=> CAST(:query_embedding AS vector)) as similarity,
+                    c.embedding <=> CAST(:query_embedding AS vector) as distance
                 FROM document_chunks c
                 JOIN documents d ON d.id = c.document_id
                 WHERE c.embedding IS NOT NULL
-                {language_clause}
-                ORDER BY c.embedding <=> :query_embedding::vector
-                LIMIT :limit
             """)
+            clauses = []
+            params = {"query_embedding": query_vec_str, "limit": limit}
+            if where:
+                language = where.get("language")
+                if language:
+                    clauses.append("d.language = :language")
+                    params["language"] = language
 
-            params: Dict[str, Any] = {
-                "query_embedding": str(query_embedding),
-                "limit": n_results,
-            }
-            if language:
-                params["language"] = language
+                language_in = where.get("language_in") or where.get("languages")
+                if language_in:
+                    names = []
+                    for i, value in enumerate(language_in):
+                        key = f"language_in_{i}"
+                        params[key] = value
+                        names.append(f":{key}")
+                    clauses.append(f"d.language IN ({', '.join(names)})")
 
-            rows = db.execute(query, params).fetchall()
+                document_types = where.get("document_types") or where.get("document_type_in")
+                if document_types:
+                    names = []
+                    for i, value in enumerate(document_types):
+                        key = f"document_type_{i}"
+                        params[key] = value
+                        names.append(f":{key}")
+                    clauses.append(f"d.document_type IN ({', '.join(names)})")
 
-            ids, docs, metadatas, distances = [], [], [], []
-            for row in rows:
-                ids.append(f"doc_{row.document_id}_chunk_{row.chunk_id}")
-                docs.append(row.content)
-                metadatas.append({
-                    "chunk_id": str(row.chunk_id),
-                    "document_id": str(row.document_id),
-                    "chunk_index": row.chunk_index,
-                    "title": row.title,
-                    "document_type": row.document_type,
-                    "source_url": row.source_url,
-                    "language": row.language,
-                    **(row.chunk_metadata or {}),
+                exclude_document_types = where.get("exclude_document_types") or where.get("document_type_not_in")
+                if exclude_document_types:
+                    names = []
+                    for i, value in enumerate(exclude_document_types):
+                        key = f"exclude_document_type_{i}"
+                        params[key] = value
+                        names.append(f":{key}")
+                    clauses.append(f"d.document_type NOT IN ({', '.join(names)})")
+
+                categories = where.get("categories") or where.get("category_in")
+                if categories:
+                    names = []
+                    for i, value in enumerate(categories):
+                        key = f"category_{i}"
+                        params[key] = value
+                        names.append(f":{key}")
+                    clauses.append(f"d.category IN ({', '.join(names)})")
+
+                exclude_categories = where.get("exclude_categories") or where.get("category_not_in")
+                if exclude_categories:
+                    names = []
+                    for i, value in enumerate(exclude_categories):
+                        key = f"exclude_category_{i}"
+                        params[key] = value
+                        names.append(f":{key}")
+                    clauses.append(f"(d.category IS NULL OR d.category NOT IN ({', '.join(names)}))")
+
+            sql = str(query)
+            if clauses:
+                sql += " AND " + " AND ".join(clauses)
+            sql += " ORDER BY c.embedding <=> CAST(:query_embedding AS vector) LIMIT :limit"
+            result = db.execute(text(sql), params)
+
+            results = []
+            for row in result:
+                results.append({
+                    'id': f"doc_{row.document_id}_chunk_{row.id}",
+                    'document': row.content,
+                    'metadata': {
+                        'chunk_id': str(row.id),
+                        'document_id': str(row.document_id),
+                        'chunk_index': row.chunk_index,
+                        'title': row.document_title or 'Неизвестный документ',
+                        'document_type': row.document_type or '',
+                        'category': row.document_category or '',
+                        'language': row.document_language or '',
+                        'source_url': row.source_url or '',
+                        **(row.metadata or {})
+                    },
+                    'distance': float(row.distance),
+                    'similarity': float(row.similarity)
                 })
-                distances.append(float(row.distance))
 
-            logger.info(f"Found {len(ids)} similar documents")
-            return {
-                "ids": [ids],
-                "documents": [docs],
-                "metadatas": [metadatas],
-                "distances": [distances],
-            }
+            logger.info(f"Found {len(results)} similar documents")
+            return results
         except Exception as e:
             logger.error(f"Error searching pgvector: {e}")
             return empty
@@ -179,13 +205,20 @@ class PgVectorStore:
             db.close()
 
     def get_count(self) -> int:
-        """Return the number of chunks that have an embedding."""
         db = SessionLocal()
         try:
-            result = db.execute(
-                text("SELECT COUNT(*) FROM document_chunks WHERE embedding IS NOT NULL")
-            )
-            return result.scalar() or 0
+            result = db.execute(text("SELECT COUNT(*) FROM document_chunks WHERE embedding IS NOT NULL"))
+            count = result.scalar()
+            return count or 0
+        finally:
+            db.close()
+
+    def delete_collection(self) -> None:
+        db = SessionLocal()
+        try:
+            db.execute(text("UPDATE document_chunks SET embedding = NULL"))
+            db.commit()
+            logger.info("Cleared all embeddings from pgvector")
         except Exception as e:
             logger.error(f"Error getting document count: {e}")
             return 0
@@ -193,7 +226,6 @@ class PgVectorStore:
             db.close()
 
     def create_index(self) -> None:
-        """Create the HNSW index for fast cosine-distance search."""
         db = SessionLocal()
         try:
             db.execute(text("""
@@ -211,5 +243,4 @@ class PgVectorStore:
             db.close()
 
 
-# Global instance
 vector_store = PgVectorStore()

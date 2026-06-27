@@ -1,4 +1,6 @@
-# Архитектура системы InfoHub.ge AI Tax Advisor
+> **Актуальное production-состояние:** см. `docs/CURRENT_STATE.md`
+
+# Архитектура системы tax-advisor.ge / InfoHub
 
 ## Обзор
 
@@ -48,7 +50,7 @@
 ```
 
 #### Функциональность:
-- Обход сайта infohub.ge с учетом структуры
+- Обход сайта infohub.rs.ge и/или загрузка через native API с учетом структуры источника
 - Извлечение документов различных типов
 - Детекция изменений (инкрементальные обновления)
 - Rate limiting и уважение к robots.txt
@@ -121,7 +123,7 @@
     "status": "active|amended|repealed",
     "related_documents": ["doc_id_1", "doc_id_2"],
     "keywords": ["налог", "НДС", "декларация"],
-    "source_url": "https://infohub.ge/...",
+    "source_url": "https://infohub.rs.ge/...",
     "file_hash": "sha256_hash"
 }
 ```
@@ -224,7 +226,7 @@ CREATE TABLE document_relations (
 );
 ```
 
-#### Vector Database (ChromaDB):
+#### Vector Storage (pgvector in PostgreSQL):
 
 ```python
 # Collection structure
@@ -584,7 +586,7 @@ const useChatStore = create<ChatStore>((set) => ({
    ↓
 7. Embedding Generation
    ↓
-8. Vector Search (ChromaDB)
+8. Vector Search (pgvector)
    ↓
 9. Document Retrieval (PostgreSQL)
    ↓
@@ -608,7 +610,7 @@ const useChatStore = create<ChatStore>((set) => ({
 ```
 1. Scheduler triggers scraping job
    ↓
-2. Scrapy spider crawls infohub.ge
+2. Scraper / export pipeline collects data from infohub.rs.ge or its native API
    ↓
 3. Document download
    ↓
@@ -648,7 +650,7 @@ services:
     depends_on:
       - postgres
       - redis
-      - chromadb
+      - pgvector (inside postgres)
 
   worker:
     image: infohub-backend
@@ -773,5 +775,5 @@ rate_limits = {
 4. **Mobile Apps**: iOS и Android приложения
 5. **Voice Interface**: Голосовой ввод/вывод
 6. **Integration APIs**: Интеграция с бухгалтерскими системами
-7. **Automated Updates**: Real-time обновления из infohub.ge
+7. **Automated Updates**: Incremental обновления из infohub.rs.ge / native API
 8. **Multilingual Expansion**: Поддержка большего числа языков
