@@ -35,11 +35,13 @@ STATE_FILE = Path(__file__).parent.parent / "data" / "scraper_state.json"
 STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Logging setup
+LOG_FILE = Path(__file__).parent.parent / "logs" / "scraper.log"
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/scraper.log'),
+        logging.FileHandler(str(LOG_FILE)),
         logging.StreamHandler()
     ]
 )
