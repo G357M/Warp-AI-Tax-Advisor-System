@@ -10,7 +10,7 @@ import math
 DB_CONFIG = {
     'dbname': 'infohub_ai',
     'user': 'infohub_user',
-    'password': 'xcX88l6XiMs-jDK',
+    'password': os.environ.get('POSTGRES_PASSWORD', ''),
     'host': 'localhost',
     'port': '5432'
 }
