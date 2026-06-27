@@ -4,7 +4,7 @@
 set -e
 
 # Configuration
-MAX_PAGES=50
+MAX_DOCS=200
 LOG_DIR="/root/infohub/logs"
 CONTAINER_NAME="infohub-backend"
 
@@ -18,11 +18,9 @@ echo "========================================" | tee -a "$LOG_FILE"
 echo "Starting scraper at $(date)" | tee -a "$LOG_FILE"
 echo "========================================" | tee -a "$LOG_FILE"
 
-# Run scraper inside backend container
-docker exec "$CONTAINER_NAME" python /app/scripts/populate_vector_db.py \
-    --start-url "https://infohub.rs.ge/ka" \
-    --max-pages $MAX_PAGES \
-    --max-depth 2 \
+# Run scraper inside backend container (direct JSON API; incremental)
+docker exec "$CONTAINER_NAME" python /app/scripts/scrape_infohub_api.py \
+    --max-docs $MAX_DOCS \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}
