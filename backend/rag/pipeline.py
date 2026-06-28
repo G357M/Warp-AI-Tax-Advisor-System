@@ -202,18 +202,13 @@ class RAGPipeline:
         if lane == "normative":
             filters["document_types"] = ["law", "regulation", "guideline"]
             filters["exclude_categories"] = ["tax_customs_dispute"]
-            if language == "ru":
-                filters["language_in"] = ["ka", "ru"]
-            elif language:
-                filters["language"] = language
         elif lane == "dispute":
             filters["document_types"] = ["court_decision"]
-            if language == "ru":
-                filters["language_in"] = ["ka", "ru"]
-            elif language:
-                filters["language"] = language
-        elif language:
-            filters["language"] = language
+
+        # The corpus is Georgian and we retrieve with a Georgian-translated query,
+        # so never restrict to a single non-Georgian language (that returned zero
+        # rows for ru/en questions). Allow the Georgian corpus plus ru/en.
+        filters["language_in"] = ["ka", "ru", "en"]
 
         return filters
 

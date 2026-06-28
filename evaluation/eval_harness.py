@@ -94,7 +94,7 @@ QUESTIONS = [
     ("vat_rate_more", "VAT", "ru", "Сколько процентов НДС в Грузии?", "fact", ["18"], [], ["18 პროცენტი", "მუხლი 166"]),
     ("import_vat_rate", "VAT", "ru", "Какая ставка НДС при импорте в Грузию?", "fact", ["18"], [], ["18 პროცენტი"]),
     # ---- Robustness (refusals) ----
-    ("offtopic", "Robustness", "ru", "Какая погода завтра в Тбилиси?", "refusal", ["налог"], ["18"], []),
+    ("offtopic", "Robustness", "ru", "Какая погода завтра в Тбилиси?", "refusal", [], ["18", "20 %", "градус"], []),
     ("fake_article", "Robustness", "ru", "Что написано в статье 9999 Налогового кодекса Грузии?", "refusal", [], ["9999 устанавливает"], []),
     ("us_tax", "Robustness", "ru", "Какая ставка налога на прибыль в США?", "refusal", ["груз"], ["15%"], []),
 ]
@@ -127,14 +127,22 @@ def main():
         correct = all(norm(m) in nresp for m in must) and not any(norm(x) in nresp for x in must_not)
         sourced = len(sources) > 0
         grounded = None
+        retrieval_correct = None  # answer from the pure-law path (v1, no guards/canned) — Phase 4 readiness
         if kind == "fact":
             used = (res.get("_rag_v2") or {}).get("used_chunks")
             chunk_texts = used if used else retrieved_chunk_texts(query, lang)
             nchunks = norm(" ".join(chunk_texts))
             grounded = any(norm(g) in nchunks for g in ground) if ground else None
+            try:
+                rr = rag_pipeline.process_query(query=query, conversation_history=None, language=lang)
+                nrr = norm(rr.get("response", ""))
+                retrieval_correct = all(norm(m) in nrr for m in must) and not any(norm(x) in nrr for x in must_not)
+            except Exception as exc:
+                print(f"[{qid}] retrieval-only error: {exc}", file=sys.stderr)
         out["results"].append({
             "id": qid, "cat": cat, "lang": lang, "kind": kind, "query": query,
             "correct": correct, "sourced": sourced, "grounded": grounded,
+            "retrieval_correct": retrieval_correct,
             "elapsed_s": round(time.time() - t0, 2),
             "response": resp, "n_sources": len(sources),
         })
@@ -149,6 +157,7 @@ def main():
         "fact_total": len(facts),
         "fact_sourced": sum(r["sourced"] for r in facts),
         "fact_grounded": sum(bool(r["grounded"]) for r in facts),
+        "fact_retrieval_correct": sum(bool(r["retrieval_correct"]) for r in facts),
         "refusal_correct": sum(r["correct"] for r in refus),
         "refusal_total": len(refus),
     }
