@@ -10,6 +10,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from core.config import settings
 
 
+# Cross-lingual retrieval translates each query once; cache so repeats are free.
+_TRANSLATION_CACHE: Dict[str, str] = {}
+
+
 class LLMClient:
     """Client for interacting with Large Language Models."""
 
@@ -105,22 +109,27 @@ class LLMClient:
         so the corpus, which is in Georgian, is searched with Georgian terms.
         Returns the original text on any failure.
         """
-        if not self.client or not (text or "").strip():
+        key = (text or "").strip()
+        if not self.client or not key:
             return text
+        if key in _TRANSLATION_CACHE:
+            return _TRANSLATION_CACHE[key]
         try:
             messages = [
                 SystemMessage(content=(
-                    "You are a translator. Translate the user's Georgian tax/legal "
-                    "question into Georgian (ქართული). Output ONLY the Georgian "
-                    "translation as plain text — no quotes, no explanations, no original text."
+                    "You are a translator. Translate the user's tax/legal question "
+                    "into Georgian (ქართული). Output ONLY the Georgian translation as "
+                    "plain text — no quotes, no explanations, no original text."
                 )),
                 HumanMessage(content=text),
             ]
-            out = self._clean_response_text(self.client.invoke(messages).content)
-            return out or text
+            out = self._clean_response_text(self.client.invoke(messages).content) or text
         except Exception as e:
             print(f"Error translating query: {e}")
-            return text
+            out = text
+        if len(_TRANSLATION_CACHE) < 5000:
+            _TRANSLATION_CACHE[key] = out
+        return out
 
     def _clean_response_text(self, text: Any) -> str:
         cleaned = str(text or "")

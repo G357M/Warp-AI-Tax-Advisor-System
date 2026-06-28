@@ -386,17 +386,34 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
             limit = 1
         else:
             limit = 2 if doc.get("channel") in {"article_resolver", "point_resolver"} else 2
-        fetched = _fetch_doc_chunks(
-            source_url,
-            title,
-            limit=limit,
-            chunk_hint=chunk_hint,
-            section_label=section_label,
-            article_ref=article_ref,
-            point_ref=point_ref,
-            question_class=trace.classification.get("question_class"),
-            topic=trace.parsed_query.get("topic"),
-        )
+        semantic_content = metadata.get("chunk_content")
+        if semantic_content:
+            # The semantic channel already retrieved the exact grounding chunk.
+            fetched = [{
+                "id": f"semantic:{doc.get('document_id')}:{metadata.get('chunk_index')}",
+                "content": semantic_content,
+                "metadata": {
+                    "document_id": str(doc.get("document_id") or ""),
+                    "title": title or "",
+                    "document_title": title or "",
+                    "document_type": doc.get("document_type") or "",
+                    "source_url": source_url or "",
+                    "url": source_url or "",
+                },
+                "similarity": metadata.get("similarity", 0.5),
+            }]
+        else:
+            fetched = _fetch_doc_chunks(
+                source_url,
+                title,
+                limit=limit,
+                chunk_hint=chunk_hint,
+                section_label=section_label,
+                article_ref=article_ref,
+                point_ref=point_ref,
+                question_class=trace.classification.get("question_class"),
+                topic=trace.parsed_query.get("topic"),
+            )
         if index == 0 and not fetched:
             return []
         for item in fetched:
@@ -832,6 +849,7 @@ def maybe_run_live_rollout(
             "question_class": question_class,
             "channels_used": trace.candidate_generation.get("channels_used", []),
             "top_titles": [doc.get("title") for doc in trace.reranking.get("top_ranked_documents", [])[:3]],
+            "used_chunks": [c.get("content", "") for c in rollout_chunks],
         },
     }
     print(f"[RAG_V2_ROLLOUT] class={question_class} sources={len(sources)} chunks={len(rollout_chunks)}")

@@ -35,23 +35,48 @@ def bm25_candidates(parsed: ParsedQuery) -> List[CandidateDocument]:
     return results
 
 
-def semantic_candidates(parsed: ParsedQuery) -> List[CandidateDocument]:
+def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocument]:
+    """Real cross-lingual chunk-level retrieval.
+
+    Translates the query to Georgian (the cross-lingual gap) and runs a vector
+    search over the corpus, returning the matched chunks so the answer can be
+    grounded in the actual law text — not a generic document chunk or LLM memory.
+    """
+    query = parsed.normalized_query or parsed.raw_query
+    if not query:
+        return []
+    try:
+        from rag.pipeline import rag_pipeline
+        retrieval_query = rag_pipeline._retrieval_query(query, parsed.language)
+        embedding = rag_pipeline.embeddings.encode_query(retrieval_query)
+        res = rag_pipeline.vector_store.search(query_embedding=embedding, n_results=limit)
+    except Exception as exc:  # never break the pipeline on a retrieval issue
+        print(f"[v2.semantic] retrieval error: {exc}")
+        return []
+
+    documents = res.get("documents", [[]])[0]
+    metadatas = res.get("metadatas", [[]])[0]
+    distances = res.get("distances", [[]])[0] or [None] * len(documents)
+
     results: List[CandidateDocument] = []
-    if parsed.topic == "property_tax":
+    for content, md, dist in zip(documents, metadatas, distances):
+        md = md or {}
+        similarity = round(max(1.0 - float(dist), 0.0), 4) if dist is not None else 0.0
         results.append(
             CandidateDocument(
                 channel="semantic_search",
-                document_id="property-guidance-1433",
-                title="მიწისა და მასზე განთავსებული შენობა-ნაგებობის დაბეგვრა ქონების გადასახადით N1433",
-                document_type="guideline",
-                source_url="https://infohub.rs.ge/ka/workspace/document/41e6c703-10ec-4d6e-aa01-d0e3f2e7afa5",
-                channel_score=0.68,
-                why="semantic similarity to property tax question",
+                document_id=str(md.get("document_id") or md.get("chunk_id") or ""),
+                title=md.get("title") or "",
+                document_type=md.get("document_type") or "law",
+                source_url=md.get("source_url") or "",
+                channel_score=similarity,
+                why="cross-lingual semantic match (query translated to Georgian)",
                 metadata={
-                    "topics": ["tax", "property_tax"],
-                    "subjects": ["individual", "legal_entity"],
-                    "goals": ["calculation_rule", "practical_guidance"],
-                    "authority_rank": 0.78,
+                    "chunk_content": content,
+                    "chunk_index": md.get("chunk_index"),
+                    "similarity": similarity,
+                    "topics": [parsed.topic] if parsed.topic else [],
+                    "authority_rank": 0.8,
                     "is_current": True,
                 },
             )

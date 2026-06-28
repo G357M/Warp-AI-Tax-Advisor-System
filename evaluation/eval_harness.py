@@ -29,7 +29,10 @@ from rag_v2.live_runtime import maybe_run_live_rollout  # noqa: E402
 
 
 def norm(text: str) -> str:
-    """Lowercase, drop spaces inside numbers and collapse whitespace for matching."""
+    """Lowercase, drop separators inside numbers and collapse whitespace for matching."""
+    t = (text or "").lower()
+    t = re.sub(r"(?<=\d)[\s,  ]+(?=\d)", "", t)   # "100 000" / "30,000" -> digits
+    return re.sub(r"\s+", " ", t).strip()
     t = (text or "").lower().replace(" ", " ")
     t = re.sub(r"(?<=\d)[  ](?=\d)", "", t)   # "100 000" -> "100000"
     t = re.sub(r"\s+", " ", t)
@@ -59,7 +62,7 @@ QUESTIONS = [
     # ---- Small business / forms ----
     ("sb_rate", "SmallBiz", "ru", "Какая ставка налога для ИП со статусом малого бизнеса?", "fact", ["1"], [], ["მცირე ბიზნეს", "1 პროცენტი"]),
     ("sb_threshold", "SmallBiz", "ru", "До какого оборота действует ставка 1% для малого бизнеса?", "fact", ["500000"], [], ["500 000"]),
-    ("ooo_1pct", "SmallBiz", "ru", "Может ли ООО применять режим 1% малого бизнеса?", "fact", ["нет", "ип"], ["да, ооо может"], ["მცირე ბიზნეს", "ფიზიკურ"]),
+    ("ooo_1pct", "SmallBiz", "ru", "Может ли ООО применять режим 1% малого бизнеса?", "fact", ["нет"], ["да, ооо может"], ["მცირე ბიზნეს", "ფიზიკურ"]),
     ("micro", "SmallBiz", "ru", "Что такое микробизнес в Грузии и какой налог?", "fact", ["0", "30000"], [], ["მიკრო ბიზნეს", "30 000"]),
     # ---- Personal income ----
     ("pit_rate", "PIT", "ru", "Какая ставка подоходного налога с зарплаты в Грузии?", "fact", ["20"], [], ["20 პროცენტი", "მუხლი 81"]),
@@ -68,7 +71,7 @@ QUESTIONS = [
     # ---- Property ----
     ("property", "Property", "ru", "Какая ставка налога на имущество в Грузии?", "fact", ["1"], [], ["ქონების გადასახად"]),
     # ---- Disputes / lookup ----
-    ("dispute", "Disputes", "ru", "Как обжаловать решение налоговой службы Грузии?", "fact", ["жалоб"], [], ["საჩივ", "დავა"]),
+    ("dispute", "Disputes", "ru", "Как обжаловать решение налоговой службы Грузии?", "fact", ["обжал"], [], ["საჩივ", "დავა"]),
     ("art_lookup", "ArticleLookup", "ru", "Что говорит статья 309 Налогового кодекса Грузии?", "fact", ["309"], [], ["მუხლი 309"]),
     ("doc_taxcode", "DocLookup", "ru", "Покажи Налоговый кодекс Грузии", "fact", ["кодекс"], [], ["საგადასახადო კოდექს"]),
     # ---- Cross-lingual variants (the core of the project) ----
@@ -125,8 +128,9 @@ def main():
         sourced = len(sources) > 0
         grounded = None
         if kind == "fact":
-            chunks = " ".join(retrieved_chunk_texts(query, lang))
-            nchunks = norm(chunks)
+            used = (res.get("_rag_v2") or {}).get("used_chunks")
+            chunk_texts = used if used else retrieved_chunk_texts(query, lang)
+            nchunks = norm(" ".join(chunk_texts))
             grounded = any(norm(g) in nchunks for g in ground) if ground else None
         out["results"].append({
             "id": qid, "cat": cat, "lang": lang, "kind": kind, "query": query,

@@ -266,7 +266,7 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
         })
 
     # VAT registration threshold
-    if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "register", "რეგისტრ", "ბრუნვ")):
+    if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "turnover", "registr", "რეგისტრ", "ბრუნვ")):
         return pick({
             "ru": "Регистрация плательщиком НДС обязательна, когда облагаемый оборот превышает 100 000 лари за любые непрерывные 12 календарных месяцев.",
             "en": "VAT registration is mandatory once taxable turnover exceeds 100,000 GEL over any continuous 12 calendar months.",
