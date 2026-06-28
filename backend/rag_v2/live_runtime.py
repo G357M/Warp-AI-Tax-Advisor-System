@@ -11,9 +11,11 @@ from rag.pipeline import rag_pipeline
 
 from .pipeline_v2 import pipeline_v2
 from .public_response import (
+    authoritative_tax_fact_response,
     compress_canonical_section_text,
     compress_rollout_context_text,
     direct_tax_faq_response,
+    out_of_jurisdiction_response,
     dividend_tax_rate_response,
     finalize_rollout_response,
     import_vat_response,
@@ -727,6 +729,23 @@ def maybe_run_live_rollout(
 
     trace = pipeline_v2.build_trace(query, language=language)
     question_class = trace.classification.get("question_class")
+
+    # Authoritative guards win regardless of retrieval, so a correct canonical
+    # answer is never lost when the vector search returns nothing relevant.
+    forced = (
+        out_of_jurisdiction_response(trace)
+        or small_business_legal_form_response(trace)
+        or authoritative_tax_fact_response(trace)
+    )
+    if forced:
+        print(f"[RAG_V2_ROLLOUT] class={question_class} authoritative=1")
+        return {
+            "response": forced,
+            "sources": [],
+            "retrieved_count": 0,
+            "_rag_v2": {"mode": "rollout_authoritative", "question_class": question_class},
+        }
+
     if question_class not in _rollout_classes():
         return None
     if not trace.source_audit.get("passed"):
@@ -764,8 +783,7 @@ def maybe_run_live_rollout(
         conversation_history=conversation_history,
     )
     response = (
-        small_business_legal_form_response(trace)
-        or direct_tax_faq_response(trace)
+        direct_tax_faq_response(trace)
         or nonresident_withholding_tax_response(trace)
         or import_vat_response(trace)
         or royalty_tax_rate_response(trace)

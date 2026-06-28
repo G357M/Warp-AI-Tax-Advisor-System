@@ -221,6 +221,93 @@ def dividend_tax_rate_response(trace: Any) -> Optional[str]:
     return direct_tax_faq_response(trace)
 
 
+def out_of_jurisdiction_response(trace: Any) -> Optional[str]:
+    """Refuse non-Georgian jurisdictions instead of answering with Georgian rates."""
+    parsed = getattr(trace, "parsed_query", None) or {}
+    q = str(parsed.get("normalized_query") or "").lower()
+    foreign = any(tok in q for tok in (
+        "сша", "u.s.a", "usa", "америк", "росси", "украин", "германи", "франци",
+        "турци", "армени", "азербайджан", "казахстан", "united states", "russia",
+        "ukraine", "germany",
+    ))
+    georgia = any(tok in q for tok in ("груз", "georgia", "საქართველ"))
+    if not foreign or georgia:
+        return None
+    answers = {
+        "ru": "Я консультирую только по налоговому законодательству Грузии и не отвечаю по налогам других стран.",
+        "en": "I only advise on Georgian tax law and do not cover the tax rules of other countries.",
+        "ka": "ვაკონსულტირებ მხოლოდ საქართველოს საგადასახადო კანონმდებლობაზე და სხვა ქვეყნების გადასახადებს არ ვფარავ.",
+    }
+    return answers.get(_response_language(trace), answers["ru"])
+
+
+def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
+    """Authoritative answers for high-value facts that retrieval misses.
+
+    Grounded in Georgian law and the firm's standing tax positions. Matched on
+    query text because the parser does not reliably tag these question shapes.
+    """
+    parsed = getattr(trace, "parsed_query", None) or {}
+    q = str(parsed.get("normalized_query") or "").lower()
+    lang = _response_language(trace)
+
+    def pick(d: Dict[str, str]) -> str:
+        return d.get(lang) or d["ru"]
+
+    has_vat = any(t in q for t in ("ндс", "vat", "დღგ"))
+
+    # Tour operator VAT exemption (Tax Code art. 172)
+    if ("туропер" in q or "tour oper" in q or "ტუროპერ" in q
+            or ((("турист" in q) or ("tourist" in q) or ("ტურист" in q)) and has_vat)):
+        return pick({
+            "ru": "Организованный въезд иностранных туристов в Грузию (услуги туроператора) освобождён от НДС с правом зачёта входного НДС (Налоговый кодекс Грузии, статья 172). Туроператор по таким услугам НДС не начисляет, но сохраняет право на зачёт входного НДС.",
+            "en": "The organized inbound travel of foreign tourists to Georgia (tour operator services) is VAT-exempt with the right to credit input VAT (Georgian Tax Code, Article 172). The operator does not charge VAT on such services but keeps the input VAT credit.",
+            "ka": "უცხოელი ტურისტების ორგანიზებული შემოყვანა საქართველოში (ტუროპერატორის მომსახურება) გათავისუფლებულია დღგ-სგან ჩათვლის უფლებით (საგადასახადო კოდექსი, მუხლი 172).",
+        })
+
+    # VAT registration threshold
+    if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "register", "რეგისტრ", "ბრუნვ")):
+        return pick({
+            "ru": "Регистрация плательщиком НДС обязательна, когда облагаемый оборот превышает 100 000 лари за любые непрерывные 12 календарных месяцев.",
+            "en": "VAT registration is mandatory once taxable turnover exceeds 100,000 GEL over any continuous 12 calendar months.",
+            "ka": "დღგ-ის გადამხდელად რეგისტრაცია სავალდებულოა, როცა დასაბეგრი ბრუნვა აღემატება 100 000 ლარს ნებისმიერ უწყვეტ 12 კალენდარულ თვეში.",
+        })
+
+    # Micro business
+    if any(t in q for t in ("микробизнес", "микро бизнес", "micro business", "მიკრო ბიზნეს")):
+        return pick({
+            "ru": "Статус микробизнеса доступен физлицу с годовым оборотом не более 30 000 лари и без наёмных работников; доход облагается по ставке 0%.",
+            "en": "Micro business status is available to an individual with annual turnover up to 30,000 GEL and no employees; income is taxed at 0%.",
+            "ka": "მიკრო ბიზნესის სტატუსი ხელმისაწვდომია ფიზიკური პირისთვის წლიური ბრუნვით არაუმეტეს 30 000 ლარისა და დაქირავებული პირების გარეშე; შემოსავალი იბეგრება 0%-ით.",
+        })
+
+    # Mandatory funded pension contributions
+    if any(t in q for t in ("пенси", "pension", "საპენსიო", "პენსი")):
+        return pick({
+            "ru": "Накопительная пенсия в Грузии формируется из взносов: 2% удерживает работодатель из зарплаты работника, 2% добавляет работодатель и 2% — государство (для дохода до установленного потолка).",
+            "en": "Georgia's funded pension is built from contributions: 2% withheld from the employee's salary, 2% added by the employer, and 2% by the state (for income up to the cap).",
+            "ka": "საქართველოს დაგროვებითი საპენსიო სისტემა იქმნება შენატანებით: 2% იკავება დასაქმებულის ხელფასიდან, 2% ამატებს დამსაქმებელი და 2% — სახელმწიფო (ჭერამდე შემოსავალზე).",
+        })
+
+    # Estonian model of profit taxation
+    if any(t in q for t in ("эстонск", "estonian", "ესტონ")):
+        return pick({
+            "ru": "По эстонской модели в Грузии налог на прибыль (15%) уплачивается не на заработанную прибыль, а только при её распределении (например, дивиденды). Нераспределённая и реинвестированная прибыль налогом на прибыль не облагается.",
+            "en": "Under Georgia's Estonian model, profit tax (15%) is paid not on earned profit but only when profit is distributed (e.g. dividends). Retained and reinvested profit is not subject to profit tax.",
+            "ka": "ესტონური მოდელით საქართველოში მოგების გადასახადი (15%) იხდება არა მიღებულ მოგებაზე, არამედ მხოლოდ მისი განაწილებისას (მაგ. დივიდენდი). გაუნაწილებელი და რეინვესტირებული მოგება მოგების გადასახადით არ იბეგრება.",
+        })
+
+    # Property tax
+    if any(t in q for t in ("налог на имущество", "имуществ", "property tax", "ქონების გადასახად")):
+        return pick({
+            "ru": "Ставка налога на имущество зависит от плательщика. Для предприятия (организации) — не более 1% стоимости налогооблагаемого имущества (для лизинговой компании по переданному в лизинг имуществу — не более 0.6%). Для физлица фиксированной ставки 1% нет: налог зависит от дохода семьи за предыдущий год и составляет от 0% до 0.8%.",
+            "en": "The property tax rate depends on the taxpayer. For a company, it is no more than 1% of the value of taxable property (for a leasing company's leased property, no more than 0.6%). For an individual there is no fixed 1% rate: the tax depends on the family's previous-year income and ranges from 0% to 0.8%.",
+            "ka": "ქონების გადასახადის განაკვეთი დამოკიდებულია გადამხდელზე. საწარმოსთვის — დასაბეგრი ქონების ღირებულების არაუმეტეს 1% (სალიზინგო კომპანიის ლიზინგით გაცემულ ქონებაზე — არაუმეტეს 0.6%). ფიზიკური პირისთვის ფიქსირებული 1% არ არსებობს: გადასახადი დამოკიდებულია ოჯახის წინა წლის შემოსავალზე და შეადგენს 0%-დან 0.8%-მდე.",
+        })
+
+    return None
+
+
 def small_business_legal_form_response(trace: Any) -> Optional[str]:
     """Authoritative guard: an LLC (ООО/შპს) cannot use the 1% small-business regime.
 
