@@ -24,6 +24,7 @@ from .public_response import (
     profit_tax_rate_response,
     rental_income_tax_rate_response,
     royalty_tax_rate_response,
+    small_business_legal_form_response,
     small_business_tax_rate_response,
     vat_rate_response,
 )
@@ -763,7 +764,8 @@ def maybe_run_live_rollout(
         conversation_history=conversation_history,
     )
     response = (
-        direct_tax_faq_response(trace)
+        small_business_legal_form_response(trace)
+        or direct_tax_faq_response(trace)
         or nonresident_withholding_tax_response(trace)
         or import_vat_response(trace)
         or royalty_tax_rate_response(trace)

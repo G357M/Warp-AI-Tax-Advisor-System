@@ -221,6 +221,45 @@ def dividend_tax_rate_response(trace: Any) -> Optional[str]:
     return direct_tax_faq_response(trace)
 
 
+def small_business_legal_form_response(trace: Any) -> Optional[str]:
+    """Authoritative guard: an LLC (ООО/შპს) cannot use the 1% small-business regime.
+
+    Only an individual entrepreneur qualifies; an LLC is taxed under the Estonian
+    profit-tax model (15% on distribution). The query parser does not reliably tag
+    the legal form for this question, so match on the normalized query text.
+    """
+    parsed = getattr(trace, "parsed_query", None) or {}
+    q = str(parsed.get("normalized_query") or "").lower()
+    legal_form = any(tok in q for tok in (
+        "ооо", "о.о.о", "llc", "ltd", "шпс", "შპს", "компани", "company",
+        "юридическ", "legal entity", "საწარმო",
+    ))
+    small_biz = any(tok in q for tok in (
+        "1%", "1 %", "малого бизнеса", "малый бизнес", "small business", "მცირე ბიზნეს",
+    ))
+    if not (legal_form and small_biz):
+        return None
+    answers = {
+        "ru": (
+            "Нет. Режим малого бизнеса со ставкой 1% доступен только индивидуальному "
+            "предпринимателю (физлицу-предпринимателю). ООО (общество с ограниченной "
+            "ответственностью) применять его не может. Прибыль ООО облагается по эстонской "
+            "модели — 15% при распределении прибыли."
+        ),
+        "en": (
+            "No. The 1% small business regime is available only to an individual entrepreneur. "
+            "An LLC cannot use it. An LLC's profit is taxed under the Estonian model at 15% "
+            "upon distribution of profit."
+        ),
+        "ka": (
+            "არა. მცირე ბიზნესის 1%-იანი რეჟიმი ხელმისაწვდომია მხოლოდ ინდივიდუალური "
+            "მეწარმისთვის (ფიზიკური პირისთვის). შპს ამ რეჟიმს ვერ გამოიყენებს. შპს-ის მოგება "
+            "იბეგრება ე.წ. ესტონური მოდელით — 15% მოგების განაწილებისას."
+        ),
+    }
+    return answers.get(_response_language(trace), answers["ru"])
+
+
 def small_business_tax_rate_response(trace: Any) -> Optional[str]:
     parsed = getattr(trace, "parsed_query", None) or {}
     if parsed.get("topic") != "small_business":
