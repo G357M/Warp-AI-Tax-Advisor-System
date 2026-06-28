@@ -1,0 +1,1437 @@
+Loading embedding model: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+✓ Embedding model loaded (dimension: 768)
+2026-06-28 15:44:14,607 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2026-06-28 15:44:14,607 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-28 15:44:14,608 INFO sqlalchemy.engine.Engine select current_schema()
+2026-06-28 15:44:14,608 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-28 15:44:14,609 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2026-06-28 15:44:14,609 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-28 15:44:14,611 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:14,611 INFO sqlalchemy.engine.Engine SELECT extname FROM pg_extension WHERE extname = 'vector'
+2026-06-28 15:44:14,611 INFO sqlalchemy.engine.Engine [generated in 0.00035s] {}
+2026-06-28 15:44:14,612 INFO sqlalchemy.engine.Engine ROLLBACK
+✓ OpenAI LLM initialized: gpt-4o-mini
+2026-06-28 15:44:15,905 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:15,910 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:15,910 INFO sqlalchemy.engine.Engine [generated in 0.00023s] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:16,032 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 187 chars
+[LLM] Context: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 166. დღგ-ის განაკვეთი
+
+დღგ-ის განაკვეთია 18 პროცენტი.
+
+საქართველოს 2020 წლის 14 ივლისის კანონი №6817 – ვებგვერდი, 22.07.2020წ.
+
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის საქართველოს საშემოსავლო გადასახადის განაკვეთი?
+2026-06-28 15:44:17,669 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:17,669 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:17,669 INFO sqlalchemy.engine.Engine [generated in 0.00010s] {'query_embedding': '[-0.06797023117542267,0.09066128730773926,-0.011358100920915604,0.11633216589689255,0.04950546845793724,0.0027947488706558943,-0.021949511021375656,- ... (15607 characters truncated) ... -0.04662705212831497,-0.006802049465477467,-0.08904032409191132,-0.015144805423915386,-0.06393908709287643,-0.12142055481672287,0.040336113423109055]', 'limit': 8}
+2026-06-28 15:44:17,676 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:17,768 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:17,768 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:17,768 INFO sqlalchemy.engine.Engine [cached since 1.859s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:17,851 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 187 chars
+[LLM] Context: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 166. დღგ-ის განაკვეთი
+
+დღგ-ის განაკვეთია 18 პროცენტი.
+
+საქართველოს 2020 წლის 14 ივლისის კანონი №6817 – ვებგვერდი, 22.07.2020წ.
+
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: საქართველოს ვატას განაკვეთი რა არის?
+2026-06-28 15:44:19,263 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:19,263 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:19,263 INFO sqlalchemy.engine.Engine [cached since 1.594s ago] {'query_embedding': '[-0.10243582725524902,0.003001393750309944,-0.011157461442053318,0.11544418334960938,0.05788109824061394,0.04317932948470116,0.001836958690546453,-0. ... (15549 characters truncated) ... 89,-0.03636208549141884,-0.012547989375889301,-0.13702060282230377,0.00817395094782114,-0.054859742522239685,-0.0709541067481041,0.06819263100624084]', 'limit': 8}
+2026-06-28 15:44:19,267 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:19,351 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:19,351 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:19,351 INFO sqlalchemy.engine.Engine [cached since 3.441s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:19,411 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 187 chars
+[LLM] Context: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 166. დღგ-ის განაკვეთი
+
+დღგ-ის განაკვეთია 18 პროცენტი.
+
+საქართველოს 2020 წლის 14 ივლისის კანონი №6817 – ვებგვერდი, 22.07.2020წ.
+
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+2026-06-28 15:44:20,750 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:20,750 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:20,750 INFO sqlalchemy.engine.Engine [cached since 3.081s ago] {'query_embedding': '[-0.09841366857290268,-0.02254762314260006,-0.01638225093483925,0.10925968736410141,-0.002588818781077862,0.07970021665096283,-0.01592533104121685,-0 ... (15661 characters truncated) ... 024734629318118095,-0.026421377435326576,-0.0026591247878968716,0.008885925635695457,-0.036883506923913956,-0.05526882782578468,-0.02042883262038231]', 'limit': 8}
+2026-06-28 15:44:20,753 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: რომელი ბრუნვიდან უნდა რეგისტრირდეთ დამატებითი ღირებულების გა
+2026-06-28 15:44:21,680 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:21,680 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:21,680 INFO sqlalchemy.engine.Engine [cached since 4.011s ago] {'query_embedding': '[-0.04182400181889534,0.0985100120306015,-0.01928894780576229,0.005362797528505325,0.05143868178129196,0.023759884759783745,0.1073320284485817,-0.005 ... (15753 characters truncated) ... 2,0.06975118815898895,-0.008164455182850361,0.04594612121582031,-0.002755622146651149,0.020041851326823235,-0.07330601662397385,0.015805386006832123]', 'limit': 8}
+2026-06-28 15:44:21,683 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:21,765 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:21,766 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:21,766 INFO sqlalchemy.engine.Engine [cached since 5.856s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:21,860 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 187 chars
+[LLM] Context: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 166. დღგ-ის განაკვეთი
+
+დღგ-ის განაკვეთია 18 პროცენტი.
+
+საქართველოს 2020 წლის 14 ივლისის კანონი №6817 – ვებგვერდი, 22.07.2020წ.
+
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რომელი ბრუნვა იწვევს სავალდებულო დამატებითი ღირებულების გადა
+2026-06-28 15:44:23,315 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:23,315 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:23,315 INFO sqlalchemy.engine.Engine [cached since 5.646s ago] {'query_embedding': '[-0.048027243465185165,0.0720885843038559,-0.014144284650683403,0.015728993341326714,0.09080777317285538,0.037425193935632706,0.015857629477977753,-0 ... (15666 characters truncated) ... 3,-0.030275113880634308,0.006370981689542532,-0.13928481936454773,-0.010016306303441525,0.06960512697696686,-0.13842156529426575,0.00467181159183383]', 'limit': 8}
+2026-06-28 15:44:23,322 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:23,426 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:23,426 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:23,426 INFO sqlalchemy.engine.Engine [cached since 7.516s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:23,516 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:44:23,517 INFO sqlalchemy.engine.Engine [generated in 0.00016s] {'document_id_1': UUID('7413ae69-672c-4c48-b3d5-8c04b09dfb43'), 'param_1': 2}
+2026-06-28 15:44:23,519 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1634 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+კონსოლიდირებული ვერსია (საბოლოო)
+
+საქართველოს კანონი*
+
+საქართველოს საგადასახადო კოდექსი
+
+## კარი I
+
+ზოგადი დებულებანი
+
+### თავი I
+
+საქართველოს საგ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=2
+[RAG] Retrieval query translated to KA: გადახდილი ხდება თუ არა ნდს საქონლის იმპორტის დროს საქართველო
+2026-06-28 15:44:25,665 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:25,665 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:25,665 INFO sqlalchemy.engine.Engine [cached since 7.996s ago] {'query_embedding': '[0.04430041462182999,0.1588786393404007,-0.016835469752550125,0.10579513013362885,0.07780996710062027,0.0027497834526002407,0.1278877556324005,-0.062 ... (15670 characters truncated) ... 8,0.12151013314723969,0.0002740651252679527,-0.07053785026073456,-0.034695420414209366,0.07840384542942047,-0.07328382879495621,0.002063584281131625]', 'limit': 8}
+2026-06-28 15:44:25,672 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: გადახდილი არის თუ არა ნდს უცხოელი ტურისტების ორგანიზებული შე
+2026-06-28 15:44:26,761 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:26,762 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:26,762 INFO sqlalchemy.engine.Engine [cached since 9.093s ago] {'query_embedding': '[-0.029764730483293533,0.13732048869132996,-0.017248719930648804,0.12400771677494049,0.0507531575858593,-0.010045723989605904,0.11244886368513107,-0. ... (15711 characters truncated) ... 16,0.06790795177221298,0.007394277490675449,-0.011508209630846977,-0.048170965164899826,0.05840442329645157,0.04710216447710991,0.017221180722117424]', 'limit': 8}
+2026-06-28 15:44:26,771 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:26,862 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:26,862 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:26,862 INFO sqlalchemy.engine.Engine [cached since 10.95s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:26,944 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1011 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 98. გადასახადის განაკვეთი
+1. მოგების გადასახადის განაკვეთია 15 პროცენტი, გარდა ამ მუხლის მე-2, მე-4, მე-5 და მე-6 ნაწილებით გათვალისწინებული...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის მოგების გადასახადის განაკვეთი საქართველოში?
+2026-06-28 15:44:28,583 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:28,583 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:28,583 INFO sqlalchemy.engine.Engine [cached since 10.91s ago] {'query_embedding': '[-0.08761823177337646,-0.004009229596704245,-0.011230290867388248,0.09071138501167297,0.04361720755696297,-0.040458180010318756,-0.059327382594347,-0 ... (15537 characters truncated) ... -0.03748937323689461,-0.017849979922175407,-0.013187747448682785,-0.06049612909555435,-0.03305967524647713,-0.04796989634633064,0.013280429877340794]', 'limit': 8}
+2026-06-28 15:44:28,586 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:28,662 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:28,663 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:28,663 INFO sqlalchemy.engine.Engine [cached since 12.75s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:28,757 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1011 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 98. გადასახადის განაკვეთი
+1. მოგების გადასახადის განაკვეთია 15 პროცენტი, გარდა ამ მუხლის მე-2, მე-4, მე-5 და მე-6 ნაწილებით გათვალისწინებული...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის კორპორაციული მოგების გადასახადის განაკვეთი საქართველ
+2026-06-28 15:44:38,462 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:38,462 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:38,462 INFO sqlalchemy.engine.Engine [cached since 20.79s ago] {'query_embedding': '[-0.09018073976039886,-0.02427053079009056,-0.008609987795352936,0.12805140018463135,0.0263350922614336,-0.04880464822053909,-0.009922735393047333,-0 ... (15546 characters truncated) ... -0.009130003862082958,-0.030267909169197083,-0.05455884337425232,-0.02388765476644039,-0.03201378509402275,-0.07638870924711227,0.012956053018569946]', 'limit': 8}
+2026-06-28 15:44:38,464 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: როგორ მუშაობს ესტონური მოგების გადასახადის მოდელი საქართველო
+2026-06-28 15:44:39,358 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:39,358 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:39,358 INFO sqlalchemy.engine.Engine [cached since 21.69s ago] {'query_embedding': '[-0.017765162512660027,-0.0338607095181942,-0.010523857548832893,0.10344089567661285,-0.0014511874178424478,-0.0573759488761425,0.09122300148010254,- ... (15601 characters truncated) ... 57242,0.03325682133436203,-0.015251925215125084,0.0843750387430191,0.02060571312904358,-0.011760571040213108,0.02436480112373829,0.01909540221095085]', 'limit': 8}
+2026-06-28 15:44:39,361 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:39,466 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:39,466 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:39,467 INFO sqlalchemy.engine.Engine [cached since 23.56s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:39,569 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 884 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 130. დივიდენდების დაბეგვრა გადახდის წყაროსთან
+1. რეზიდენტი საწარმოს მიერ ფიზიკური პირისთვის, არასამეწარმეო (არაკომერციული) იურიდიული პირისთვ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის ფიზიკური პირის მიერ მიღებული დივიდენდების გადასახადი
+2026-06-28 15:44:41,360 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:41,360 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:41,360 INFO sqlalchemy.engine.Engine [cached since 23.69s ago] {'query_embedding': '[-0.0209908876568079,0.0987730547785759,-0.013674132525920868,0.11674482375383377,0.04730091243982315,0.01652495190501213,0.09174659103155136,-0.1384 ... (15616 characters truncated) ... ,-0.01999996043741703,0.008566314354538918,-0.10673590749502182,-0.025289349257946014,-0.018127143383026123,-0.11981987953186035,0.05814797431230545]', 'limit': 8}
+2026-06-28 15:44:41,363 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:41,465 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:41,466 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:41,466 INFO sqlalchemy.engine.Engine [cached since 25.56s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:41,574 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 907 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 90. მცირე ბიზნესის დასაბეგრი შემოსავალი და გადასახადის განაკვეთები
+1. მცირე ბიზნესის სტატუსის მქონე პირის დასაბეგრი შემოსავალი იბეგრება 1 პრ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის გადასახადის განაკვეთი მცირე ბიზნესის სტატუსით რეგისტ
+2026-06-28 15:44:43,934 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:43,934 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:43,934 INFO sqlalchemy.engine.Engine [cached since 26.27s ago] {'query_embedding': '[-0.07756117731332779,-0.013140600174665451,-0.013568375259637833,0.0746215432882309,0.002819744637235999,-0.045428723096847534,0.25950321555137634,- ... (15623 characters truncated) ... 49,-0.028541922569274902,-0.05492859706282616,-0.02144913375377655,-0.06237156689167023,-0.041154660284519196,0.02106548100709915,0.0656891018152237]', 'limit': 8}
+2026-06-28 15:44:43,939 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:44,050 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:44,050 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:44,050 INFO sqlalchemy.engine.Engine [cached since 28.14s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:44,133 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 907 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 90. მცირე ბიზნესის დასაბეგრი შემოსავალი და გადასახადის განაკვეთები
+1. მცირე ბიზნესის სტატუსის მქონე პირის დასაბეგრი შემოსავალი იბეგრება 1 პრ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რამდენი ბრუნვის ფარგლებში მოქმედებს 1%-იანი განაკვეთი მცირე 
+2026-06-28 15:44:46,946 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:46,946 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:46,946 INFO sqlalchemy.engine.Engine [cached since 29.28s ago] {'query_embedding': '[-0.04954531416296959,-0.09693139046430588,-0.013066962361335754,0.03475789353251457,-0.05502341315150261,-0.047074832022190094,0.2641138434410095,-0 ... (15588 characters truncated) ... 07158,0.03894800320267677,-0.05238454416394234,0.01560821570456028,-0.06903789192438126,-0.04640671983361244,0.0581439845263958,0.022942448034882545]', 'limit': 8}
+2026-06-28 15:44:46,951 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: მمكن ли ООО გამოიყენოს 1% მცირე ბიზნესის რეჟიმი?
+2026-06-28 15:44:47,699 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:47,699 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:47,699 INFO sqlalchemy.engine.Engine [cached since 30.03s ago] {'query_embedding': '[0.03793798014521599,-0.04133317992091179,-0.014204902574419975,-0.009544886648654938,-0.05202336236834526,-0.02675568498671055,0.30818480253219604,0 ... (15588 characters truncated) ... 6,0.08698494732379913,-0.0055581615306437016,0.07181960344314575,-0.036435823887586594,-0.011327474378049374,0.02190208062529564,0.03562171384692192]', 'limit': 8}
+2026-06-28 15:44:47,701 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: რა არის მიკრობიზნესი საქართველოში და რომელი გადასახადი?
+2026-06-28 15:44:48,564 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:48,564 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:48,564 INFO sqlalchemy.engine.Engine [cached since 30.9s ago] {'query_embedding': '[-0.028867056593298912,-0.08237684518098831,-0.008194922469556332,0.029760191217064857,0.07873357087373734,0.0018870220519602299,0.23965784907341003, ... (15547 characters truncated) ... ,-0.10959908366203308,-0.045336659997701645,-0.2526191473007202,-0.08101119101047516,-0.025685535743832588,-0.09923987835645676,0.048588432371616364]', 'limit': 8}
+2026-06-28 15:44:48,568 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:48,661 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:48,661 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:48,661 INFO sqlalchemy.engine.Engine [cached since 32.75s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:48,760 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1090 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 81. გადასახადის განაკვეთი
+1. ფიზიკური პირის დასაბეგრი შემოსავალი იბეგრება 20 პროცენტით, თუ ამ კოდექსით სხვა რამ არ არის გათვალისწინებული.
+
+2...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის საქართველოს შრომის გადასახადის განაკვეთი?
+2026-06-28 15:44:50,348 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:50,348 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:50,348 INFO sqlalchemy.engine.Engine [cached since 32.68s ago] {'query_embedding': '[-0.19491815567016602,0.07742241024971008,-0.009400924667716026,0.04150975123047829,0.016649886965751648,0.007455363869667053,0.08743647485971451,-0. ... (15539 characters truncated) ... 2,-0.05132066085934639,-0.009140818379819393,-0.17984215915203094,-0.04673696681857109,-0.10387750715017319,-0.14668257534503937,0.06070749834179878]', 'limit': 8}
+2026-06-28 15:44:50,351 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:50,437 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:50,437 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:50,437 INFO sqlalchemy.engine.Engine [cached since 34.53s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:50,505 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1090 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 81. გადასახადის განაკვეთი
+1. ფიზიკური პირის დასაბეგრი შემოსავალი იბეგრება 20 პროცენტით, თუ ამ კოდექსით სხვა რამ არ არის გათვალისწინებული.
+
+2...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა გადასახადი უნდა გადაიხადოს ფიზიკურ პირს, როდესაც ის ქირაო
+2026-06-28 15:44:52,677 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:52,678 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:52,678 INFO sqlalchemy.engine.Engine [cached since 35.01s ago] {'query_embedding': '[0.02693871781229973,0.09526669979095459,-0.016202885657548904,-0.016159918159246445,0.01809944398701191,0.0008908183663152158,0.21989916265010834,-0 ... (15694 characters truncated) ... 423,0.01133076474070549,-0.06483470648527145,-0.03465926647186279,0.05959392338991165,-0.03714381530880928,-0.047224126756191254,0.10332190245389938]', 'limit': 8}
+2026-06-28 15:44:52,685 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: როგორ მუშაობს პენსიური შენატანები საქართველოში?
+2026-06-28 15:44:53,536 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:53,536 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:53,537 INFO sqlalchemy.engine.Engine [cached since 35.87s ago] {'query_embedding': '[0.008019998669624329,0.18871812522411346,-0.011355391703546047,-0.009779643267393112,0.03561270609498024,0.09366658329963684,0.0536348782479763,-0.0 ... (15555 characters truncated) ... 5,0.034892819821834564,-0.013321343809366226,-0.08635228872299194,0.05115659534931183,0.0041144355200231075,-0.04019327089190483,0.05454707518219948]', 'limit': 8}
+2026-06-28 15:44:53,543 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: რა არის ქონების გადასახადის განაკვეთი საქართველოში?
+2026-06-28 15:44:54,262 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:54,262 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:54,262 INFO sqlalchemy.engine.Engine [cached since 36.59s ago] {'query_embedding': '[-0.10223608464002609,0.06770417094230652,-0.00743086589500308,0.10396163910627365,0.016486981883645058,-0.022766582667827606,-0.016511598601937294,- ... (15521 characters truncated) ... 467,-0.0218946672976017,0.006578824948519468,-0.03006524033844471,-0.0774374008178711,-0.058325186371803284,-0.16694232821464539,0.09221140295267105]', 'limit': 8}
+2026-06-28 15:44:54,264 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:54,383 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:54,383 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,383 INFO sqlalchemy.engine.Engine [cached since 38.47s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/6c03869e-9bbd-4a94-a225-4af13a170239', 'param_1': 1}
+2026-06-28 15:44:54,392 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,392 INFO sqlalchemy.engine.Engine [cached since 30.88s ago] {'document_id_1': UUID('cfe48d99-7400-4028-b1d6-69c513f0ea6f'), 'param_1': 2}
+2026-06-28 15:44:54,394 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:54,396 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:54,396 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,396 INFO sqlalchemy.engine.Engine [cached since 38.49s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/e5e98cc1-6145-4f56-bd59-cd5cae894291', 'param_1': 1}
+2026-06-28 15:44:54,399 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,399 INFO sqlalchemy.engine.Engine [cached since 30.88s ago] {'document_id_1': UUID('8a59b10c-ba21-45c4-8b52-68d941fdc687'), 'param_1': 2}
+2026-06-28 15:44:54,401 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:54,402 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:54,402 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,402 INFO sqlalchemy.engine.Engine [cached since 38.49s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/d23344d9-4f2a-4a23-9864-eac6c97babb9', 'param_1': 1}
+2026-06-28 15:44:54,408 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:44:54,409 INFO sqlalchemy.engine.Engine [cached since 30.89s ago] {'document_id_1': UUID('2a53f9e9-8910-4a77-b82a-b550e8f9004f'), 'param_1': 2}
+2026-06-28 15:44:54,410 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 4091 chars
+[LLM] Context preview: [Документ 1: ბრძანება N 7291 (court_decision)]
+N 7291
+
+31 მარტი 2026 
+
+ბ რ ძ ა ნ ე ბ ა 
+
+ი/მ ---ის (ს/ნ ---) 
+
+(მის.: ---) 2026 წლის 6 მარტის 
+
+საჩივრის დაკმაყოფილებაზე უარის თქმის თაობაზე
+
+შემოსავლებ...
+[RAG_V2_ROLLOUT] class=dispute_practice sources=3 chunks=6
+[RAG] Retrieval query translated to KA: როგორ უნდა გავასაჩივროთ საქართველოს საგადასახადო სამსახურის 
+2026-06-28 15:44:57,741 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:57,742 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:44:57,742 INFO sqlalchemy.engine.Engine [cached since 40.07s ago] {'query_embedding': '[-0.0014532804489135742,0.20246034860610962,-0.019951045513153076,0.03014349564909935,0.06208784878253937,0.026055656373500824,-0.04272198677062988,- ... (15652 characters truncated) ... 843,-0.04531312361359596,0.05428618565201759,-0.041502177715301514,0.040031030774116516,0.03186184912919998,-0.1258832812309265,0.055395666509866714]', 'limit': 8}
+2026-06-28 15:44:57,744 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:44:57,862 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:44:57,862 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:44:57,862 INFO sqlalchemy.engine.Engine [cached since 41.95s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:44:57,956 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1064 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 309. გარდამავალი დებულებანი
+1. (ამოღებულია – 20.12.2012, №118).
+
+2. (ამოღებულია – 20.12.2012, №118).
+
+3. (ამოღებულია – 20.12.2012, №118).
+
+3...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა ამბობს საქართველოს საგადასახადო კოდექსის 309-ე მუხლი?
+2026-06-28 15:45:00,377 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:00,377 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:00,377 INFO sqlalchemy.engine.Engine [cached since 42.71s ago] {'query_embedding': '[0.03570755943655968,0.02689328044652939,-0.00740093132480979,0.09341739863157272,0.024203255772590637,0.040080249309539795,-0.07594579458236694,-0.1 ... (15606 characters truncated) ... 42126,-0.05640135332942009,-0.01465656328946352,0.02337023802101612,0.07632411271333694,0.00169110088609159,-0.12085602432489395,0.06513509154319763]', 'limit': 8}
+2026-06-28 15:45:00,379 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:00,488 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:00,488 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:00,488 INFO sqlalchemy.engine.Engine [cached since 44.58s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:00,586 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:00,586 INFO sqlalchemy.engine.Engine [cached since 37.07s ago] {'document_id_1': UUID('7413ae69-672c-4c48-b3d5-8c04b09dfb43'), 'param_1': 2}
+2026-06-28 15:45:00,588 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1634 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+კონსოლიდირებული ვერსია (საბოლოო)
+
+საქართველოს კანონი*
+
+საქართველოს საგადასახადო კოდექსი
+
+## კარი I
+
+ზოგადი დებულებანი
+
+### თავი I
+
+საქართველოს საგ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=2
+[RAG] Retrieval query translated to KA: ჩვენი ქვეყნის საგადასახადო კოდექსი.
+2026-06-28 15:45:03,116 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:03,116 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:03,116 INFO sqlalchemy.engine.Engine [cached since 45.45s ago] {'query_embedding': '[-0.018086940050125122,0.1811540126800537,-0.016496311873197556,0.048136815428733826,0.006136032287031412,-0.009467897936701775,-0.043060507625341415 ... (15594 characters truncated) ... 49948,0.10128644853830338,0.05864568427205086,0.14962753653526306,0.025040073320269585,-0.018811337649822235,-0.1051584854722023,0.04836491495370865]', 'limit': 8}
+2026-06-28 15:45:03,125 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+2026-06-28 15:45:03,306 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:03,307 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:03,307 INFO sqlalchemy.engine.Engine [cached since 45.64s ago] {'query_embedding': '[-0.08410767465829849,0.04651951417326927,-0.015909293666481972,-0.07753253728151321,-0.0029893601313233376,0.008593938313424587,0.13542605936527252, ... (15683 characters truncated) ... 61,0.06040862202644348,0.00520416209474206,0.06690896302461624,-0.019737936556339264,-0.0299912728369236,-0.012075534090399742,0.0018209225963801146]', 'limit': 8}
+2026-06-28 15:45:03,324 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:03,424 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:03,424 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:03,424 INFO sqlalchemy.engine.Engine [cached since 47.51s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:03,503 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1011 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 98. გადასახადის განაკვეთი
+1. მოგების გადასახადის განაკვეთია 15 პროცენტი, გარდა ამ მუხლის მე-2, მე-4, მე-5 და მე-6 ნაწილებით გათვალისწინებული...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+2026-06-28 15:45:04,868 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:04,868 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:04,868 INFO sqlalchemy.engine.Engine [cached since 47.2s ago] {'query_embedding': '[-0.02861017733812332,-0.004866147413849831,-0.01821746863424778,0.09201260656118393,-0.02739192545413971,-0.0021763264667242765,-0.01597620733082294 ... (15680 characters truncated) ... 0.040710609406232834,-0.061076585203409195,0.16092847287654877,-0.0012662666849792004,0.0013336288975551724,0.04488750174641609,-0.03222198411822319]', 'limit': 8}
+2026-06-28 15:45:04,877 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:04,973 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:04,973 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:04,973 INFO sqlalchemy.engine.Engine [cached since 49.06s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:05,072 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 884 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 130. დივიდენდების დაბეგვრა გადახდის წყაროსთან
+1. რეზიდენტი საწარმოს მიერ ფიზიკური პირისთვის, არასამეწარმეო (არაკომერციული) იურიდიული პირისთვ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის დივიდენდების გადასახადის განაკვეთი ინდივიდისთვის საქ
+2026-06-28 15:45:07,370 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:07,370 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:07,370 INFO sqlalchemy.engine.Engine [cached since 49.7s ago] {'query_embedding': '[-0.07449796050786972,0.11931083351373672,-0.014894959516823292,0.10784484446048737,0.06511978060007095,0.03935060650110245,0.05756991729140282,-0.14 ... (15597 characters truncated) ... ,-0.02414589375257492,-0.004530178848654032,-0.0892903208732605,-0.048143815249204636,-0.01617508754134178,-0.12391090393066406,0.038329433649778366]', 'limit': 8}
+2026-06-28 15:45:07,373 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:07,488 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:07,488 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:07,488 INFO sqlalchemy.engine.Engine [cached since 51.58s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:07,550 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 884 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 130. დივიდენდების დაბეგვრა გადახდის წყაროსთან
+1. რეზიდენტი საწარმოს მიერ ფიზიკური პირისთვის, არასამეწარმეო (არაკომერციული) იურიდიული პირისთვ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+2026-06-28 15:45:08,714 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:08,715 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:08,715 INFO sqlalchemy.engine.Engine [cached since 51.05s ago] {'query_embedding': '[-0.032169781625270844,0.09761740267276764,-0.019289353862404823,0.12126114219427109,0.02501274272799492,0.028859620913863182,0.10752586275339127,-0. ... (15732 characters truncated) ... .022165954113006592,-0.0341215506196022,-0.0017630786169320345,0.0019995090551674366,0.019606156274676323,-0.062157098203897476,0.009047029539942741]', 'limit': 8}
+2026-06-28 15:45:08,724 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: როგორ მუშაობს ესტონური მოგების გადასახადის მოდელი საქართველო
+2026-06-28 15:45:09,585 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:09,585 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:09,585 INFO sqlalchemy.engine.Engine [cached since 51.92s ago] {'query_embedding': '[-0.017765162512660027,-0.0338607095181942,-0.010523857548832893,0.10344089567661285,-0.0014511874178424478,-0.0573759488761425,0.09122300148010254,- ... (15601 characters truncated) ... 57242,0.03325682133436203,-0.015251925215125084,0.0843750387430191,0.02060571312904358,-0.011760571040213108,0.02436480112373829,0.01909540221095085]', 'limit': 8}
+2026-06-28 15:45:09,587 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:09,691 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:09,692 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:09,692 INFO sqlalchemy.engine.Engine [cached since 53.78s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:09,776 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 907 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 90. მცირე ბიზნესის დასაბეგრი შემოსავალი და გადასახადის განაკვეთები
+1. მცირე ბიზნესის სტატუსის მქონე პირის დასაბეგრი შემოსავალი იბეგრება 1 პრ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის საგადასახადო განაკვეთი მცირე ბიზნესის ინდივიდუალური 
+2026-06-28 15:45:11,788 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:11,788 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:11,788 INFO sqlalchemy.engine.Engine [cached since 54.12s ago] {'query_embedding': '[-0.044754501432180405,0.021192949265241623,-0.010244540870189667,0.05039365217089653,0.06607276946306229,-0.07321027666330338,0.18829287588596344,-0 ... (15578 characters truncated) ... 4,-0.0647844672203064,-0.06043744459748268,-0.16713397204875946,-0.10456255078315735,-0.060454368591308594,-0.04345439001917839,0.043544333428144455]', 'limit': 8}
+2026-06-28 15:45:11,793 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: შეგიძლიათ თუ არა LLC გამოიყენოს 1% მცირე ბიზნესის რეჟიმი საქ
+2026-06-28 15:45:12,813 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:12,813 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:12,813 INFO sqlalchemy.engine.Engine [cached since 55.14s ago] {'query_embedding': '[0.04587734118103981,0.11080818623304367,-0.011522275395691395,0.02655941992998123,-0.016000475734472275,-0.05599667504429817,0.2789786458015442,-0.0 ... (15572 characters truncated) ... 44,0.014003542251884937,0.019835136830806732,-0.1419127881526947,-0.05889402702450752,-0.031159618869423866,-0.07984907925128937,0.05772862955927849]', 'limit': 8}
+2026-06-28 15:45:12,820 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+2026-06-28 15:45:13,017 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:13,017 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:13,017 INFO sqlalchemy.engine.Engine [cached since 55.35s ago] {'query_embedding': '[0.053213946521282196,0.046931974589824677,-0.0129349734634161,-0.013073863461613655,-0.11420432478189468,-0.01993311196565628,0.3639610707759857,0.0 ... (15562 characters truncated) ... 02293,0.08970750868320465,0.011792130768299103,0.04852575808763504,0.004441495984792709,-0.02107294462621212,0.0259382463991642,0.017057042568922043]', 'limit': 8}
+2026-06-28 15:45:13,021 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: რა არის მიკრო ბიზნესის სტატუსი საქართველოში და მისი გადასახა
+2026-06-28 15:45:13,785 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:13,785 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:13,785 INFO sqlalchemy.engine.Engine [cached since 56.12s ago] {'query_embedding': '[-0.040451765060424805,-0.09514546394348145,-0.01055139396339655,0.055129025131464005,0.0440908707678318,-0.02167753130197525,0.2144702523946762,-0.1 ... (15554 characters truncated) ... 3,-0.04679618775844574,-0.022880110889673233,-0.19981122016906738,-0.05167672410607338,-0.03280702605843544,-0.05432498827576637,0.08485130220651627]', 'limit': 8}
+2026-06-28 15:45:13,788 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:13,869 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:13,869 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:13,869 INFO sqlalchemy.engine.Engine [cached since 57.96s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:13,936 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1090 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 81. გადასახადის განაკვეთი
+1. ფიზიკური პირის დასაბეგრი შემოსავალი იბეგრება 20 პროცენტით, თუ ამ კოდექსით სხვა რამ არ არის გათვალისწინებული.
+
+2...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის პირადი შემოსავლის გადასახადის განაკვეთი ხელფასზე საქ
+2026-06-28 15:45:15,837 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:15,837 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:15,837 INFO sqlalchemy.engine.Engine [cached since 58.17s ago] {'query_embedding': '[-0.15035633742809296,0.11217001080513,-0.010293461382389069,0.04581481218338013,0.07754320651292801,0.001793362433090806,-0.0070901853032410145,-0.1 ... (15524 characters truncated) ... 45,-0.0689425989985466,-0.007057400420308113,-0.222760409116745,-0.031341299414634705,-0.03724414110183716,-0.10539982467889786,0.037983085960149765]', 'limit': 8}
+2026-06-28 15:45:15,841 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:15,957 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:15,958 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:15,958 INFO sqlalchemy.engine.Engine [cached since 60.05s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:16,059 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1090 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 81. გადასახადის განაკვეთი
+1. ფიზიკური პირის დასაბეგრი შემოსავალი იბეგრება 20 პროცენტით, თუ ამ კოდექსით სხვა რამ არ არის გათვალისწინებული.
+
+2...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+2026-06-28 15:45:17,231 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:17,231 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:17,231 INFO sqlalchemy.engine.Engine [cached since 59.56s ago] {'query_embedding': '[-0.12408384680747986,0.08337311446666718,-0.016823893412947655,0.02744745835661888,0.010472520254552364,0.0482424795627594,0.05265193432569504,-0.00 ... (15644 characters truncated) ... ,0.027140606194734573,-0.05749942362308502,-0.0034141354262828827,0.0298831295222044,-0.007124593481421471,0.0023122152779251337,0.03182300925254822]', 'limit': 8}
+2026-06-28 15:45:17,238 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:17,339 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:17,340 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:17,340 INFO sqlalchemy.engine.Engine [cached since 61.43s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:17,419 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1090 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 81. გადასახადის განაკვეთი
+1. ფიზიკური პირის დასაბეგრი შემოსავალი იბეგრება 20 პროცენტით, თუ ამ კოდექსით სხვა რამ არ არის გათვალისწინებული.
+
+2...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა გადასახადს იხდის ინდივიდი საცხოვრებელი ქირის შემოსავლისგა
+2026-06-28 15:45:19,076 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:19,076 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:19,076 INFO sqlalchemy.engine.Engine [cached since 61.41s ago] {'query_embedding': '[-0.07433497160673141,0.1221003383398056,-0.013208498246967793,0.0058182477951049805,0.09492804110050201,0.06234004348516464,0.09309861809015274,-0.1 ... (15593 characters truncated) ... 24,-0.02051837369799614,-0.05587061122059822,-0.18731296062469482,0.0013357052812352777,-0.04113376885652542,-0.151018887758255,0.053201764822006226]', 'limit': 8}
+2026-06-28 15:45:19,083 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: როგორ მუშაობს პენსიის შენატანები საქართველოში?
+2026-06-28 15:45:19,783 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:19,783 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:19,783 INFO sqlalchemy.engine.Engine [cached since 62.11s ago] {'query_embedding': '[0.03851841390132904,0.19604794681072235,-0.010423639789223671,-0.016132058575749397,0.03274960815906525,0.09042816609144211,0.05714860185980797,-0.0 ... (15538 characters truncated) ... ,0.013675062917172909,-0.013376802206039429,-0.036163829267024994,0.03800119832158089,0.002865068381652236,-0.05987807363271713,0.052628833800554276]', 'limit': 8}
+2026-06-28 15:45:19,785 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: რა არის ქონების გადასახადის განაკვეთი საქართველოში?
+2026-06-28 15:45:20,478 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:20,478 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:20,478 INFO sqlalchemy.engine.Engine [cached since 62.81s ago] {'query_embedding': '[-0.10223608464002609,0.06770417094230652,-0.00743086589500308,0.10396163910627365,0.016486981883645058,-0.022766582667827606,-0.016511598601937294,- ... (15521 characters truncated) ... 467,-0.0218946672976017,0.006578824948519468,-0.03006524033844471,-0.0774374008178711,-0.058325186371803284,-0.16694232821464539,0.09221140295267105]', 'limit': 8}
+2026-06-28 15:45:20,481 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+2026-06-28 15:45:20,660 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:20,660 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:20,660 INFO sqlalchemy.engine.Engine [cached since 62.99s ago] {'query_embedding': '[-0.06298167258501053,0.03671136870980263,-0.012626131065189838,0.10734934359788895,-0.06031820550560951,0.00991704873740673,0.037829313427209854,-0. ... (15578 characters truncated) ... 3215,0.0707288384437561,-0.05351361632347107,0.1899651288986206,-0.005812239367514849,-0.025738844648003578,-0.04531398043036461,0.05980120971798897]', 'limit': 8}
+2026-06-28 15:45:20,668 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG_V2_ROLLOUT] class=canonical_law_lookup authoritative=1
+[RAG] Retrieval query translated to KA: ტუროპერატორის მიერ ორგანიზებული inbound ტურიზმი არის თუ არა 
+2026-06-28 15:45:21,499 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:21,499 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:21,499 INFO sqlalchemy.engine.Engine [cached since 63.83s ago] {'query_embedding': '[0.0005308491527102888,0.12684793770313263,-0.011252646334469318,0.1070772111415863,-0.024914922192692757,0.036987561732530594,0.12876904010772705,0. ... (15594 characters truncated) ... 9004974,0.0332929752767086,0.08585534989833832,0.01269608549773693,-0.03576233610510826,-0.03495187684893608,-0.06411398202180862,0.0752456784248352]', 'limit': 8}
+2026-06-28 15:45:21,506 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:21,608 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:21,608 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:21,608 INFO sqlalchemy.engine.Engine [cached since 65.7s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:21,688 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 187 chars
+[LLM] Context: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 166. დღგ-ის განაკვეთი
+
+დღგ-ის განაკვეთია 18 პროცენტი.
+
+საქართველოს 2020 წლის 14 ივლისის კანონი №6817 – ვებგვერდი, 22.07.2020წ.
+
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რამდენი პროცენტია ნამატირებული ღირებულების გადასახადი (ნგგ) 
+2026-06-28 15:45:23,397 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:23,398 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:23,398 INFO sqlalchemy.engine.Engine [cached since 65.73s ago] {'query_embedding': '[-0.055444955825805664,0.0060509443283081055,-0.009367031045258045,0.052430007606744766,0.034359756857156754,0.005381930153816938,0.00355117185972630 ... (15577 characters truncated) ... ,-0.00914786383509636,0.021185072138905525,-0.1570477932691574,-0.054140880703926086,-0.024833789095282555,-0.14051251113414764,0.014007579535245895]', 'limit': 8}
+2026-06-28 15:45:23,403 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:23,508 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:23,508 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:23,508 INFO sqlalchemy.engine.Engine [cached since 67.6s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:23,593 INFO sqlalchemy.engine.Engine ROLLBACK
+[LLM] Context length: 1026 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+მუხლი 168. დეკლარირების წესი
+1. დღგ-ის გადამხდელად რეგისტრირებული დასაბეგრი პირი ვალდებულია საგადასახადო ორგანოს წარუდგინოს დღგ-ის დეკლარაცია არაუ...
+[RAG_V2_ROLLOUT] class=canonical_law_lookup sources=1 chunks=1
+[RAG] Retrieval query translated to KA: რა არის იმპორტის დროს დამატებითი ღირებულების გადასახადის (დგ
+2026-06-28 15:45:25,827 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:25,827 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:25,827 INFO sqlalchemy.engine.Engine [cached since 68.16s ago] {'query_embedding': '[-0.09021132439374924,0.024599354714155197,-0.008657693862915039,0.09703421592712402,0.11893849074840546,0.04305478557944298,0.1560337245464325,-0.15 ... (15560 characters truncated) ... 157,0.0007517710328102112,0.02177353948354721,-0.25037896633148193,-0.06062712520360947,-0.0628252774477005,-0.15557585656642914,0.04615779221057892]', 'limit': 8}
+2026-06-28 15:45:25,833 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG] Retrieval query translated to KA: როგორ იქნება ხვალინდელი ამინდი თბილისში?
+[RAG] Query: Какая погода завтра в Тбилиси?..., Language: ru
+2026-06-28 15:45:26,609 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:26,609 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             AND d.language = %(language)s ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:26,609 INFO sqlalchemy.engine.Engine [generated in 0.00010s] {'query_embedding': '[-0.15535525977611542,-0.11698579043149948,-0.008319742046296597,0.061119262129068375,0.14717049896717072,-0.1062558963894844,-0.022012174129486084,- ... (15539 characters truncated) ... 523,-0.02616039849817753,-0.04644419252872467,-0.1060246154665947,0.04178177937865257,0.044829096645116806,-0.2888144850730896,-0.011078226380050182]', 'language': 'ru', 'limit': 50}
+2026-06-28 15:45:26,610 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG] Search results: 0 chunks found
+[RAG] Retrieved chunks: 0
+[LLM] Context length: 39 chars
+[LLM] Context: Нет доступной информации в базе данных.
+[RAG] Prepared sources: 0
+2026-06-28 15:45:27,614 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:27,614 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:27,614 INFO sqlalchemy.engine.Engine [cached since 71.7s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/tax-code-amendment-2026-vat', 'param_1': 1}
+2026-06-28 15:45:27,625 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.title = %(title_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:27,625 INFO sqlalchemy.engine.Engine [generated in 0.00024s] {'title_1': 'საქართველოს საგადასახადო კოდექსში ცვლილების შეტანის შესახებ 2026', 'param_1': 1}
+2026-06-28 15:45:27,634 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.title ILIKE %(title_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:27,634 INFO sqlalchemy.engine.Engine [generated in 0.00020s] {'title_1': 'საქართველოს საგადასახადო კოდექსში ცვლილების შეტანის შესახებ 2026', 'param_1': 1}
+2026-06-28 15:45:27,682 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG] Retrieval query translated to KA: რა წერია საქართველოს საგადასახადო კოდექსის 9999-ე მუხლში?
+[RAG] Query: Что написано в статье 9999 Налогового кодекса Груз..., Language: ru
+2026-06-28 15:45:28,578 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:28,578 INFO sqlalchemy.engine.Engine 
+                SELECT 
+                    c.id,
+                    c.document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.metadata,
+                    d.title AS document_title,
+                    d.document_type AS document_type,
+                    d.category AS document_category,
+                    d.language AS document_language,
+                    d.source_url AS source_url,
+                    1 - (c.embedding <=> CAST(%(query_embedding)s AS vector)) as similarity,
+                    c.embedding <=> CAST(%(query_embedding)s AS vector) as distance
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE c.embedding IS NOT NULL
+             AND d.language = %(language)s ORDER BY c.embedding <=> CAST(%(query_embedding)s AS vector) LIMIT %(limit)s
+2026-06-28 15:45:28,578 INFO sqlalchemy.engine.Engine [cached since 1.969s ago] {'query_embedding': '[0.04031754657626152,0.024751901626586914,-0.011139100417494774,0.05275355651974678,-0.038295745849609375,0.07409034669399261,-0.0035991938784718513, ... (15636 characters truncated) ... ,-0.0021005140151828527,-0.025407105684280396,0.12646432220935822,0.05969370901584625,-0.001542240846902132,-0.05796435847878456,0.01890387572348118]', 'language': 'ru', 'limit': 50}
+2026-06-28 15:45:28,579 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG] Search results: 0 chunks found
+2026-06-28 15:45:28,580 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:28,580 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE documents.source_url = %(source_url_1)s 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,580 INFO sqlalchemy.engine.Engine [cached since 72.67s ago] {'source_url_1': 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0', 'param_1': 1}
+2026-06-28 15:45:28,646 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,646 INFO sqlalchemy.engine.Engine [cached since 65.13s ago] {'document_id_1': UUID('7413ae69-672c-4c48-b3d5-8c04b09dfb43'), 'param_1': 1}
+2026-06-28 15:45:28,648 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:28,649 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:28,650 INFO sqlalchemy.engine.Engine SELECT documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM documents 
+WHERE (documents.language = %(language_1)s OR documents.language IS NULL OR documents.language = %(language_2)s) AND (documents.title ILIKE %(title_1)s OR documents.title ILIKE %(title_2)s) ORDER BY documents.date_published DESC, documents.created_at DESC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,650 INFO sqlalchemy.engine.Engine [generated in 0.00009s] {'language_1': 'ru', 'language_2': 'ka', 'title_1': '%საგადასახადო კოდექს%', 'title_2': '%tax code%', 'param_1': 12}
+2026-06-28 15:45:28,660 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,660 INFO sqlalchemy.engine.Engine [cached since 65.14s ago] {'document_id_1': UUID('e716721b-7e79-4b93-910c-af3f95959920'), 'param_1': 1}
+2026-06-28 15:45:28,661 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,661 INFO sqlalchemy.engine.Engine [cached since 65.14s ago] {'document_id_1': UUID('06ccb22c-0598-48a1-9358-54441029903a'), 'param_1': 1}
+2026-06-28 15:45:28,662 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,662 INFO sqlalchemy.engine.Engine [cached since 65.15s ago] {'document_id_1': UUID('bccb7680-475a-46df-8b61-3fe1bcf18d8b'), 'param_1': 1}
+2026-06-28 15:45:28,664 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,664 INFO sqlalchemy.engine.Engine [cached since 65.15s ago] {'document_id_1': UUID('aebb8beb-4a5a-4f92-8485-65a06acd0e6c'), 'param_1': 1}
+2026-06-28 15:45:28,665 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at 
+FROM document_chunks 
+WHERE document_chunks.document_id = %(document_id_1)s::UUID ORDER BY document_chunks.chunk_index ASC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,665 INFO sqlalchemy.engine.Engine [cached since 65.15s ago] {'document_id_1': UUID('0a318fbb-7fa8-4162-a9a5-0006fac24976'), 'param_1': 1}
+2026-06-28 15:45:28,667 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-06-28 15:45:28,669 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-28 15:45:28,672 INFO sqlalchemy.engine.Engine SELECT document_chunks.id AS document_chunks_id, document_chunks.document_id AS document_chunks_document_id, document_chunks.chunk_index AS document_chunks_chunk_index, document_chunks.content AS document_chunks_content, document_chunks.tokens_count AS document_chunks_tokens_count, document_chunks.start_position AS document_chunks_start_position, document_chunks.end_position AS document_chunks_end_position, document_chunks.metadata AS document_chunks_metadata, document_chunks.embedding AS document_chunks_embedding, document_chunks.created_at AS document_chunks_created_at, documents.id AS documents_id, documents.title AS documents_title, documents.document_type AS documents_document_type, documents.document_number AS documents_document_number, documents.date_published AS documents_date_published, documents.date_effective AS documents_date_effective, documents.language AS documents_language, documents.category AS documents_category, documents.authority AS documents_authority, documents.status AS documents_status, documents.full_text AS documents_full_text, documents.source_url AS documents_source_url, documents.file_hash AS documents_file_hash, documents.metadata AS documents_metadata, documents.created_at AS documents_created_at, documents.updated_at AS documents_updated_at 
+FROM document_chunks JOIN documents ON document_chunks.document_id = documents.id 
+WHERE documents.language = %(language_1)s AND documents.document_type IN (%(document_type_1_1)s, %(document_type_1_2)s, %(document_type_1_3)s) AND (documents.title ILIKE %(title_1)s OR document_chunks.content ILIKE %(content_1)s OR documents.title ILIKE %(title_2)s OR document_chunks.content ILIKE %(content_2)s OR documents.title ILIKE %(title_3)s OR document_chunks.content ILIKE %(content_3)s OR documents.title ILIKE %(title_4)s OR document_chunks.content ILIKE %(content_4)s OR documents.title ILIKE %(title_5)s OR document_chunks.content ILIKE %(content_5)s) ORDER BY documents.date_published DESC, document_chunks.chunk_index ASC, documents.created_at DESC 
+ LIMIT %(param_1)s
+2026-06-28 15:45:28,672 INFO sqlalchemy.engine.Engine [generated in 0.00036s] {'language_1': 'ru', 'title_1': '%ცვლილების შეტანის შესახებ%', 'content_1': '%ცვლილების შეტანის შესახებ%', 'title_2': '%საგადასახადო კოდექსში ცვლილების%', 'content_2': '%საგადასახადო კოდექსში ცვლილების%', 'title_3': '%კოდექს%', 'content_3': '%კოდექს%', 'title_4': '%amend%', 'content_4': '%amend%', 'title_5': '%изменен%', 'content_5': '%изменен%', 'param_1': 48, 'document_type_1_1': 'law', 'document_type_1_2': 'regulation', 'document_type_1_3': 'guideline'}
+2026-06-28 15:45:28,683 INFO sqlalchemy.engine.Engine ROLLBACK
+[RAG] Retrieved chunks: 6
+[LLM] Context length: 2068 chars
+[LLM] Context preview: [Документ 1: საქართველოს საგადასახადო კოდექსი. (law)]
+*კონსოლიდირებული ვერსია (საბოლოო)*
+
+საქართველოს კანონი**
+
+**საქართველოს საგადასახადო კოდექსი**
+
+## კარი I
+
+**ზოგადი დებულებანი**
+
+### თავი I
+
+**სა...
+[RAG] Prepared sources: 5
+[RAG_V2_ROLLOUT] class=canonical_law_lookup out_of_jurisdiction=1
+{"started": "2026-06-28 15:44:15 UTC", "results": [{"id": "vat_rate", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "Какая ставка НДС в Грузии?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.95, "response": "Стандартная ставка НДС в Грузии — 18%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 166.", "n_sources": 1}, {"id": "vat_rate_en", "cat": "VAT", "lang": "en", "kind": "fact", "query": "What is the VAT rate in Georgia?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.59, "response": "The standard VAT rate in Georgia is 18%.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 166.", "n_sources": 1}, {"id": "vat_rate_ka", "cat": "VAT", "lang": "ka", "kind": "fact", "query": "რა არის დღგ-ის განაკვეთი?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.49, "response": "დღგ-ის სტანდარტული განაკვეთი საქართველოში 18 პროცენტია.\n\nწყარო: საქართველოს საგადასახადო კოდექსი, მუხლი 166.", "n_sources": 1}, {"id": "vat_threshold", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "С какого оборота нужно регистрироваться плательщиком НДС?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 0.93, "response": "Регистрация плательщиком НДС обязательна, когда облагаемый оборот превышает 100 000 лари за любые непрерывные 12 календарных месяцев.", "n_sources": 1}, {"id": "vat_threshold_en", "cat": "VAT", "lang": "en", "kind": "fact", "query": "What turnover triggers mandatory VAT registration in Georgia?", "correct": false, "sourced": true, "grounded": false, "elapsed_s": 1.64, "response": "The standard VAT rate in Georgia is 18%.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 166.", "n_sources": 1}, {"id": "vat_import", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "Платится ли НДС при импорте товаров в Грузию?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.35, "response": "Да, при импорте товаров в Грузию платится НДС. Согласно статье 2 Закона о налогах, налог на добавленную стоимость (НДС) применяется к операциям, связанным с импортом товаров на территорию Грузии. Это означает, что все товары, ввозимые в страну, подлежат налогообложению НДС в соответствии с действующим законодательством.", "n_sources": 1}, {"id": "vat_touroperator", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "Облагается ли НДС организованный въезд иностранных туристов туроператором?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 1.1, "response": "Организованный въезд иностранных туристов в Грузию (услуги туроператора) освобождён от НДС с правом зачёта входного НДС (Налоговый кодекс Грузии, статья 172). Туроператор по таким услугам НДС не начисляет, но сохраняет право на зачёт входного НДС.", "n_sources": 1}, {"id": "profit_rate", "cat": "Profit", "lang": "ru", "kind": "fact", "query": "Какая ставка налога на прибыль в Грузии?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.81, "response": "Основная ставка налога на прибыль в Грузии — 15%. В отдельных специальных случаях кодекс предусматривает иной режим, но базовая ставка — 15%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 98.", "n_sources": 1}, {"id": "profit_rate_en", "cat": "Profit", "lang": "en", "kind": "fact", "query": "What is the corporate profit tax rate in Georgia?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 9.88, "response": "The standard profit tax rate in Georgia is 15%. In some special cases the code provides different treatment, but the base rate is 15%.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 98.", "n_sources": 1}, {"id": "estonian", "cat": "Profit", "lang": "ru", "kind": "fact", "query": "Как работает эстонская модель налога на прибыль в Грузии?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.9, "response": "По эстонской модели в Грузии налог на прибыль (15%) уплачивается не на заработанную прибыль, а только при её распределении (например, дивиденды). Нераспределённая и реинвестированная прибыль налогом на прибыль не облагается.", "n_sources": 1}, {"id": "dividend", "cat": "Profit", "lang": "ru", "kind": "fact", "query": "Какой налог на дивиденды для физлица в Грузии?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.0, "response": "Дивиденды, выплачиваемые резидентным предприятием физлицу, как правило, облагаются у источника по ставке 5%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 130.", "n_sources": 1}, {"id": "sb_rate", "cat": "SmallBiz", "lang": "ru", "kind": "fact", "query": "Какая ставка налога для ИП со статусом малого бизнеса?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.58, "response": "Для ИП со статусом малого бизнеса в Грузии стандартная ставка — 1% от налогооблагаемого дохода. Если годовой доход превышает установленный кодексом порог, на соответствующий период применяется ставка 3%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 90.", "n_sources": 1}, {"id": "sb_threshold", "cat": "SmallBiz", "lang": "ru", "kind": "fact", "query": "До какого оборота действует ставка 1% для малого бизнеса?", "correct": false, "sourced": true, "grounded": true, "elapsed_s": 3.01, "response": "Для ИП со статусом малого бизнеса в Грузии стандартная ставка — 1% от налогооблагаемого дохода. Если годовой доход превышает установленный кодексом порог, на соответствующий период применяется ставка 3%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 90.", "n_sources": 1}, {"id": "ooo_1pct", "cat": "SmallBiz", "lang": "ru", "kind": "fact", "query": "Может ли ООО применять режим 1% малого бизнеса?", "correct": false, "sourced": true, "grounded": true, "elapsed_s": 0.75, "response": "Нет. Режим малого бизнеса со ставкой 1% доступен только индивидуальному предпринимателю (физлицу-предпринимателю). ООО (общество с ограниченной ответственностью) применять его не может. Прибыль ООО облагается по эстонской модели — 15% при распределении прибыли.", "n_sources": 1}, {"id": "micro", "cat": "SmallBiz", "lang": "ru", "kind": "fact", "query": "Что такое микробизнес в Грузии и какой налог?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.87, "response": "Статус микробизнеса доступен физлицу с годовым оборотом не более 30 000 лари и без наёмных работников; доход облагается по ставке 0%.", "n_sources": 1}, {"id": "pit_rate", "cat": "PIT", "lang": "ru", "kind": "fact", "query": "Какая ставка подоходного налога с зарплаты в Грузии?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.78, "response": "Подоходный налог для физлица в Грузии — 20% от налогооблагаемого дохода, если кодексом не предусмотрено иное. Частое исключение — доход от сдачи жилья в аренду: он облагается по ставке 5%, если не применяются вычеты.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 81.", "n_sources": 1}, {"id": "rent", "cat": "PIT", "lang": "ru", "kind": "fact", "query": "Какой налог платит физлицо при сдаче квартиры в аренду физлицу?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.33, "response": "Доход от сдачи жилья в аренду в Грузии облагается по ставке 5%, если физлицо не применяет вычеты из этого дохода. Если это условие не выполняется, может применяться общее правило 20%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 81.", "n_sources": 1}, {"id": "pension", "cat": "PIT", "lang": "ru", "kind": "fact", "query": "Как работают пенсионные взносы в Грузии?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.86, "response": "Накопительная пенсия в Грузии формируется из взносов: 2% удерживает работодатель из зарплаты работника, 2% добавляет работодатель и 2% — государство (для дохода до установленного потолка).", "n_sources": 1}, {"id": "property", "cat": "Property", "lang": "ru", "kind": "fact", "query": "Какая ставка налога на имущество в Грузии?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.72, "response": "Ставка налога на имущество зависит от плательщика. Для предприятия (организации) — не более 1% стоимости налогооблагаемого имущества (для лизинговой компании по переданному в лизинг имуществу — не более 0.6%). Для физлица фиксированной ставки 1% нет: налог зависит от дохода семьи за предыдущий год и составляет от 0% до 0.8%.", "n_sources": 1}, {"id": "dispute", "cat": "Disputes", "lang": "ru", "kind": "fact", "query": "Как обжаловать решение налоговой службы Грузии?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 3.48, "response": "Чтобы обжаловать решение налоговой службы Грузии, необходимо представить жалобу в Департамент налогового мониторинга. В соответствии с документами, например, в случае с жалобой, зарегистрированной под номером 26626/2/2026, жалоба должна быть подана в установленный срок, и в ней следует указать все необходимые данные, включая основание для обжалования и требуемые документы.\n\nВ случае отказа в удовлетворении жалобы, как это произошло в случае с шипс „---с“, можно обратиться в суд для дальнейшего рассмотрения дела.", "n_sources": 3}, {"id": "art_lookup", "cat": "ArticleLookup", "lang": "ru", "kind": "fact", "query": "Что говорит статья 309 Налогового кодекса Грузии?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 2.64, "response": "Статья 309 Налогового кодекса Грузии содержит положения о переходных правилах, однако все пункты, включая 1-12, были исключены. В частности, пункт 12 указывает, что до 7 августа 2009 года поставка товаров или услуг товариществом своему члену в обмен на долю не подлежит налогообложению НДС и налогом на прибыль.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 309.", "n_sources": 1}, {"id": "doc_taxcode", "cat": "DocLookup", "lang": "ru", "kind": "fact", "query": "Покажи Налоговый кодекс Грузии", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.75, "response": "Налоговый кодекс Грузии регулирует формирование и функционирование налоговой системы страны, а также определяет правовой статус налогоплательщиков и уполномоченных органов. Он включает в себя общие принципы налогообложения, виды налоговых правонарушений и ответственность за нарушения налогового законодательства.\n\nКодекс состоит из Конституции Грузии, международных соглашений, самого кодекса и подзаконных нормативных актов, принятых для его исполнения. Налоговые обязательства возникают на основании действующего законодательства на момент их возникновения.", "n_sources": 1}, {"id": "vat_threshold_ka", "cat": "VAT", "lang": "ka", "kind": "fact", "query": "რა ბრუნვიდან არის სავალდებულო დღგ-ის რეგისტრაცია?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 0.2, "response": "დღგ-ის გადამხდელად რეგისტრაცია სავალდებულოა, როცა დასაბეგრი ბრუნვა აღემატება 100 000 ლარს ნებისმიერ უწყვეტ 12 კალენდარულ თვეში.", "n_sources": 1}, {"id": "profit_rate_ka", "cat": "Profit", "lang": "ka", "kind": "fact", "query": "რა არის მოგების გადასახადის განაკვეთი?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 1.55, "response": "საქართველოში მოგების გადასახადის ძირითადი განაკვეთი 15 პროცენტია. ცალკეულ სპეციალურ შემთხვევებში კოდექსი სხვა წესსაც ითვალისწინებს, მაგრამ საბაზისო განაკვეთი 15%-ია.\n\nწყარო: საქართველოს საგადასახადო კოდექსი, მუხლი 98.", "n_sources": 1}, {"id": "dividend_en", "cat": "Profit", "lang": "en", "kind": "fact", "query": "What is the dividend tax rate for an individual in Georgia?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 2.5, "response": "Dividends paid by a resident enterprise to an individual are generally taxed at 5% at source.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 130.", "n_sources": 1}, {"id": "dividend_ka", "cat": "Profit", "lang": "ka", "kind": "fact", "query": "რა არის დივიდენდის გადასახადი ფიზიკური პირისთვის?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.35, "response": "რეზიდენტი საწარმოს მიერ ფიზიკურ პირზე გაცემული დივიდენდები, როგორც წესი, 5 პროცენტით იბეგრება გადახდის წყაროსთან.\n\nწყარო: საქართველოს საგადასახადო კოდექსი, მუხლი 130.", "n_sources": 1}, {"id": "estonian_en", "cat": "Profit", "lang": "en", "kind": "fact", "query": "How does the Estonian profit tax model work in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.86, "response": "Under Georgia's Estonian model, profit tax (15%) is paid not on earned profit but only when profit is distributed (e.g. dividends). Retained and reinvested profit is not subject to profit tax.", "n_sources": 1}, {"id": "sb_rate_en", "cat": "SmallBiz", "lang": "en", "kind": "fact", "query": "What is the tax rate for a small business individual entrepreneur in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 2.21, "response": "For an individual entrepreneur with small business status in Georgia, the standard tax rate is 1% of taxable income. If annual income exceeds the threshold set by the code, the rate becomes 3% for the relevant period.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 90.", "n_sources": 1}, {"id": "ooo_1pct_en", "cat": "SmallBiz", "lang": "en", "kind": "fact", "query": "Can an LLC use the 1% small business regime in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 1.03, "response": "No. The 1% small business regime is available only to an individual entrepreneur. An LLC cannot use it. An LLC's profit is taxed under the Estonian model at 15% upon distribution of profit.", "n_sources": 1}, {"id": "ooo_1pct_ka", "cat": "SmallBiz", "lang": "ka", "kind": "fact", "query": "შეუძლია შპს-ს გამოიყენოს მცირე ბიზნესის 1%-იანი რეჟიმი?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.2, "response": "არა. მცირე ბიზნესის 1%-იანი რეჟიმი ხელმისაწვდომია მხოლოდ ინდივიდუალური მეწარმისთვის (ფიზიკური პირისთვის). შპს ამ რეჟიმს ვერ გამოიყენებს. შპს-ის მოგება იბეგრება ე.წ. ესტონური მოდელით — 15% მოგების განაწილებისას.", "n_sources": 1}, {"id": "micro_en", "cat": "SmallBiz", "lang": "en", "kind": "fact", "query": "What is micro business status in Georgia and its tax?", "correct": false, "sourced": true, "grounded": true, "elapsed_s": 0.77, "response": "Micro business status is available to an individual with annual turnover up to 30,000 GEL and no employees; income is taxed at 0%.", "n_sources": 1}, {"id": "pit_rate_en", "cat": "PIT", "lang": "en", "kind": "fact", "query": "What is the personal income tax rate on salary in Georgia?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 2.05, "response": "The personal income tax rate in Georgia is 20% of taxable income, unless the code provides otherwise. A common exception is residential rental income, which is taxed at 5% if no deductions are applied.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 81.", "n_sources": 1}, {"id": "pit_rate_ka", "cat": "PIT", "lang": "ka", "kind": "fact", "query": "რა არის ხელფასზე საშემოსავლო გადასახადის განაკვეთი?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.4, "response": "ფიზიკური პირის დასაბეგრი შემოსავალი საქართველოში 20 პროცენტით იბეგრება, თუ კოდექსით სხვა რამ არ არის გათვალისწინებული. ხშირი გამონაკლისია საცხოვრებელი ფართის გაქირავებიდან მიღებული შემოსავალი, რომელიც 5 პროცენტით იბეგრება, თუ გამოქვითვები არ გამოიყენება.\n\nწყარო: საქართველოს საგადასახადო კოდექსი, მუხლი 81.", "n_sources": 1}, {"id": "rent_en", "cat": "PIT", "lang": "en", "kind": "fact", "query": "What tax does an individual pay on residential rent income in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 1.84, "response": "Income from renting out residential property in Georgia is taxed at 5% if the individual does not claim deductions from that income. If that condition is not met, the general 20% personal income tax rule may apply.\n\nSource: საქართველოს საგადასახადო კოდექსი, Article 81.", "n_sources": 1}, {"id": "pension_en", "cat": "PIT", "lang": "en", "kind": "fact", "query": "How do pension contributions work in Georgia?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 0.7, "response": "Georgia's funded pension is built from contributions: 2% withheld from the employee's salary, 2% added by the employer, and 2% by the state (for income up to the cap).", "n_sources": 1}, {"id": "property_en", "cat": "Property", "lang": "en", "kind": "fact", "query": "What is the property tax rate in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.7, "response": "The property tax rate depends on the taxpayer. For a company, it is no more than 1% of the value of taxable property (for a leasing company's leased property, no more than 0.6%). For an individual there is no fixed 1% rate: the tax depends on the family's previous-year income and ranges from 0% to 0.8%.", "n_sources": 1}, {"id": "property_ka", "cat": "Property", "lang": "ka", "kind": "fact", "query": "რა არის ქონების გადასახადის განაკვეთი?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.19, "response": "ქონების გადასახადის განაკვეთი დამოკიდებულია გადამხდელზე. საწარმოსთვის — დასაბეგრი ქონების ღირებულების არაუმეტეს 1% (სალიზინგო კომპანიის ლიზინგით გაცემულ ქონებაზე — არაუმეტეს 0.6%). ფიზიკური პირისთვის ფიქსირებული 1% არ არსებობს: გადასახადი დამოკიდებულია ოჯახის წინა წლის შემოსავალზე და შეადგენს 0%-დან 0.8%-მდე.", "n_sources": 1}, {"id": "touroperator_en", "cat": "VAT", "lang": "en", "kind": "fact", "query": "Is organized inbound tourism by a tour operator VAT exempt in Georgia?", "correct": true, "sourced": true, "grounded": true, "elapsed_s": 0.84, "response": "The organized inbound travel of foreign tourists to Georgia (tour operator services) is VAT-exempt with the right to credit input VAT (Georgian Tax Code, Article 172). The operator does not charge VAT on such services but keeps the input VAT credit.", "n_sources": 1}, {"id": "vat_rate_more", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "Сколько процентов НДС в Грузии?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 1.9, "response": "Стандартная ставка НДС в Грузии — 18%.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 166.", "n_sources": 1}, {"id": "import_vat_rate", "cat": "VAT", "lang": "ru", "kind": "fact", "query": "Какая ставка НДС при импорте в Грузию?", "correct": true, "sourced": true, "grounded": false, "elapsed_s": 2.43, "response": "Да. Импорт в Грузию, как правило, облагается НДС, а стандартная ставка составляет 18%, если не действует специальное освобождение.\n\nИсточник: საქართველოს საგადასახადო კოდექსი, статья 168.", "n_sources": 1}, {"id": "offtopic", "cat": "Robustness", "lang": "ru", "kind": "refusal", "query": "Какая погода завтра в Тбилиси?", "correct": true, "sourced": false, "grounded": null, "elapsed_s": 1.59, "response": "Извините, но у меня нет информации о погоде. Я могу предоставить информацию только по налоговому законодательству Грузии. Если у вас есть вопросы по этой теме, пожалуйста, задайте их.", "n_sources": 0}, {"id": "fake_article", "cat": "Robustness", "lang": "ru", "kind": "refusal", "query": "Что написано в статье 9999 Налогового кодекса Грузии?", "correct": true, "sourced": true, "grounded": null, "elapsed_s": 2.27, "response": "К сожалению, в предоставленном контексте нет информации о статье 9999 Налогового кодекса Грузии. Возможно, такая статья не существует или не включена в доступные документы. \n\nЕсли у вас есть другие вопросы или вам нужна информация по другим статьям, пожалуйста, дайте знать.", "n_sources": 5}, {"id": "us_tax", "cat": "Robustness", "lang": "ru", "kind": "refusal", "query": "Какая ставка налога на прибыль в США?", "correct": true, "sourced": false, "grounded": null, "elapsed_s": 0.13, "response": "Я консультирую только по налоговому законодательству Грузии и не отвечаю по налогам других стран.", "n_sources": 0}], "summary": {"total": 43, "fact_correct": 36, "fact_total": 40, "fact_sourced": 40, "fact_grounded": 23, "refusal_correct": 3, "refusal_total": 3}}
