@@ -98,6 +98,30 @@ class LLMClient:
             print(f"Error generating LLM response: {e}")
             return f"Error generating response: {str(e)}"
 
+    def translate_to_georgian(self, text: str) -> str:
+        """Translate a query into Georgian for cross-lingual retrieval.
+
+        Uses a dedicated translator prompt (not the tax-assistant system prompt),
+        so the corpus, which is in Georgian, is searched with Georgian terms.
+        Returns the original text on any failure.
+        """
+        if not self.client or not (text or "").strip():
+            return text
+        try:
+            messages = [
+                SystemMessage(content=(
+                    "You are a translator. Translate the user's Georgian tax/legal "
+                    "question into Georgian (ქართული). Output ONLY the Georgian "
+                    "translation as plain text — no quotes, no explanations, no original text."
+                )),
+                HumanMessage(content=text),
+            ]
+            out = self._clean_response_text(self.client.invoke(messages).content)
+            return out or text
+        except Exception as e:
+            print(f"Error translating query: {e}")
+            return text
+
     def _clean_response_text(self, text: Any) -> str:
         cleaned = str(text or "")
         cleaned = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", cleaned)

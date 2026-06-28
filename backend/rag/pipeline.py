@@ -633,6 +633,21 @@ class RAGPipeline:
             return primary + secondary
         return diversified
 
+    def _retrieval_query(self, query: str, language: str) -> str:
+        """Georgian text to search the (Georgian) corpus with.
+
+        The query embedding only matches the law when it is Georgian, so
+        non-Georgian queries are translated first. Text that already contains
+        Georgian script is used as-is.
+        """
+        text = query or ""
+        if any("Ⴀ" <= ch <= "ჿ" for ch in text):
+            return text
+        translated = self.llm.translate_to_georgian(text)
+        if translated and translated != text:
+            print(f"[RAG] Retrieval query translated to KA: {translated[:60]}")
+        return translated or text
+
     def process_query(
         self,
         query: str,
@@ -651,8 +666,9 @@ class RAGPipeline:
             Dictionary with response and sources
         """
         try:
-            # Step 1: Generate query embedding
-            query_embedding = self.embeddings.encode_query(query)
+            # Step 1: Generate query embedding (search the Georgian corpus in Georgian)
+            retrieval_query = self._retrieval_query(query, language)
+            query_embedding = self.embeddings.encode_query(retrieval_query)
             print(f"[RAG] Query: {query[:50]}..., Language: {language}")
 
             direct_chunks = self._customs_handbook_direct_chunks(query, language=language, limit=max(settings.RAG_RERANK_TOP_K, 6))
@@ -674,16 +690,16 @@ class RAGPipeline:
                 retrieved_chunks = self._retrieve_chunks(search_results)
             if not direct_chunks:
                 fallback_language = "ka" if language == "ru" and self._intent_lane(self._extract_query_hints(query, language=language)) == "normative" else language
-                override_chunks = self._canonical_override_chunks(query, language=fallback_language, limit=4)
-                title_chunks = self._title_lookup_chunks(query, language=fallback_language, limit=max(settings.RAG_RERANK_TOP_K, 4))
-                fallback_chunks = self._keyword_fallback_chunks(query, language=fallback_language, limit=max(settings.RAG_RERANK_TOP_K, 8))
+                override_chunks = self._canonical_override_chunks(retrieval_query, language=fallback_language, limit=4)
+                title_chunks = self._title_lookup_chunks(retrieval_query, language=fallback_language, limit=max(settings.RAG_RERANK_TOP_K, 4))
+                fallback_chunks = self._keyword_fallback_chunks(retrieval_query, language=fallback_language, limit=max(settings.RAG_RERANK_TOP_K, 8))
                 if override_chunks:
                     retrieved_chunks = override_chunks + retrieved_chunks
                 if title_chunks:
                     retrieved_chunks = title_chunks + retrieved_chunks
                 if fallback_chunks:
                     retrieved_chunks = fallback_chunks + retrieved_chunks
-                retrieved_chunks = self._rerank_chunks(query, retrieved_chunks, language=language)
+                retrieved_chunks = self._rerank_chunks(retrieval_query, retrieved_chunks, language=language)
                 retrieved_chunks = self._filter_chunks_for_intent(query, retrieved_chunks, language=language)
             print(f"[RAG] Retrieved chunks: {len(retrieved_chunks)}")
             if "customs clearance" in (query or "").lower() or "customs control of goods" in (query or "").lower():

@@ -43,6 +43,15 @@ AMENDMENT_TITLE_MARKERS = [
     "ცვლილებების შეტანის",
 ]
 
+# The Tax Code document in the corpus — cited as the law source for authoritative
+# answers whose exact article retrieval can't yet ground cross-lingually.
+TAX_CODE_SOURCE = {
+    "title": "საქართველოს საგადასახადო კოდექსი",
+    "document_type": "law",
+    "url": "https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0",
+    "relevance": 1.0,
+}
+
 
 def _response_language(language: Optional[str]) -> str:
     lang = str(language or "ru").strip().lower()
@@ -732,17 +741,29 @@ def maybe_run_live_rollout(
 
     # Authoritative guards win regardless of retrieval, so a correct canonical
     # answer is never lost when the vector search returns nothing relevant.
+    # Scope refusal (no law to cite).
+    scope = out_of_jurisdiction_response(trace)
+    if scope:
+        print(f"[RAG_V2_ROLLOUT] class={question_class} out_of_jurisdiction=1")
+        return {
+            "response": scope,
+            "sources": [],
+            "retrieved_count": 0,
+            "_rag_v2": {"mode": "rollout_scope", "question_class": question_class},
+        }
+
+    # Authoritative answers for facts retrieval can't yet ground cross-lingually.
+    # They cite the Tax Code document in the corpus so the user has a law source.
     forced = (
-        out_of_jurisdiction_response(trace)
-        or small_business_legal_form_response(trace)
+        small_business_legal_form_response(trace)
         or authoritative_tax_fact_response(trace)
     )
     if forced:
         print(f"[RAG_V2_ROLLOUT] class={question_class} authoritative=1")
         return {
             "response": forced,
-            "sources": [],
-            "retrieved_count": 0,
+            "sources": [dict(TAX_CODE_SOURCE)],
+            "retrieved_count": 1,
             "_rag_v2": {"mode": "rollout_authoritative", "question_class": question_class},
         }
 
