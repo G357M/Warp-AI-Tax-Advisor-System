@@ -771,10 +771,9 @@ def maybe_run_live_rollout(
 
     # Authoritative answers for facts retrieval can't yet ground cross-lingually.
     # They cite the Tax Code document in the corpus so the user has a law source.
-    forced = (
-        small_business_legal_form_response(trace)
-        or authoritative_tax_fact_response(trace)
-    )
+    forced = small_business_legal_form_response(trace)
+    if (os.getenv("INFOHUB_RAG_V2_AUTHORITATIVE") or "1").strip() == "1":
+        forced = forced or authoritative_tax_fact_response(trace)
     if forced:
         print(f"[RAG_V2_ROLLOUT] class={question_class} authoritative=1")
         return {

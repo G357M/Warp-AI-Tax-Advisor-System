@@ -305,13 +305,8 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
             "ka": "დღგ-ის გადამხდელად რეგისტრაცია სავალდებულოა, როცა დასაბეგრი ბრუნვა აღემატება 100 000 ლარს ნებისმიერ უწყვეტ 12 კალენდარულ თვეში.",
         })
 
-    # Micro business
-    if any(t in q for t in ("микробизнес", "микро бизнес", "micro business", "მიკრო ბიზნეს")):
-        return pick({
-            "ru": "Статус микробизнеса доступен физлицу с годовым оборотом не более 30 000 лари и без наёмных работников; доход облагается по ставке 0%.",
-            "en": "Micro business status is available to an individual with annual turnover up to 30,000 GEL and no employees; income is taxed at 0%.",
-            "ka": "მიკრო ბიზნესის სტატუსი ხელმისაწვდომია ფიზიკური პირისთვის წლიური ბრუნვით არაუმეტეს 30 000 ლარისა და დაქირავებული პირების გარეშე; შემოსავალი იბეგრება 0%-ით.",
-        })
+    # Micro business — guard removed (Phase 4): retrieval grounds this correctly in
+    # ru+en (eval), so the answer now comes from the retrieved law, not curated text.
 
     # Mandatory funded pension contributions
     if any(t in q for t in ("пенси", "pension", "საპენსიო", "პენსი")):
