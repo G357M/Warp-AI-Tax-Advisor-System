@@ -820,21 +820,31 @@ def maybe_run_live_rollout(
         context=context,
         conversation_history=conversation_history,
     )
-    response = (
-        direct_tax_faq_response(trace)
-        or nonresident_withholding_tax_response(trace)
-        or import_vat_response(trace)
-        or royalty_tax_rate_response(trace)
-        or interest_tax_rate_response(trace)
-        or rental_income_tax_rate_response(trace)
-        or dividend_tax_rate_response(trace)
-        or small_business_tax_rate_response(trace)
-        or vat_rate_response(trace)
-        or profit_tax_rate_response(trace)
-        or income_tax_rate_response(trace)
-        or individual_property_tax_rate_response(trace)
-        or response
-    )
+    # Phase 4: the answer now comes from the retrieved law (response above), grounded
+    # in rollout_chunks with real per-article sources — curated FAQ text no longer
+    # overrides a grounded answer. An eval (evaluation/eval_harness.py) showed the FAQ
+    # override chain was redundant for every topic except import VAT, which retrieval
+    # cannot yet ground ("18% on import"), so that one explicit guard is retained.
+    # Set INFOHUB_RAG_V2_FAQ_OVERRIDE=1 to restore the full legacy override chain.
+    if (os.getenv("INFOHUB_RAG_V2_FAQ_OVERRIDE") or "").strip() == "1" or not (response or "").strip():
+        response = (
+            direct_tax_faq_response(trace)
+            or nonresident_withholding_tax_response(trace)
+            or import_vat_response(trace)
+            or royalty_tax_rate_response(trace)
+            or interest_tax_rate_response(trace)
+            or rental_income_tax_rate_response(trace)
+            or dividend_tax_rate_response(trace)
+            or small_business_tax_rate_response(trace)
+            or vat_rate_response(trace)
+            or profit_tax_rate_response(trace)
+            or income_tax_rate_response(trace)
+            or individual_property_tax_rate_response(trace)
+            or response
+        )
+    else:
+        # Retained minimal guard: import VAT (retrieval does not ground the 18% rate).
+        response = import_vat_response(trace) or response
     response = finalize_rollout_response(response, trace)
     sources = rag_pipeline._prepare_sources(rollout_chunks)
     if not sources:
