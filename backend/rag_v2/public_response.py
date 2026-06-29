@@ -27,6 +27,29 @@ def strip_generated_source_mentions(text: str) -> str:
     return cleaned.strip()
 
 
+_REFUSAL_SENTENCE_PATTERNS = [
+    r"В предоставленных официальных источниках ответ(?:\s+на этот вопрос)? не найден\.?",
+    r"In the provided official sources[^.]*not found\.?",
+    r"მოწოდებულ ოფიციალურ წყაროებში[^.]*?(?:ვერ მოიძებნა|არ მოიძებნა)\.?",
+]
+
+
+def strip_contradictory_refusal(text: str) -> str:
+    """Drop the strict-prompt refusal sentence when the answer also has real content.
+
+    The generator sometimes appends "…ответ не найден." after actually stating the
+    rule, producing a self-contradictory answer. A pure refusal (only this sentence)
+    is left intact so honest "no answer" responses still work.
+    """
+    cleaned = (text or "").strip()
+    for pattern in _REFUSAL_SENTENCE_PATTERNS:
+        without = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+        without = re.sub(r"\n{3,}", "\n\n", without).strip()
+        if without and without != cleaned and len(without) >= 8:
+            cleaned = without
+    return cleaned
+
+
 def normalize_citation_title(title: str) -> str:
     cleaned = (title or "").strip()
     cleaned = re.sub(r"[\s,.;:]+$", "", cleaned)
@@ -152,6 +175,7 @@ def format_precise_citation(trace: Any) -> Optional[str]:
 def finalize_rollout_response(response: str, trace: Any) -> str:
     base = normalize_public_response_text(strip_generated_source_mentions(strip_trailing_source_line(response)))
     base = sanitize_language_drift(base, trace)
+    base = strip_contradictory_refusal(base)
     question_class = trace.classification.get("question_class")
     if question_class == "amendment_tracking":
         return base
