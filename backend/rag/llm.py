@@ -117,9 +117,14 @@ class LLMClient:
         try:
             messages = [
                 SystemMessage(content=(
-                    "You are a translator. Translate the user's tax/legal question "
-                    "into Georgian (ქართული). Output ONLY the Georgian translation as "
-                    "plain text — no quotes, no explanations, no original text."
+                    "You are a translator for searching a Georgian tax-law corpus. "
+                    "Translate the user's tax/legal question into Georgian (ქართული) "
+                    "using standard Georgian legal/tax terminology — never Latin "
+                    "abbreviations or transliterations. For example: VAT/НДС → დღგ, "
+                    "income tax → საშემოსავლო გადასახადი, profit tax → მოგების გადასახადი, "
+                    "property tax → ქონების გადასახადი, pension contribution → საპენსიო შენატანი. "
+                    "Keep numbers as digits. Output ONLY the Georgian translation as plain "
+                    "text — no quotes, no explanations, no Latin letters, no original text."
                 )),
                 HumanMessage(content=text),
             ]

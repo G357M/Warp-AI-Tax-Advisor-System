@@ -49,7 +49,22 @@ def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDo
         from rag.pipeline import rag_pipeline
         retrieval_query = rag_pipeline._retrieval_query(query, parsed.language)
         embedding = rag_pipeline.embeddings.encode_query(retrieval_query)
-        res = rag_pipeline.vector_store.search(query_embedding=embedding, n_results=limit)
+        # The corpus is 75% court decisions, which drown the actual statute for a
+        # "what does the law say" question. Restrict the semantic channel to primary
+        # legislation; for dispute-intent questions keep case law instead.
+        lane = rag_pipeline._intent_lane(
+            rag_pipeline._extract_query_hints(query, language=parsed.language)
+        )
+        if lane == "dispute":
+            where = {"document_types": ["court_decision"]}
+        else:
+            where = {
+                "document_types": ["law", "regulation", "guideline"],
+                "exclude_categories": ["tax_customs_dispute"],
+            }
+        res = rag_pipeline.vector_store.search(
+            query_embedding=embedding, n_results=limit, where=where
+        )
     except Exception as exc:  # never break the pipeline on a retrieval issue
         print(f"[v2.semantic] retrieval error: {exc}")
         return []
