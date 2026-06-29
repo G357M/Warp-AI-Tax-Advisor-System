@@ -221,7 +221,15 @@ def import_vat_response(trace: Any) -> Optional[str]:
     parsed = getattr(trace, "parsed_query", None) or {}
     if parsed.get("topic") != "import_vat":
         return None
-    return direct_tax_faq_response(trace)
+    # Import VAT is the one topic retrieval can't ground (it pulls customs-value or
+    # returning-resident chunks, not "import is a VAT-taxable operation"), and the
+    # strict prompt then refuses non-deterministically. The FAQ entry answers both
+    # "is it taxed" and "what rate" ("Да … 18%"), so serve it for any goal, not only
+    # rate_lookup — this is the single retained import-VAT guard.
+    entry = get_tax_faq_entry("import_vat")
+    if not entry:
+        return None
+    return entry.response_by_lang.get(_response_language(trace)) or entry.response_by_lang.get("ru")
 
 
 def nonresident_withholding_tax_response(trace: Any) -> Optional[str]:
