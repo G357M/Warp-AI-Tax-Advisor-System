@@ -4,6 +4,15 @@ Each chunk becomes one whole article ("მუხლი N") so it embeds coherent
 topical query and carries article_ref for precise citation. Court decisions are
 NOT touched. Per-document transactions make the run resumable and partial-safe.
 
+Run this AFTER reembed_bge_m3.py has fully populated embedding_v2 for the corpus,
+with INFOHUB_EMBEDDING_V2=1 set — DocumentChunk.embedding is a fixed Vector(768)
+column (the old paraphrase-mpnet dimension), so a bge-m3 1024-d vector cannot be
+written there; it goes into embedding_v2 via raw SQL instead, mirroring
+reembed_bge_m3.py. Without the env var this falls back to populating the old
+768-d `.embedding` column, which is correct if you ever need to re-chunk before
+the bge-m3 migration, but then embedding_v2 stays NULL for the new chunks until
+reembed_bge_m3.py is re-run (it is resumable and will pick them up).
+
 Usage (run inside the infohub-backend container):
     python /app/scripts/rechunk_primary_legislation.py                 # all primary legislation
     python /app/scripts/rechunk_primary_legislation.py --source-url URL # single document
@@ -14,9 +23,11 @@ import argparse
 import logging
 import os
 import sys
+from uuid import uuid4
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from sqlalchemy import text
 from core.database import SessionLocal
 from models.document import Document, DocumentChunk
 from processor.chunker import text_chunker
@@ -63,10 +74,13 @@ def rechunk_document(db, doc: Document) -> int:
     # Replace old chunks atomically with the new article-level ones.
     db.query(DocumentChunk).filter(DocumentChunk.document_id == doc.id).delete()
 
+    # Assign ids up front (rather than relying on the ORM's flush-time default) so
+    # they're available below for the embedding_v2 raw-SQL UPDATE.
     objs = []
     for idx, ch in enumerate(new_chunks_data):
         objs.append(
             DocumentChunk(
+                id=uuid4(),
                 document_id=doc.id,
                 chunk_index=idx,
                 content=ch["content"],
@@ -75,14 +89,30 @@ def rechunk_document(db, doc: Document) -> int:
             )
         )
 
-    # Embed in batches and attach vectors before insert.
+    # Embed in batches. bge-m3 (1024-d) cannot go into the fixed Vector(768)
+    # `.embedding` column — it's written to embedding_v2 via raw SQL instead.
+    use_v2 = embeddings_generator.use_v2
     contents = [o.content for o in objs]
+    v2_vectors = {}
     for i in range(0, len(contents), EMBED_BATCH):
         vectors = embeddings_generator.encode(contents[i : i + EMBED_BATCH])
-        for obj, vec in zip(objs[i : i + EMBED_BATCH], vectors):
-            obj.embedding = vec
+        batch = objs[i : i + EMBED_BATCH]
+        if use_v2:
+            for obj, vec in zip(batch, vectors):
+                v2_vectors[obj.id] = vec
+        else:
+            for obj, vec in zip(batch, vectors):
+                obj.embedding = vec
 
     db.add_all(objs)
+    if use_v2:
+        db.flush()  # rows must exist before the UPDATE below can match their ids
+        for obj_id, vec in v2_vectors.items():
+            vec_str = "[" + ",".join(str(float(x)) for x in vec) + "]"
+            db.execute(
+                text("UPDATE document_chunks SET embedding_v2 = CAST(:v AS vector) WHERE id = :id"),
+                {"v": vec_str, "id": obj_id},
+            )
     db.commit()
     return len(objs)
 
@@ -130,9 +160,21 @@ def main():
                 logger.info(f"[{n}/{total}] processed={done} new_chunks={new_total}")
 
         logger.info("Ensuring HNSW index exists...")
-        vector_store.create_index()
+        if embeddings_generator.use_v2:
+            db.execute(text("""
+                CREATE INDEX IF NOT EXISTS document_chunks_embedding_v2_idx
+                ON document_chunks USING hnsw (embedding_v2 vector_cosine_ops)
+                WITH (m = 16, ef_construction = 64)
+            """))
+            db.commit()
+            total_vectors = db.execute(
+                text("SELECT count(*) FROM document_chunks WHERE embedding_v2 IS NOT NULL")
+            ).scalar()
+        else:
+            vector_store.create_index()
+            total_vectors = vector_store.get_count()
         logger.info(f"DONE. Re-chunked {done} docs into {new_total} article chunks. "
-                    f"Total vectors: {vector_store.get_count()}")
+                    f"Total vectors: {total_vectors}")
     finally:
         db.close()
 
