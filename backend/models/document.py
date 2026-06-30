@@ -69,7 +69,8 @@ class DocumentChunk(Base):
     start_position = Column(Integer, nullable=True)
     end_position = Column(Integer, nullable=True)
     metadata_json = Column("metadata", JSON, nullable=True)
-    embedding = Column(Vector(768), nullable=True)  # pgvector for semantic search
+    embedding = Column(Vector(768), nullable=True)  # paraphrase-mpnet (legacy)
+    embedding_v2 = Column(Vector(1024), nullable=True)  # bge-m3 (Phase 5)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

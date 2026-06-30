@@ -3,6 +3,7 @@ Vector store implementation using pgvector (PostgreSQL extension).
 Compatible with Python 3.14+.
 """
 import logging
+import os
 from typing import List, Dict, Optional, Any
 from uuid import UUID
 import numpy as np
@@ -16,11 +17,20 @@ from models.document import DocumentChunk
 logger = logging.getLogger(__name__)
 
 
+def _use_v2() -> bool:
+    """Mirrors rag.embeddings._use_v2 — duplicated (not imported) so importing
+    this module never forces a SentenceTransformer load just to pick a column name.
+    """
+    return (os.getenv("INFOHUB_EMBEDDING_V2") or "").strip() == "1"
+
+
 class PgVectorStore:
     """Vector store using PostgreSQL with pgvector extension."""
 
     def __init__(self):
-        self.dimension = 768  # sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+        self.use_v2 = _use_v2()
+        self.dimension = 1024 if self.use_v2 else 768
+        self.embedding_column = "embedding_v2" if self.use_v2 else "embedding"
         self.session: Optional[Session] = None
         self._initialize()
 
@@ -31,7 +41,7 @@ class PgVectorStore:
                 result = conn.execute(text("SELECT extname FROM pg_extension WHERE extname = 'vector'"))
                 if not result.fetchone():
                     raise RuntimeError("pgvector extension is not installed")
-                logger.info(f"✓ pgvector initialized (dimension: {self.dimension})")
+                logger.info(f"✓ pgvector initialized (column: {self.embedding_column}, dimension: {self.dimension})")
         except Exception as e:
             logger.error(f"Failed to initialize pgvector: {e}")
             raise
@@ -64,7 +74,7 @@ class PgVectorStore:
                     continue
 
                 embedding_array = np.array(embedding, dtype=np.float32)
-                chunk.embedding = embedding_array.tolist()
+                setattr(chunk, self.embedding_column, embedding_array.tolist())
                 db.merge(chunk)
                 updated_count += 1
 
@@ -86,10 +96,11 @@ class PgVectorStore:
         """Search for similar vectors using cosine similarity."""
         db = SessionLocal()
         try:
+            col = self.embedding_column
             query_vec = np.array(query_embedding, dtype=np.float32)
             query_vec_str = "[" + ",".join(str(float(x)) for x in query_vec.tolist()) + "]"
-            query = text("""
-                SELECT 
+            query = text(f"""
+                SELECT
                     c.id,
                     c.document_id,
                     c.chunk_index,
@@ -100,11 +111,11 @@ class PgVectorStore:
                     d.category AS document_category,
                     d.language AS document_language,
                     d.source_url AS source_url,
-                    1 - (c.embedding <=> CAST(:query_embedding AS vector)) as similarity,
-                    c.embedding <=> CAST(:query_embedding AS vector) as distance
+                    1 - (c.{col} <=> CAST(:query_embedding AS vector)) as similarity,
+                    c.{col} <=> CAST(:query_embedding AS vector) as distance
                 FROM document_chunks c
                 JOIN documents d ON d.id = c.document_id
-                WHERE c.embedding IS NOT NULL
+                WHERE c.{col} IS NOT NULL
             """)
             clauses = []
             params = {"query_embedding": query_vec_str, "limit": limit}
@@ -162,7 +173,7 @@ class PgVectorStore:
             sql = str(query)
             if clauses:
                 sql += " AND " + " AND ".join(clauses)
-            sql += " ORDER BY c.embedding <=> CAST(:query_embedding AS vector) LIMIT :limit"
+            sql += f" ORDER BY c.{col} <=> CAST(:query_embedding AS vector) LIMIT :limit"
             result = db.execute(text(sql), params)
 
             results = []
@@ -196,7 +207,7 @@ class PgVectorStore:
     def get_count(self) -> int:
         db = SessionLocal()
         try:
-            result = db.execute(text("SELECT COUNT(*) FROM document_chunks WHERE embedding IS NOT NULL"))
+            result = db.execute(text(f"SELECT COUNT(*) FROM document_chunks WHERE {self.embedding_column} IS NOT NULL"))
             count = result.scalar()
             return count or 0
         finally:
@@ -205,9 +216,9 @@ class PgVectorStore:
     def delete_collection(self) -> None:
         db = SessionLocal()
         try:
-            db.execute(text("UPDATE document_chunks SET embedding = NULL"))
+            db.execute(text(f"UPDATE document_chunks SET {self.embedding_column} = NULL"))
             db.commit()
-            logger.info("Cleared all embeddings from pgvector")
+            logger.info(f"Cleared all {self.embedding_column} vectors from pgvector")
         except Exception as e:
             logger.error(f"Error clearing embeddings: {e}")
             db.rollback()
@@ -217,14 +228,14 @@ class PgVectorStore:
     def create_index(self) -> None:
         db = SessionLocal()
         try:
-            db.execute(text("""
-                CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx 
-                ON document_chunks 
-                USING hnsw (embedding vector_cosine_ops)
+            db.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS document_chunks_{self.embedding_column}_idx
+                ON document_chunks
+                USING hnsw ({self.embedding_column} vector_cosine_ops)
                 WITH (m = 16, ef_construction = 64);
             """))
             db.commit()
-            logger.info("Created HNSW index for pgvector")
+            logger.info(f"Created HNSW index for pgvector ({self.embedding_column})")
         except Exception as e:
             logger.error(f"Error creating index: {e}")
             db.rollback()
