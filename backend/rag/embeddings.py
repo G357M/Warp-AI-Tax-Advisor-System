@@ -1,10 +1,21 @@
 """
 Embeddings generation using multilingual sentence transformers.
 """
+import os
 from typing import List, Union
 from sentence_transformers import SentenceTransformer
 
 from core.config import settings
+
+
+def _use_v2() -> bool:
+    """BGE-M3 (1024-d) replaces paraphrase-mpnet (768-d) when enabled.
+
+    bge-m3 actually discriminates Georgian law and matches ru/en queries against the
+    Georgian corpus directly (no translation needed), so it reads from the embedding_v2
+    column. Toggle with INFOHUB_EMBEDDING_V2=1 once that column is fully populated.
+    """
+    return (os.getenv("INFOHUB_EMBEDDING_V2") or "").strip() == "1"
 
 
 class EmbeddingsGenerator:
@@ -12,15 +23,19 @@ class EmbeddingsGenerator:
 
     def __init__(self):
         """Initialize embedding model."""
+        self.use_v2 = _use_v2()
+        self.model_name = "BAAI/bge-m3" if self.use_v2 else settings.EMBEDDING_MODEL
+        self.dimension = 1024 if self.use_v2 else settings.EMBEDDING_DIMENSION
+        self._normalize = self.use_v2
         self.model = None
         self._load_model()
 
     def _load_model(self):
         """Load sentence transformer model."""
         try:
-            print(f"Loading embedding model: {settings.EMBEDDING_MODEL}")
-            self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
-            print(f"✓ Embedding model loaded (dimension: {settings.EMBEDDING_DIMENSION})")
+            print(f"Loading embedding model: {self.model_name}")
+            self.model = SentenceTransformer(self.model_name)
+            print(f"✓ Embedding model loaded (dimension: {self.dimension})")
         except Exception as e:
             print(f"⚠ Warning: Could not load embedding model: {e}")
             print(f"⚠ Embeddings will not work until model is downloaded")
