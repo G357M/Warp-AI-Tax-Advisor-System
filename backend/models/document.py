@@ -2,8 +2,7 @@
 SQLAlchemy models for documents and related entities.
 """
 from __future__ import annotations
-from datetime import datetime, date
-from typing import Optional
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -15,7 +14,6 @@ from sqlalchemy import (
     JSON,
     ForeignKey,
     Integer,
-    Boolean,
     Index,
 )
 from sqlalchemy.dialects.postgresql import UUID

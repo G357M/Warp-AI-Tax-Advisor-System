@@ -65,7 +65,7 @@ class EmbeddingsGenerator:
             return embeddings.tolist()
         except Exception as e:
             print(f"Error generating embeddings: {e}")
-            return [[0.0] * settings.EMBEDDING_DIMENSION] * len(texts)
+            return [[0.0] * self.dimension] * len(texts)
 
     def encode_query(self, query: str) -> List[float]:
         """
@@ -78,7 +78,7 @@ class EmbeddingsGenerator:
             Embedding vector
         """
         embeddings = self.encode(query)
-        return embeddings[0] if embeddings else [0.0] * settings.EMBEDDING_DIMENSION
+        return embeddings[0] if embeddings else [0.0] * self.dimension
 
 
 # Global embeddings generator instance

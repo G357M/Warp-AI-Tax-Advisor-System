@@ -145,17 +145,17 @@ def main():
         done = 0
         new_total = 0
         for n, doc in enumerate(docs, 1):
-            if str(doc.id) in processed:
-                continue
-            try:
-                count = rechunk_document(db, doc)
-                if count >= 0:
-                    new_total += count
-                    done += 1
-                _mark_processed(str(doc.id))
-            except Exception as exc:
-                db.rollback()
-                logger.error(f"  FAILED {doc.id} ({doc.title[:40]}): {exc}")
+            if str(doc.id) not in processed:
+                try:
+                    count = rechunk_document(db, doc)
+                    if count >= 0:
+                        new_total += count
+                        done += 1
+                    _mark_processed(str(doc.id))
+                except Exception as exc:
+                    db.rollback()
+                    logger.error(f"  FAILED {doc.id} ({doc.title[:40]}): {exc}")
+            # Unconditional so resumed runs (many docs already in `processed`) still log.
             if n % 25 == 0 or n == total:
                 logger.info(f"[{n}/{total}] processed={done} new_chunks={new_total}")
 

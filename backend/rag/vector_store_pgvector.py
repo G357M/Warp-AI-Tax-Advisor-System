@@ -31,6 +31,9 @@ class PgVectorStore:
         self.use_v2 = _use_v2()
         self.dimension = 1024 if self.use_v2 else 768
         self.embedding_column = "embedding_v2" if self.use_v2 else "embedding"
+        # embedding_column is f-string-interpolated into raw SQL below; keep it
+        # restricted to this fixed pair, never derived from external input.
+        assert self.embedding_column in ("embedding", "embedding_v2")
         self.session: Optional[Session] = None
         self._initialize()
 
@@ -75,7 +78,6 @@ class PgVectorStore:
 
                 embedding_array = np.array(embedding, dtype=np.float32)
                 setattr(chunk, self.embedding_column, embedding_array.tolist())
-                db.merge(chunk)
                 updated_count += 1
 
             db.commit()
@@ -99,7 +101,7 @@ class PgVectorStore:
             col = self.embedding_column
             query_vec = np.array(query_embedding, dtype=np.float32)
             query_vec_str = "[" + ",".join(str(float(x)) for x in query_vec.tolist()) + "]"
-            query = text(f"""
+            sql = f"""
                 SELECT
                     c.id,
                     c.document_id,
@@ -116,7 +118,7 @@ class PgVectorStore:
                 FROM document_chunks c
                 JOIN documents d ON d.id = c.document_id
                 WHERE c.{col} IS NOT NULL
-            """)
+            """
             clauses = []
             params = {"query_embedding": query_vec_str, "limit": limit}
             if where:
@@ -170,7 +172,6 @@ class PgVectorStore:
                         names.append(f":{key}")
                     clauses.append(f"(d.category IS NULL OR d.category NOT IN ({', '.join(names)}))")
 
-            sql = str(query)
             if clauses:
                 sql += " AND " + " AND ".join(clauses)
             sql += f" ORDER BY c.{col} <=> CAST(:query_embedding AS vector) LIMIT :limit"
