@@ -35,6 +35,35 @@ def bm25_candidates(parsed: ParsedQuery) -> List[CandidateDocument]:
     return results
 
 
+def _merge_search_results(primary: Dict, extra: Dict) -> Dict:
+    """Merge two vector_store.search() result dicts, deduping by chunk id.
+
+    Both are the {"ids": [[...]], "documents": [[...]], "metadatas": [[...]],
+    "distances": [[...]]} shape from rag.vector_store.VectorStore.search(). Primary
+    entries win on duplicate ids (its ordering/scores are kept); extras are appended.
+    """
+    ids = list(primary.get("ids", [[]])[0])
+    docs = list(primary.get("documents", [[]])[0])
+    metas = list(primary.get("metadatas", [[]])[0])
+    dists = list(primary.get("distances", [[]])[0])
+    seen = set(ids)
+
+    extra_ids = extra.get("ids", [[]])[0]
+    extra_docs = extra.get("documents", [[]])[0]
+    extra_metas = extra.get("metadatas", [[]])[0]
+    extra_dists = extra.get("distances", [[]])[0]
+    for cid, doc, meta, dist in zip(extra_ids, extra_docs, extra_metas, extra_dists):
+        if cid in seen:
+            continue
+        seen.add(cid)
+        ids.append(cid)
+        docs.append(doc)
+        metas.append(meta)
+        dists.append(dist)
+
+    return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [dists]}
+
+
 def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocument]:
     """Real cross-lingual chunk-level retrieval.
 
@@ -57,14 +86,32 @@ def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDo
         )
         if lane == "dispute":
             where = {"document_types": ["court_decision"]}
+            res = rag_pipeline.vector_store.search(
+                query_embedding=embedding, n_results=limit, where=where
+            )
         else:
             where = {
                 "document_types": ["law", "regulation", "guideline"],
                 "exclude_categories": ["tax_customs_dispute"],
             }
-        res = rag_pipeline.vector_store.search(
-            query_embedding=embedding, n_results=limit, where=where
-        )
+            res = rag_pipeline.vector_store.search(
+                query_embedding=embedding, n_results=limit, where=where
+            )
+            # Primary legislation ("law") can rank below topically-dense procedural
+            # regulations (ministry orders full of repeated application-form/example
+            # text) even though it's the authoritative source — the reranker already
+            # prefers `law` for canonical_law_lookup (legal_reranker.AUTHORITY_WEIGHTS /
+            # _class_fit), but only among the candidates it's given. A small law-only
+            # search guarantees the Tax Code always gets a fair shot at competing,
+            # even when its raw cosine similarity alone wouldn't place it in the
+            # general top-N. Merged, not a replacement, so this can only add
+            # candidates for the reranker to weigh — never remove ones already found.
+            law_res = rag_pipeline.vector_store.search(
+                query_embedding=embedding,
+                n_results=3,
+                where={"document_types": ["law"], "exclude_categories": ["tax_customs_dispute"]},
+            )
+            res = _merge_search_results(res, law_res)
     except Exception as exc:  # never break the pipeline on a retrieval issue
         print(f"[v2.semantic] retrieval error: {exc}")
         return []
