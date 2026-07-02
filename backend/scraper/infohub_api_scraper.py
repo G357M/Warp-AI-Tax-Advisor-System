@@ -37,6 +37,7 @@ from core.config import settings
 from core.database import SessionLocal
 from models.document import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
+from rag.vector_store_pgvector import vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,8 @@ class InfoHubAPIScraper:
             )
             if embeddings is not None:
                 emb = embeddings[i]
-                chunk.embedding = emb.tolist() if hasattr(emb, "tolist") else list(emb)
+                emb_list = emb.tolist() if hasattr(emb, "tolist") else list(emb)
+                setattr(chunk, vector_store.embedding_column, emb_list)
             db.add(chunk)
 
         db.commit()
