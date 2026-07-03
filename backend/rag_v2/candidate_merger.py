@@ -17,6 +17,19 @@ CHANNEL_PRIORITY = {
 
 
 def _candidate_key(candidate: CandidateDocument) -> str:
+    # semantic_search candidates carry a specific chunk of a document, not the
+    # whole document -- when a large source document (e.g. the Tax Code) surfaces
+    # several different chunks for one query, deduping them down to the document
+    # id would silently keep only whichever chunk was processed last (no scoring
+    # involved) and discard the rest before the reranker ever saw them. Key by
+    # document+chunk instead so each chunk stays a separate candidate and the
+    # reranker actually gets to choose the right one. Other channels genuinely
+    # are one-candidate-per-document matches (citation/article/point/exact-doc
+    # resolvers don't carry chunk text), so they keep the document-level key.
+    if candidate.channel == "semantic_search" and candidate.document_id:
+        chunk_index = (candidate.metadata or {}).get("chunk_index")
+        if chunk_index is not None:
+            return f"doc:{candidate.document_id}:chunk:{chunk_index}"
     if candidate.document_id:
         return f"doc:{candidate.document_id}"
     if candidate.source_url:
