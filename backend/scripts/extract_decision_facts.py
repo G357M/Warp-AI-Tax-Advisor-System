@@ -143,6 +143,7 @@ def main() -> None:
             SELECT d.id FROM documents d
             LEFT JOIN decision_facts f ON f.document_id = d.id
             WHERE d.document_type = 'court_decision' AND f.id IS NULL
+              AND (d.metadata->>'kind') IS DISTINCT FROM 'digest'
             ORDER BY d.date_published DESC NULLS LAST
         """
         if args.limit:
