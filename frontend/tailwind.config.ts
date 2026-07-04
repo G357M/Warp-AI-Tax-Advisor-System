@@ -27,11 +27,29 @@ const config: Config = {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
+        success: 'hsl(var(--success))',
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      fontFamily: {
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'var(--font-inter)',
+          'var(--font-georgian)',
+          'Segoe UI',
+          'system-ui',
+          'sans-serif',
+        ],
+      },
+      letterSpacing: {
+        display: '-0.02em',
+      },
+      maxWidth: {
+        page: '1080px',
       },
     },
   },

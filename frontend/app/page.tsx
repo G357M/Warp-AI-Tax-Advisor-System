@@ -1,301 +1,175 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { RocketIcon, LightningBoltIcon, StarIcon } from '@radix-ui/react-icons';
-import { QueryForm } from '@/components/QueryForm';
-import { Response } from '@/components/Response';
-import { Sources } from '@/components/Sources';
-import { useQuery } from '@/hooks/useQuery';
+import { useEffect, useState } from 'react';
+import { ChatPanel } from '@/components/ChatPanel';
+import { StatTile } from '@/components/ui/StatTile';
+import { Button } from '@/components/ui/Button';
+import { PLANS } from '@/lib/plans';
+
+interface DecisionStats {
+  coverage: { decisions_in_corpus: number; decisions_extracted: number };
+  overall: { total: number; taxpayer_relief_rate: number | null };
+  top_articles: { article: string; total: number; taxpayer_relief_rate: number | null }[];
+}
+
+const STEPS = [
+  {
+    n: '1',
+    title: 'Вопрос',
+    text: 'Задайте вопрос на русском, грузинском или английском — о ставках, режимах, спорах.',
+  },
+  {
+    n: '2',
+    title: 'Поиск по официальной базе',
+    text: 'Система ищет только в официальных документах: кодексы, приказы, решения советов по спорам.',
+  },
+  {
+    n: '3',
+    title: 'Ответ с цитатой',
+    text: 'Каждый ответ сопровождается точным источником — вплоть до статьи закона. Если ответа в базе нет, система честно говорит об этом.',
+  },
+];
 
 export default function Home() {
-  const { data, loading, error, submitQuery } = useQuery();
+  const [stats, setStats] = useState<DecisionStats | null>(null);
+  const [docCount, setDocCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/v1/analytics/decisions')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setStats)
+      .catch(() => null);
+    fetch('/api/v1/public/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setDocCount(d?.total_documents ?? null))
+      .catch(() => null);
+  }, []);
+
+  const reliefPct =
+    stats?.overall.taxpayer_relief_rate != null
+      ? `${Math.round(stats.overall.taxpayer_relief_rate * 100)}%`
+      : '—';
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Animated Background */}
-      <div style={{ position: 'absolute', width: '100%', height: '100%', overflow: 'hidden', zIndex: 0 }}>
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          style={{
-            position: 'absolute',
-            top: '10%',
-            left: '10%',
-            width: '300px',
-            height: '300px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(240,147,251,0.3) 0%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.3, 1], rotate: [360, 180, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-          style={{
-            position: 'absolute',
-            bottom: '10%',
-            right: '10%',
-            width: '400px',
-            height: '400px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(118,75,162,0.3) 0%, transparent 70%)',
-            filter: 'blur(70px)',
-          }}
-        />
-      </div>
-
-      {/* Header */}
-      <motion.header
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        style={{
-          position: 'relative',
-          zIndex: 10,
-          padding: '1.5rem 2rem',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          backgroundColor: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-              style={{
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                padding: '1rem',
-                borderRadius: '1rem',
-                boxShadow: '0 10px 25px rgba(240,147,251,0.3)',
-              }}
-            >
-              <RocketIcon style={{ width: '24px', height: '24px', color: 'white' }} />
-            </motion.div>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>InfoHub AI</h1>
-              <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Tax Assistant</p>
-            </div>
+    <main>
+      {/* Hero */}
+      <section className="px-6 pb-20 pt-20 text-center sm:pt-28">
+        <div className="mx-auto max-w-page">
+          <div className="mb-5 text-[13px] font-medium text-secondary-foreground">
+            {docCount
+              ? `Официальная база · ${docCount.toLocaleString('ru-RU')} документов`
+              : 'Официальная база документов Грузии'}
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.875rem' }}>
-            <div
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.75rem',
-                background: 'rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }} />
-              <span>Public Beta</span>
-            </div>
+          <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-display sm:text-[56px] sm:leading-[1.08]">
+            Налоговое право Грузии.
+            <br />
+            С точными источниками.
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-muted-foreground">
+            Ответы строго по официальной базе: Налоговый кодекс, подзаконные акты,
+            решения советов по спорам — и статистика их исходов.
+          </p>
+          <div className="mt-10">
+            <ChatPanel />
           </div>
         </div>
-      </motion.header>
+      </section>
 
-      {/* Main Content */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          padding: '3rem 1.5rem',
-          maxWidth: '1200px',
-          margin: '0 auto',
-        }}
-      >
-        {/* Hero Section - only show when no data */}
-        {!data && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            style={{ textAlign: 'center', marginBottom: '4rem' }}
-          >
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              style={{ marginBottom: '2rem' }}
-            >
-              <LightningBoltIcon
-                style={{
-                  width: '80px',
-                  height: '80px',
-                  color: '#f5576c',
-                  filter: 'drop-shadow(0 0 20px rgba(245,87,108,0.5))',
-                }}
-              />
-            </motion.div>
-
-            <h2
-              style={{
-                fontSize: '3.5rem',
-                fontWeight: '900',
-                marginBottom: '1.5rem',
-                lineHeight: '1.2',
-              }}
-            >
-              Georgian Tax Law
-              <br />
-              <span
-                style={{
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                AI Assistant
-              </span>
-            </h2>
-
-            <p
-              style={{
-                fontSize: '1.25rem',
-                opacity: 0.9,
-                maxWidth: '800px',
-                margin: '0 auto 2rem',
-              }}
-            >
-              Получайте мгновенные ответы от AI на основе официальных налоговых документов Грузии
-            </p>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '2rem',
-                flexWrap: 'wrap',
-                marginBottom: '3rem',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '2rem',
-                }}
-              >
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }} />
-                <span>AI Powered</span>
+      {/* How it works */}
+      <section className="border-t px-6 py-20">
+        <div className="mx-auto max-w-page">
+          <h2 className="text-2xl font-semibold tracking-display">Как это работает</h2>
+          <div className="mt-10 grid gap-10 sm:grid-cols-3">
+            {STEPS.map((s) => (
+              <div key={s.n}>
+                <div className="text-[13px] font-medium text-secondary-foreground">{s.n}</div>
+                <h3 className="mt-2 text-[17px] font-semibold">{s.title}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{s.text}</p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '2rem',
-                }}
-              >
-                <StarIcon style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
-                <span>Мгновенные ответы</span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '2rem',
-                }}
-              >
-                <span>🇬🇪 🇷🇺 🇬🇧</span>
-                <span>3 языка</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Query Form */}
-        <QueryForm onSubmit={submitQuery} loading={loading} />
-
-        {/* Error Display */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              maxWidth: '800px',
-              margin: '24px auto',
-              padding: '16px 24px',
-              borderRadius: '16px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#fca5a5',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            <span style={{ fontSize: '24px' }}>⚠️</span>
-            <div>
-              <strong>Ошибка:</strong> {error}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Response Display */}
-        {data && (
-          <>
-            <Response response={data.response} processingTime={data.processing_time} />
-            <Sources sources={data.sources} retrievedCount={data.retrieved_count} />
-          </>
-        )}
-      </div>
-
-      {/* Footer */}
-      <footer
-        style={{
-          position: 'relative',
-          zIndex: 10,
-          padding: '2rem',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          background: 'rgba(255,255,255,0.05)',
-          textAlign: 'center',
-        }}
-      >
-        <p style={{ margin: '0 0 1rem 0', opacity: 0.8 }}>
-          <strong>InfoHub AI Tax Advisor</strong> • AI-powered assistant for Georgian tax law
-        </p>
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.5rem 1rem',
-            background: 'rgba(251,191,36,0.1)',
-            borderRadius: '2rem',
-            fontSize: '0.875rem',
-            color: '#fbbf24',
-          }}
-        >
-          <span>⚠️</span>
-          <span>Это AI-помощник. Всегда консультируйтесь с профессиональным налоговым консультантом.</span>
+            ))}
+          </div>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      {/* Live dispute statistics */}
+      <section id="stats" className="scroll-mt-20 border-t px-6 py-20">
+        <div className="mx-auto max-w-page">
+          <h2 className="text-2xl font-semibold tracking-display">Статистика налоговых споров</h2>
+          <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
+            Мы разобрали решения советов по рассмотрению споров Службы доходов и Минфина
+            и посчитали, как они заканчиваются — чтобы вы могли трезво оценить свою стратегию.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <StatTile
+              value={stats ? stats.overall.total.toLocaleString('ru-RU') : '…'}
+              label="Решений проанализировано"
+              detail={
+                stats
+                  ? `из ${stats.coverage.decisions_in_corpus.toLocaleString('ru-RU')} в базе`
+                  : undefined
+              }
+            />
+            <StatTile
+              value={reliefPct}
+              label="Жалоб получают облегчение"
+              detail="полное или частичное удовлетворение"
+            />
+            <StatTile
+              value={stats?.top_articles?.[0] ? `ст. ${stats.top_articles[0].article}` : '…'}
+              label="Самая спорная статья НК"
+              detail={
+                stats?.top_articles?.[0]
+                  ? `${stats.top_articles[0].total} решений`
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="scroll-mt-20 border-t px-6 py-20">
+        <div className="mx-auto max-w-page">
+          <h2 className="text-center text-2xl font-semibold tracking-display">Тарифы</h2>
+          <div className="mt-10 grid gap-5 sm:grid-cols-3">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                className={`flex flex-col rounded-lg border bg-white p-7 ${
+                  plan.highlighted ? 'border-primary shadow-[0_4px_24px_rgba(14,98,217,0.10)]' : ''
+                }`}
+              >
+                <div className="text-[15px] font-semibold">{plan.name}</div>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-[34px] font-semibold leading-none tracking-display">
+                    {plan.priceGel === 0 ? '0 ₾' : `${plan.priceGel} ₾`}
+                  </span>
+                  <span className="text-[13px] text-muted-foreground">{plan.period}</span>
+                </div>
+                <div className="mt-1 text-[13px] text-muted-foreground">{plan.tagline}</div>
+                <ul className="mt-5 flex-1 space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex gap-2 text-[14px] leading-snug">
+                      <span aria-hidden className="mt-[7px] h-1 w-3 shrink-0 rounded-full bg-primary/60" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={plan.highlighted ? 'primary' : 'secondary'}
+                  className="mt-7 w-full"
+                  onClick={() => document.getElementById('chat')?.scrollIntoView()}
+                >
+                  {plan.id === 'free' ? 'Начать бесплатно' : 'Скоро — начните с Free'}
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-[13px] text-muted-foreground">
+            Подписки Pro и Business откроются вместе с личным кабинетом. Цены предварительные.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }

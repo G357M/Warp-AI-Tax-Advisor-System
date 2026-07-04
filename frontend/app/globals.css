@@ -2,84 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — Apple-style light-first system.
+   Palette: near-white cool base, single deep-blue accent, hairline borders.
+   Signature element: the source-citation chip (see components/ui/SourceChip). */
 :root {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --primary: 263 70% 60%;
+  --background: 240 20% 99%;        /* #FAFAFC */
+  --foreground: 240 7% 11%;         /* #1B1B1E ink */
+  --muted: 240 9% 96%;              /* panels */
+  --muted-foreground: 240 4% 45%;   /* #6E6E73 secondary ink */
+  --primary: 216 88% 45%;           /* #0E62D9 deep blue */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4.8% 15%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 280 80% 70%;
+  --secondary: 216 90% 96%;         /* soft blue wash */
+  --secondary-foreground: 216 88% 38%;
+  --accent: 216 88% 45%;
   --accent-foreground: 0 0% 100%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 263 70% 60%;
-  --radius: 1rem;
+  --success: 147 62% 30%;           /* relief green for stats */
+  --border: 240 6% 89%;
+  --input: 240 6% 89%;
+  --ring: 216 88% 45%;
+  --radius: 1.125rem;               /* 18px cards */
+}
+
+.dark {
+  --background: 240 7% 7%;
+  --foreground: 0 0% 98%;
+  --muted: 240 6% 12%;
+  --muted-foreground: 240 5% 65%;
+  --primary: 214 92% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 50% 16%;
+  --secondary-foreground: 214 92% 72%;
+  --accent: 214 92% 60%;
+  --accent-foreground: 0 0% 100%;
+  --success: 147 50% 45%;
+  --border: 240 6% 18%;
+  --input: 240 6% 18%;
+  --ring: 214 92% 60%;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
-      Cantarell, Noto Sans, Helvetica Neue, Arial, Apple Color Emoji,
-      Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    @apply bg-background text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    @apply bg-secondary text-secondary-foreground;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 
 @layer utilities {
-  .bg-gradient-purple {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Frosted header — the one glass moment on the page */
+  .glass {
+    background: hsl(var(--background) / 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
-  .bg-gradient-blue {
-    background: linear-gradient(135deg, #667eea 0%, #4facfe 100%);
-  }
-  .bg-gradient-cosmic {
-    background: linear-gradient(135deg, #6e45e2 0%, #88d3ce 100%);
-  }
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600;
-  }
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  .backdrop-blur-strong {
-    backdrop-filter: blur(20px);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.animate-shimmer {
-  animation: shimmer 3s linear infinite;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 100%
-  );
-  background-size: 1000px 100%;
 }
