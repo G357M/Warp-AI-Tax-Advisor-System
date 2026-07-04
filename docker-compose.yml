@@ -50,6 +50,7 @@ services:
       - INFOHUB_RAG_V2_SHADOW_LOG_PATH=${INFOHUB_RAG_V2_SHADOW_LOG_PATH:-/tmp/rag_v2_shadow.jsonl}
       - INFOHUB_RAG_V2_ROLLOUT_CLASSES=${INFOHUB_RAG_V2_ROLLOUT_CLASSES:-named_document_lookup,canonical_law_lookup,local_regulation_lookup,amendment_tracking}
       - INFOHUB_RAG_V2_ROLLOUT_TOP_K=${INFOHUB_RAG_V2_ROLLOUT_TOP_K:-3}
+      - INFOHUB_EMBEDDING_V2=${INFOHUB_EMBEDDING_V2:-0}
     volumes:
       - ai_models:/root/.cache/huggingface
     ports:
