@@ -38,6 +38,12 @@ NEW_DOCS="${NEW_DOCS:-?}"
 # Alert (Telegram) on failure, or on too many consecutive 0-new runs.
 "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
 
+# Extract structured facts from newly ingested dispute decisions (incremental;
+# skips documents that already have a decision_facts row). Non-fatal on error.
+echo "Extracting decision facts for new court decisions..." | tee -a "$LOG_FILE"
+docker exec "$CONTAINER_NAME" python /app/scripts/extract_decision_facts.py --limit 500 \
+    2>&1 | tail -5 | tee -a "$LOG_FILE" || true
+
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
 
