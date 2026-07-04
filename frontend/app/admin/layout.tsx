@@ -73,10 +73,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }}
         >
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
-            InfoHub AI
+            Tax Advisor
           </h1>
           <p style={{ fontSize: '0.875rem', opacity: 0.7, margin: '0.25rem 0 0 0' }}>
-            Admin Panel
+            Админпанель
           </p>
         </div>
 
