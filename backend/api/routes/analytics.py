@@ -84,8 +84,10 @@ def decision_statistics(
 
     coverage = db.execute(text("""
         SELECT
-            (SELECT count(*) FROM documents WHERE document_type = 'court_decision') AS decisions_in_corpus,
-            (SELECT count(*) FROM decision_facts) AS decisions_extracted
+            (SELECT count(*) FROM documents WHERE document_type = 'court_decision'
+               AND (metadata->>'kind') IS DISTINCT FROM 'digest') AS decisions_in_corpus,
+            (SELECT count(*) FROM decision_facts) AS decisions_extracted,
+            (SELECT count(*) FROM documents) AS documents_total
     """)).one()
 
     return {
@@ -93,6 +95,7 @@ def decision_statistics(
         "coverage": {
             "decisions_in_corpus": coverage.decisions_in_corpus,
             "decisions_extracted": coverage.decisions_extracted,
+            "documents_total": coverage.documents_total,
         },
         "overall": _outcome_row(overall),
         "by_year": [{"year": r.year, **_outcome_row(r)} for r in by_year],

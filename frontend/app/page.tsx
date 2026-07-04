@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { PLANS } from '@/lib/plans';
 
 interface DecisionStats {
-  coverage: { decisions_in_corpus: number; decisions_extracted: number };
+  coverage: { decisions_in_corpus: number; decisions_extracted: number; documents_total?: number };
   overall: { total: number; taxpayer_relief_rate: number | null };
   top_articles: { article: string; total: number; taxpayer_relief_rate: number | null }[];
 }
@@ -32,18 +32,15 @@ const STEPS = [
 
 export default function Home() {
   const [stats, setStats] = useState<DecisionStats | null>(null);
-  const [docCount, setDocCount] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/v1/analytics/decisions')
       .then((r) => (r.ok ? r.json() : null))
       .then(setStats)
       .catch(() => null);
-    fetch('/api/v1/public/stats')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setDocCount(d?.total_documents ?? null))
-      .catch(() => null);
   }, []);
+
+  const docCount = stats?.coverage.documents_total ?? null;
 
   const reliefPct =
     stats?.overall.taxpayer_relief_rate != null
