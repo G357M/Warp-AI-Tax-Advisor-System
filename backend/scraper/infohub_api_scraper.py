@@ -144,6 +144,7 @@ class InfoHubAPIScraper:
                 "species": detail.get("species"),
             }),
             date_published=parse_receipt_date(detail.get("receiptDate")),
+            document_number=(str(detail.get("documentNumber")).strip() or None) if detail.get("documentNumber") else None,
             full_text=text,
             language=self.language,
             metadata_json={
