@@ -136,8 +136,23 @@ def normalize(payload: dict) -> dict:
     }
 
 
+def _normalize_law_name(name: str) -> str:
+    """Clean quote artifacts and declension so the name matches corpus titles."""
+    cleaned = re.sub(r'[„“”"]', '', name or '').strip()
+    # drop the generic wrapper — candidates re-append it in both positions
+    cleaned = re.sub(r'^საქართველოს კანონი\s+', '', cleaned)
+    cleaned = re.sub(r'\s+საქართველოს კანონი$', '', cleaned).strip(' .')
+    # quoted names decline adjectives ("ადმინისტრაციულ საპროცესო კოდექსში");
+    # corpus titles use the nominative ("ადმინისტრაციული საპროცესო კოდექსი")
+    cleaned = re.sub(r'ულ(?= )', 'ული', cleaned)
+    return cleaned
+
+
 def resolve_target_law(db, law_title: str):
     """Match the amended law's name to its corpus document (not another amendment)."""
+    if not law_title:
+        return None
+    law_title = _normalize_law_name(law_title)
     if not law_title:
         return None
     # Corpus titles for plain laws append "საქართველოს კანონი" ("Law of Georgia")
@@ -160,9 +175,34 @@ def resolve_target_law(db, law_title: str):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=0, help="max documents to process (0 = all pending)")
+    parser.add_argument("--reresolve", action="store_true",
+                        help="only retry target-law resolution for rows without one (no LLM)")
     args = parser.parse_args()
 
     Base.metadata.create_all(bind=engine, tables=[LawAmendment.__table__])
+
+    if args.reresolve:
+        db = SessionLocal()
+        try:
+            rows = db.query(LawAmendment).filter(LawAmendment.target_law_doc_id.is_(None)).all()
+            fixed = 0
+            for row in rows:
+                target_id = resolve_target_law(db, row.target_law_title or "")
+                if target_id:
+                    row.target_law_doc_id = target_id
+                    exists = db.query(DocumentRelation.id).filter_by(
+                        source_doc_id=row.amendment_doc_id, target_doc_id=target_id, relation_type="amends"
+                    ).first()
+                    if not exists:
+                        db.add(DocumentRelation(
+                            source_doc_id=row.amendment_doc_id, target_doc_id=target_id, relation_type="amends",
+                        ))
+                    fixed += 1
+            db.commit()
+            logger.info(f"Re-resolve: fixed {fixed} of {len(rows)} unresolved rows")
+        finally:
+            db.close()
+        return
 
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
