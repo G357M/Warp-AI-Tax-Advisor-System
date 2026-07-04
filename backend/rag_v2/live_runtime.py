@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -62,6 +63,78 @@ PENSION_LAW_SOURCE = {
 CURATED_LEGAL_BASIS = {
     "funded_pension": PENSION_LAW_SOURCE,
 }
+
+
+def _dispute_stats_line(trace) -> Optional[str]:
+    """Deterministic practice-statistics sentence appended to dispute answers.
+
+    Uses decision_facts: takes the primary decision's first contested Tax Code
+    article and aggregates outcomes across all extracted decisions on that
+    article. Returns None quietly when data is missing or too thin (<5 cases).
+    """
+    try:
+        from .db_utils import db_available, run_query
+        if not db_available():
+            return None
+        primary = (trace.reranking.get("top_ranked_documents") or [{}])[0]
+        doc_id = primary.get("document_id")
+        if not doc_id:
+            return None
+        rows = run_query(
+            "SELECT contested_articles FROM decision_facts WHERE document_id = %s::uuid LIMIT 1",
+            [str(doc_id)],
+        )
+        if not rows:
+            return None
+        articles = rows[0].get("contested_articles")
+        if isinstance(articles, str):
+            articles = json.loads(articles)
+        if not articles:
+            return None
+        article = str(articles[0])
+        stats_rows = run_query(
+            """
+            SELECT count(*) AS total,
+                   count(*) FILTER (WHERE outcome = 'satisfied') AS satisfied,
+                   count(*) FILTER (WHERE outcome = 'partially_satisfied') AS partial,
+                   count(*) FILTER (WHERE outcome = 'rejected') AS rejected,
+                   min(extract(year FROM decision_date))::int AS y0,
+                   max(extract(year FROM decision_date))::int AS y1
+            FROM decision_facts
+            WHERE contested_articles::jsonb ? %s AND outcome <> 'unclear'
+            """,
+            [article],
+        )
+        if not stats_rows:
+            return None
+        s = stats_rows[0]
+        total = s.get("total") or 0
+        if total < 5:
+            return None
+        years = f"{s['y0']}–{s['y1']}" if s.get("y0") and s.get("y1") else ""
+        lang = _response_language((trace.parsed_query or {}).get("language"))
+        if lang == "en":
+            return (
+                f"Practice statistics for Tax Code article {article}"
+                + (f" ({years})" if years else "")
+                + f": of {total} decisions in the database, the complaint was fully satisfied in {s['satisfied']}, "
+                  f"partially satisfied in {s['partial']}, and rejected in {s['rejected']} cases."
+            )
+        if lang == "ka":
+            return (
+                f"პრაქტიკის სტატისტიკა საგადასახადო კოდექსის {article}-ე მუხლზე"
+                + (f" ({years})" if years else "")
+                + f": ბაზაში არსებული {total} გადაწყვეტილებიდან საჩივარი სრულად დაკმაყოფილდა {s['satisfied']}, "
+                  f"ნაწილობრივ — {s['partial']}, არ დაკმაყოფილდა — {s['rejected']} შემთხვევაში."
+            )
+        return (
+            f"Статистика практики по статье {article} НК"
+            + (f" ({years})" if years else "")
+            + f": из {total} решений в базе жалоба удовлетворена полностью в {s['satisfied']}, "
+              f"частично — в {s['partial']}, отклонена — в {s['rejected']} случаях."
+        )
+    except Exception:
+        return None
 
 
 def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
@@ -881,6 +954,10 @@ def maybe_run_live_rollout(
         # Retained minimal guard: import VAT (retrieval does not ground the 18% rate).
         response = import_vat_response(trace) or response
     response = finalize_rollout_response(response, trace)
+    if question_class == "dispute_practice":
+        stats_line = _dispute_stats_line(trace)
+        if stats_line:
+            response = f"{response}\n\n{stats_line}"
     sources = rag_pipeline._prepare_sources(rollout_chunks)
     if not sources:
         return None
