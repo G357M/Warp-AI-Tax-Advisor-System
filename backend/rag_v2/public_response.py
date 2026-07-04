@@ -34,6 +34,20 @@ _REFUSAL_SENTENCE_PATTERNS = [
 ]
 
 
+def is_pure_refusal(text: str) -> bool:
+    """True when the answer is only the strict-prompt refusal sentence.
+
+    Such an answer must not carry a citation: "not found" plus
+    "Источник: …, статья N" contradict each other.
+    """
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return False
+    for pattern in _REFUSAL_SENTENCE_PATTERNS:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+    return len(cleaned) < 8
+
+
 def strip_contradictory_refusal(text: str) -> str:
     """Drop the strict-prompt refusal sentence when the answer also has real content.
 
@@ -178,6 +192,8 @@ def finalize_rollout_response(response: str, trace: Any) -> str:
     base = strip_contradictory_refusal(base)
     question_class = trace.classification.get("question_class")
     if question_class == "amendment_tracking":
+        return base
+    if is_pure_refusal(base):
         return base
     citation = format_precise_citation(trace)
     if citation:

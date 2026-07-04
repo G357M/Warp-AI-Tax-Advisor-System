@@ -513,19 +513,19 @@ def _no_evidence_amendment_response(trace) -> Optional[Dict[str, Any]]:
         year_text = f" in {year}" if year else ""
         response = (
             f"In the amendment acts for the Tax Code found{year_text}, I did not find fragments that directly relate to {topic_label}. "
-            f"So I will not claim that the live corpus confirms amendments on {topic_label} for that period."
+            f"So I will not claim that the official document database confirms amendments on {topic_label} for that period."
         )
     elif lang == "ka":
         year_text = f" {year} წელს" if year else ""
         response = (
             f"საგადასახადო კოდექსში ცვლილებების შესახებ ნაპოვნ აქტებში{year_text} ვერ ვიპოვე ფრაგმენტები, რომლებიც პირდაპირ ეხება {topic_label}. "
-            f"ამიტომ არ დავადასტურებ, რომ live corpus-ში ამ პერიოდზე {topic_label}-თან დაკავშირებული დადასტურებული ცვლილებებია."
+            f"ამიტომ არ დავადასტურებ, რომ ოფიციალური დოკუმენტების ბაზაში ამ პერიოდზე {topic_label}-თან დაკავშირებული დადასტურებული ცვლილებებია."
         )
     else:
         response = (
             f"В найденных актах о внесении изменений в Налоговый кодекс{year_text} я не нашёл фрагментов, "
             f"которые прямо относятся к {topic_label}. "
-            f"Поэтому не буду утверждать, что в live corpus есть подтверждённые поправки по {topic_label} за этот период."
+            f"Поэтому не буду утверждать, что в базе официальных документов есть подтверждённые поправки по {topic_label} за этот период."
         )
     return {
         "response": response,
@@ -589,17 +589,17 @@ def _no_evidence_local_regulation_response(trace) -> Optional[Dict[str, Any]]:
     locality_label = _locality_label(lang, locality)
     if lang == "en":
         response = (
-            f"I did not find a confirmed local normative act for {locality_label} in the live corpus with an exact property-tax rate, "
+            f"I did not find a confirmed local normative act for {locality_label} in the official document database with an exact property-tax rate, "
             "so I will not invent a rate without a reliable source."
         )
     elif lang == "ka":
         response = (
-            f"live corpus-ში ვერ ვიპოვე {locality_label}-თან დაკავშირებული დადასტურებული ადგილობრივი ნორმატიული აქტი ქონების გადასახადის ზუსტი განაკვეთით, "
+            f"ოფიციალური დოკუმენტების ბაზაში ვერ ვიპოვე {locality_label}-თან დაკავშირებული დადასტურებული ადგილობრივი ნორმატიული აქტი ქონების გადასახადის ზუსტი განაკვეთით, "
             "ამიტომ სანდო წყაროს გარეშე განაკვეთს ვერ მოვიგონებ."
         )
     else:
         response = (
-            f"Я не нашёл в live corpus подтверждённый локальный нормативный акт по { locality_label } "
+            f"Я не нашёл в базе официальных документов подтверждённый локальный нормативный акт по { locality_label } "
             "с точной ставкой налога на имущество, поэтому не буду придумывать ставку без надёжного источника."
         )
     return {
@@ -632,17 +632,17 @@ def _no_evidence_dispute_response(trace) -> Optional[Dict[str, Any]]:
     lang = _response_language(parsed.get("language"))
     if lang == "en":
         response = (
-            f"I did not find a confirmed decision in the live corpus specifically for dispute №{decision_ref}, "
+            f"I did not find a confirmed decision in the official document database specifically for dispute №{decision_ref}, "
             "so I will not attribute the outcome of another case to this dispute."
         )
     elif lang == "ka":
         response = (
-            f"live corpus-ში ვერ ვიპოვე დადასტურებული გადაწყვეტილება კონკრეტულად დავაზე №{decision_ref}, "
+            f"ოფიციალური დოკუმენტების ბაზაში ვერ ვიპოვე დადასტურებული გადაწყვეტილება კონკრეტულად დავაზე №{decision_ref}, "
             "ამიტომ სხვა საქმის შედეგს ამ დავას არ მივაწერ."
         )
     else:
         response = (
-            f"Я не нашёл в live corpus подтверждённое решение именно по спору №{decision_ref}, "
+            f"Я не нашёл в базе официальных документов подтверждённое решение именно по спору №{decision_ref}, "
             "поэтому не буду приписывать выводы другого дела этому спору."
         )
     return {
