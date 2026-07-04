@@ -9,6 +9,7 @@ import {
   FileTextIcon,
   PersonIcon,
   ActivityLogIcon,
+  BarChartIcon,
   GearIcon,
   ExitIcon,
 } from '@radix-ui/react-icons';
@@ -16,6 +17,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: DashboardIcon },
   { name: 'Documents', href: '/admin/documents', icon: FileTextIcon },
+  { name: 'Analytics', href: '/admin/analytics', icon: BarChartIcon },
   { name: 'Users', href: '/admin/users', icon: PersonIcon },
   { name: 'Scraper', href: '/admin/scraper', icon: ActivityLogIcon },
   { name: 'Settings', href: '/admin/settings', icon: GearIcon },
