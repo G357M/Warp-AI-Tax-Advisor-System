@@ -40,11 +40,11 @@ def main() -> None:
                 ~Document.document_type.in_(CANONICAL_TYPES),
                 and_(
                     Document.document_number.is_(None),
-                    Document.metadata_json["documentNumber"].astext.isnot(None),
+                    Document.metadata_json["documentNumber"].isnot(None),
                 ),
                 and_(
                     Document.date_published.is_(None),
-                    Document.metadata_json["receiptDate"].astext.isnot(None),
+                    Document.metadata_json["receiptDate"].isnot(None),
                 ),
             )
         ).all()
