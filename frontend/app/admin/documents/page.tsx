@@ -1,140 +1,123 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FileTextIcon, TrashIcon, UploadIcon, MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { useCallback, useEffect, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 
-export default function DocumentsPage() {
-  const [documents] = useState([
-    { id: '1', title: 'Tax Code 2024', chunks: 145, created: '2024-01-15', status: 'indexed' },
-    { id: '2', title: 'VAT Guidelines', chunks: 89, created: '2024-01-20', status: 'indexed' },
-    { id: '3', title: 'Corporate Tax Rules', chunks: 112, created: '2024-02-01', status: 'indexed' },
-    { id: '4', title: 'Income Tax Regulations', chunks: 78, created: '2024-02-05', status: 'processing' },
-  ]);
+interface AdminDoc {
+  id: string;
+  title: string;
+  document_type: string;
+  document_number: string | null;
+  date_published: string | null;
+  authority: string | null;
+  source_url: string;
+  created_at: string | null;
+}
+
+const TYPES = ['', 'law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
+
+const card: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '12px',
+};
+
+const input: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.08)',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: '8px',
+  color: 'white',
+  padding: '0.45rem 0.7rem',
+  fontSize: '0.85rem',
+};
+
+export default function AdminDocuments() {
+  const [items, setItems] = useState<AdminDoc[]>([]);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [docType, setDocType] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit: '50' });
+    if (search.trim()) params.set('search', search.trim());
+    if (docType) params.set('doc_type', docType);
+    authFetch(`/api/v1/admin/documents?${params}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => {
+        setItems(d.items);
+        setTotal(d.total);
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [search, docType]);
+
+  useEffect(load, [load]);
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Documents</h1>
-          <p style={{ fontSize: '1rem', opacity: 0.7, margin: 0 }}>Manage your knowledge base</p>
-        </div>
-        <button
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
-            borderRadius: '0.5rem',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '600',
-          }}
-        >
-          <UploadIcon /> Upload Document
-        </button>
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1200px' }}>
+      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>
+        Документы ({total.toLocaleString('ru-RU')})
+      </h1>
+
+      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <input
+          style={{ ...input, width: '320px' }}
+          placeholder="Поиск по названию или номеру…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select style={input} value={docType} onChange={(e) => setDocType(e.target.value)}>
+          {TYPES.map((t) => (
+            <option key={t} value={t}>{t || 'все типы'}</option>
+          ))}
+        </select>
+        {loading && <span style={{ alignSelf: 'center', fontSize: '0.8rem', opacity: 0.6 }}>ищу…</span>}
       </div>
 
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '1rem',
-          padding: '1.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <MagnifyingGlassIcon
-              style={{
-                position: 'absolute',
-                left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '20px',
-                height: '20px',
-                opacity: 0.5,
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Search documents..."
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem 0.75rem 3rem',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '0.5rem',
-                color: 'white',
-                fontSize: '0.875rem',
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {documents.map((doc) => (
-            <motion.div
-              key={doc.id}
-              whileHover={{ x: 4 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '1.5rem',
-                background: 'rgba(255,255,255,0.02)',
-                borderRadius: '0.75rem',
-                border: '1px solid rgba(255,255,255,0.05)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                <div
-                  style={{
-                    background: 'rgba(102,126,234,0.2)',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                  }}
-                >
-                  <FileTextIcon style={{ width: '24px', height: '24px', color: '#667eea' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 0.25rem 0' }}>{doc.title}</h3>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.5, margin: 0 }}>
-                    {doc.chunks} chunks • Created {doc.created}
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '1rem',
-                    fontSize: '0.75rem',
-                    background: doc.status === 'indexed' ? 'rgba(74,222,128,0.1)' : 'rgba(251,191,36,0.1)',
-                    color: doc.status === 'indexed' ? '#4ade80' : '#fbbf24',
-                  }}
-                >
-                  {doc.status}
-                </span>
-                <button
-                  style={{
-                    background: 'rgba(248,113,113,0.1)',
-                    border: '1px solid rgba(248,113,113,0.2)',
-                    borderRadius: '0.5rem',
-                    padding: '0.5rem',
-                    color: '#f87171',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <TrashIcon style={{ width: '16px', height: '16px' }} />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+      <div style={{ ...card, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', opacity: 0.7 }}>
+              {['Название', 'Тип', 'Номер', 'Дата', 'Орган'].map((h) => (
+                <th key={h} style={{ padding: '0.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <td style={{ padding: '0.55rem 1rem', maxWidth: '480px' }}>
+                  <a
+                    href={d.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    title={d.title}
+                  >
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.title}
+                    </span>
+                  </a>
+                </td>
+                <td style={{ padding: '0.55rem 1rem' }}>{d.document_type}</td>
+                <td style={{ padding: '0.55rem 1rem', opacity: 0.8 }}>{d.document_number ?? '—'}</td>
+                <td style={{ padding: '0.55rem 1rem', opacity: 0.8 }}>
+                  {d.date_published ? new Date(d.date_published).toLocaleDateString('ru-RU') : '—'}
+                </td>
+                <td style={{ padding: '0.55rem 1rem', opacity: 0.8, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {d.authority ?? '—'}
+                </td>
+              </tr>
+            ))}
+            {!loading && items.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ padding: '1rem', opacity: 0.6 }}>Ничего не найдено.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

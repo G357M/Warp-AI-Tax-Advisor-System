@@ -1,117 +1,154 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { PersonIcon, Cross2Icon, CheckIcon } from '@radix-ui/react-icons';
+import { useCallback, useEffect, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 
-export default function UsersPage() {
-  const [users] = useState([
-    { id: '1', email: 'admin@infohub.ge', role: 'admin', queries: 245, created: '2024-01-10', active: true },
-    { id: '2', email: 'user1@example.com', role: 'user', queries: 89, created: '2024-01-15', active: true },
-    { id: '3', email: 'user2@example.com', role: 'user', queries: 156, created: '2024-01-20', active: true },
-    { id: '4', email: 'banned@example.com', role: 'user', queries: 12, created: '2024-02-01', active: false },
-  ]);
+interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  created_at: string | null;
+  last_login: string | null;
+  plan: string;
+  period_end: string | null;
+}
+
+const card: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '12px',
+  padding: '1.25rem',
+};
+
+const input: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.08)',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: '8px',
+  color: 'white',
+  padding: '0.45rem 0.7rem',
+  fontSize: '0.85rem',
+};
+
+export default function AdminUsers() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [plan, setPlan] = useState<'pro' | 'business'>('pro');
+  const [months, setMonths] = useState(1);
+
+  const load = useCallback(() => {
+    authFetch('/api/v1/admin/users?limit=100')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => {
+        setUsers(d.items);
+        setTotal(d.total);
+      })
+      .catch(() => setMessage('Не получилось загрузить пользователей.'));
+  }, []);
+
+  useEffect(load, [load]);
+
+  const activate = async () => {
+    setMessage(null);
+    const res = await authFetch('/api/v1/billing/admin/activate', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim(), plan, months }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setMessage(`Активировано: ${data.email} → ${data.plan} до ${new Date(data.period_end).toLocaleDateString('ru-RU')}`);
+      setEmail('');
+      load();
+    } else {
+      setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось активировать подписку.');
+    }
+  };
+
+  const setRole = async (user: AdminUser, role: string) => {
+    setMessage(null);
+    const res = await authFetch(`/api/v1/admin/users/${user.id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) load();
+    else setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось изменить роль.');
+  };
 
   return (
-    <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Users</h1>
-        <p style={{ fontSize: '1rem', opacity: 0.7, margin: 0 }}>Manage user accounts and permissions</p>
-      </div>
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1100px' }}>
+      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>Пользователи ({total})</h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        {[
-          { label: 'Total Users', value: '89', color: '#667eea' },
-          { label: 'Active Today', value: '34', color: '#4ade80' },
-          { label: 'Total Queries', value: '1,247', color: '#f093fb' },
-        ].map((stat, i) => (
-          <div
-            key={i}
+      <div style={card}>
+        <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
+          Активировать подписку вручную (после оплаты по счёту)
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+          <input
+            style={{ ...input, width: '260px' }}
+            placeholder="email клиента"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <select style={input} value={plan} onChange={(e) => setPlan(e.target.value as 'pro' | 'business')}>
+            <option value="pro">Pro</option>
+            <option value="business">Business</option>
+          </select>
+          <select style={input} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+            {[1, 3, 6, 12].map((m) => (
+              <option key={m} value={m}>{m} мес</option>
+            ))}
+          </select>
+          <button
+            onClick={activate}
+            disabled={!email.trim()}
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '1rem',
-              padding: '1.5rem',
+              ...input,
+              background: '#2563eb',
+              border: 'none',
+              cursor: email.trim() ? 'pointer' : 'not-allowed',
+              opacity: email.trim() ? 1 : 0.5,
             }}
           >
-            <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.5rem' }}>{stat.label}</div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: stat.color }}>{stat.value}</div>
-          </div>
-        ))}
+            Активировать
+          </button>
+        </div>
+        {message && <div style={{ marginTop: '0.7rem', fontSize: '0.85rem', opacity: 0.85 }}>{message}</div>}
       </div>
 
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '1rem',
-          padding: '1.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {users.map((user) => (
-            <motion.div
-              key={user.id}
-              whileHover={{ x: 4 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '1.5rem',
-                background: 'rgba(255,255,255,0.02)',
-                borderRadius: '0.75rem',
-                border: '1px solid rgba(255,255,255,0.05)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                <div
-                  style={{
-                    background: user.active ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                  }}
-                >
-                  <PersonIcon style={{ width: '24px', height: '24px', color: user.active ? '#4ade80' : '#f87171' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 0.25rem 0' }}>{user.email}</h3>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.5, margin: 0 }}>
-                    {user.queries} queries • {user.role} • Joined {user.created}
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '1rem',
-                    fontSize: '0.75rem',
-                    background: user.active ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
-                    color: user.active ? '#4ade80' : '#f87171',
-                  }}
-                >
-                  {user.active ? 'Active' : 'Banned'}
-                </span>
-                <button
-                  style={{
-                    background: user.active ? 'rgba(248,113,113,0.1)' : 'rgba(74,222,128,0.1)',
-                    border: `1px solid ${user.active ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)'}`,
-                    borderRadius: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    color: user.active ? '#f87171' : '#4ade80',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                  }}
-                >
-                  {user.active ? <><Cross2Icon /> Ban</> : <><CheckIcon /> Unban</>}
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+      <div style={{ ...card, padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', opacity: 0.7 }}>
+              {['Логин', 'Email', 'Роль', 'Тариф', 'Подписка до', 'Последний вход'].map((h) => (
+                <th key={h} style={{ padding: '0.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <td style={{ padding: '0.6rem 1rem', fontWeight: 600 }}>{u.username}</td>
+                <td style={{ padding: '0.6rem 1rem' }}>{u.email}</td>
+                <td style={{ padding: '0.6rem 1rem' }}>
+                  <select style={input} value={u.role} onChange={(e) => setRole(u, e.target.value)}>
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </td>
+                <td style={{ padding: '0.6rem 1rem' }}>{u.plan}</td>
+                <td style={{ padding: '0.6rem 1rem' }}>
+                  {u.period_end ? new Date(u.period_end).toLocaleDateString('ru-RU') : '—'}
+                </td>
+                <td style={{ padding: '0.6rem 1rem', opacity: 0.7 }}>
+                  {u.last_login ? new Date(u.last_login).toLocaleString('ru-RU') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

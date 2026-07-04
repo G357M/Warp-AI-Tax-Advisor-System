@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { authFetch } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import {
   DashboardIcon,
@@ -25,7 +26,27 @@ const navigation = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    authFetch('/api/v1/auth/me')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((me) => {
+        if (me.role === 'admin') setAllowed(true);
+        else router.replace('/login');
+      })
+      .catch(() => router.replace('/login'));
+  }, [router]);
+
+  if (!allowed) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'rgba(255,255,255,0.6)' }}>
+        Проверяю доступ…
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0f172a', color: 'white' }}>

@@ -1,161 +1,113 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { PlayIcon, StopIcon, ReloadIcon } from '@radix-ui/react-icons';
+import { useEffect, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 
-export default function ScraperPage() {
-  const [tasks] = useState([
-    { id: '1', url: 'https://infohub.ge/tax-code', status: 'completed', docs: 45, started: '2024-02-10 08:00', duration: '2m 34s' },
-    { id: '2', url: 'https://infohub.ge/vat-rules', status: 'running', docs: 12, started: '2024-02-10 09:15', duration: '45s' },
-    { id: '3', url: 'https://infohub.ge/corporate', status: 'pending', docs: 0, started: '-', duration: '-' },
-  ]);
+interface OpsStatus {
+  last_ingest: string | null;
+  documents_today: number;
+  pending: { decision_facts: number; law_amendments: number };
+  logs: Record<string, string[]>;
+}
+
+const card: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '12px',
+  padding: '1.25rem',
+};
+
+const LOG_TITLES: Record<string, string> = {
+  scraper: 'Ночной скрейпер (/app/logs/scraper.log)',
+  law_amendments_backfill: 'Бэкфилл поправок',
+  decision_facts_backfill: 'Бэкфилл решений',
+};
+
+export default function AdminScraper() {
+  const [ops, setOps] = useState<OpsStatus | null>(null);
+  const [error, setError] = useState(false);
+
+  const load = () => {
+    authFetch('/api/v1/admin/ops')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setOps)
+      .catch(() => setError(true));
+  };
+
+  useEffect(load, []);
+
+  if (error) return <div style={{ padding: '2rem', color: '#f87171' }}>Не получилось загрузить статус.</div>;
+  if (!ops) return <div style={{ padding: '2rem', opacity: 0.7 }}>Загружаю…</div>;
 
   return (
-    <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Web Scraper</h1>
-        <p style={{ fontSize: '1rem', opacity: 0.7, margin: 0 }}>Control document scraping tasks</p>
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1100px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <h1 style={{ margin: 0, fontSize: '1.6rem' }}>Ингест и фоновые задачи</h1>
+        <button
+          onClick={load}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: '8px',
+            color: 'white',
+            padding: '0.4rem 0.9rem',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+          }}
+        >
+          Обновить
+        </button>
       </div>
 
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(102,126,234,0.05) 100%)',
-          border: '1px solid rgba(102,126,234,0.2)',
-          borderRadius: '1rem',
-          padding: '1.5rem',
-          marginBottom: '2rem',
-        }}
-      >
-        <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 1rem 0' }}>Start New Scrape Task</h3>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Enter URL to scrape (e.g., https://infohub.ge/tax)"
-            style={{
-              flex: 1,
-              padding: '0.75rem 1rem',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '0.5rem',
-              color: 'white',
-              fontSize: '0.875rem',
-            }}
-          />
-          <button
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-            }}
-          >
-            <PlayIcon /> Start Scraping
-          </button>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <div style={card}>
+          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Последний ингест</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 600, marginTop: '0.3rem' }}>
+            {ops.last_ingest ? new Date(ops.last_ingest).toLocaleString('ru-RU') : '—'}
+          </div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.3rem' }}>
+            сегодня добавлено: {ops.documents_today}
+          </div>
+        </div>
+        <div style={card}>
+          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Решения в очереди на разметку</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.2rem' }}>
+            {ops.pending.decision_facts.toLocaleString('ru-RU')}
+          </div>
+        </div>
+        <div style={card}>
+          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Поправки в очереди</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.2rem' }}>
+            {ops.pending.law_amendments.toLocaleString('ru-RU')}
+          </div>
         </div>
       </div>
 
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '1rem',
-          padding: '1.5rem',
-        }}
-      >
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 1.5rem 0' }}>Scraper Tasks</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {tasks.map((task) => (
-            <motion.div
-              key={task.id}
-              whileHover={{ x: 4 }}
+      {Object.entries(ops.logs).map(([key, lines]) => (
+        <div key={key} style={card}>
+          <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
+            {LOG_TITLES[key] ?? key}
+          </div>
+          {lines.length === 0 ? (
+            <div style={{ fontSize: '0.8rem', opacity: 0.5 }}>лог пуст или недоступен</div>
+          ) : (
+            <pre
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '1.5rem',
-                background: 'rgba(255,255,255,0.02)',
-                borderRadius: '0.75rem',
-                border: '1px solid rgba(255,255,255,0.05)',
+                margin: 0,
+                fontSize: '0.72rem',
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                opacity: 0.85,
+                maxHeight: '220px',
+                overflowY: 'auto',
               }}
             >
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: '600', margin: '0 0 0.5rem 0' }}>{task.url}</h4>
-                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.875rem', opacity: 0.7 }}>
-                  <span>{task.docs} documents</span>
-                  <span>Started: {task.started}</span>
-                  <span>Duration: {task.duration}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '1rem',
-                    fontSize: '0.75rem',
-                    background:
-                      task.status === 'completed'
-                        ? 'rgba(74,222,128,0.1)'
-                        : task.status === 'running'
-                        ? 'rgba(251,191,36,0.1)'
-                        : 'rgba(148,163,184,0.1)',
-                    color:
-                      task.status === 'completed'
-                        ? '#4ade80'
-                        : task.status === 'running'
-                        ? '#fbbf24'
-                        : '#94a3b8',
-                  }}
-                >
-                  {task.status}
-                </span>
-                {task.status === 'running' ? (
-                  <button
-                    style={{
-                      background: 'rgba(248,113,113,0.1)',
-                      border: '1px solid rgba(248,113,113,0.2)',
-                      borderRadius: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      color: '#f87171',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    <StopIcon /> Stop
-                  </button>
-                ) : (
-                  <button
-                    style={{
-                      background: 'rgba(102,126,234,0.1)',
-                      border: '1px solid rgba(102,126,234,0.2)',
-                      borderRadius: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      color: '#667eea',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    <ReloadIcon /> Retry
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
+              {lines.join('\n')}
+            </pre>
+          )}
         </div>
-      </div>
+      ))}
     </div>
   );
 }

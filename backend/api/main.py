@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from core.config import settings
 from core.database import init_db
-from api.routes import account, amendments, analytics, auth, billing, query, public, scraper
+from api.routes import account, admin, amendments, analytics, auth, billing, query, public, scraper
 from core.metrics import metrics_middleware, get_metrics
 from core.logging_config import setup_logging, logging_middleware
 from core.rate_limit import rate_limit_middleware
@@ -54,6 +54,7 @@ app.include_router(analytics.router, prefix=settings.API_PREFIX)  # Public decis
 app.include_router(amendments.router, prefix=settings.API_PREFIX)  # Law-change timeline
 app.include_router(billing.router, prefix=settings.API_PREFIX)     # Subscriptions & payments
 app.include_router(account.router, prefix=settings.API_PREFIX)     # Client cabinet
+app.include_router(admin.router, prefix=settings.API_PREFIX)       # Admin panel (role-gated)
 
 
 @app.on_event("startup")
