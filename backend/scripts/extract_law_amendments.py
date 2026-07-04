@@ -62,8 +62,11 @@ publication — then use the publication/adoption date if printed, else null.
    "summary_ru": one short Russian sentence saying what changed,
    "old_norm": short Russian summary of the previous rule or null if new/unstated,
    "new_norm": short Russian summary of the rule after the change or null if repealed}
-  Articles of the AMENDED law only (e.g. "მე-165 მუხლის პირველი ნაწილი" -> "165"); \
-do not list the amendment act's own article numbers (მუხლი 1/2 of the act itself). \
+  Articles of the AMENDED law only — numbers referenced as changes inside it \
+(e.g. "კოდექსის მე-165 მუხლის პირველი ნაწილი" -> "165"). NEVER list the amendment \
+act's own articles: "მუხლი 1" that introduces the changes and "მუხლი 2" / final \
+provisions about entry into force ("ეს კანონი ამოქმედდეს...") are the act's own \
+structure and must be excluded — use them only for effective_date. \
 Limit to the 15 most substantive articles if there are more.
 
 If something is not stated in the excerpt, use null rather than guessing."""
