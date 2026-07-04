@@ -43,14 +43,46 @@ AMENDMENT_TITLE_MARKERS = [
     "ცვლილებების შეტანის",
 ]
 
-# The Tax Code document in the corpus — cited as the law source for authoritative
-# answers whose exact article retrieval can't yet ground cross-lingually.
+# Legal-basis documents in the corpus, cited for curated authoritative answers.
+# The source row is re-read from the DB at answer time so the citation always
+# reflects a document that actually exists in the corpus; no fabricated
+# relevance is attached (these answers are curated, not retrieved).
 TAX_CODE_SOURCE = {
     "title": "საქართველოს საგადასახადო კოდექსი",
     "document_type": "law",
     "url": "https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0",
-    "relevance": 1.0,
 }
+
+PENSION_LAW_SOURCE = {
+    "title": "დაგროვებითი პენსიის შესახებ საქართველოს კანონი",
+    "document_type": "law",
+    "url": "https://infohub.rs.ge/ka/workspace/document/64a515a7-f7be-4d1a-a9c1-aa9d008b6df8",
+}
+
+CURATED_LEGAL_BASIS = {
+    "funded_pension": PENSION_LAW_SOURCE,
+}
+
+
+def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
+    basis = CURATED_LEGAL_BASIS.get(topic or "", TAX_CODE_SOURCE)
+    try:
+        from .db_utils import db_available, run_query
+        if db_available():
+            rows = run_query(
+                "SELECT title, document_type, source_url FROM documents WHERE source_url = %s LIMIT 1",
+                [basis["url"]],
+            )
+            if rows:
+                row = rows[0]
+                return {
+                    "title": row.get("title") or basis["title"],
+                    "document_type": row.get("document_type") or basis["document_type"],
+                    "url": row.get("source_url") or basis["url"],
+                }
+    except Exception:
+        pass
+    return dict(basis)
 
 
 def _response_language(language: Optional[str]) -> str:
@@ -770,15 +802,19 @@ def maybe_run_live_rollout(
         }
 
     # Authoritative answers for facts retrieval can't yet ground cross-lingually.
-    # They cite the Tax Code document in the corpus so the user has a law source.
+    # They cite the legal-basis document verified in the corpus (Tax Code for most
+    # topics, the funded-pension law for pension questions).
     forced = small_business_legal_form_response(trace)
-    if (os.getenv("INFOHUB_RAG_V2_AUTHORITATIVE") or "1").strip() == "1":
-        forced = forced or authoritative_tax_fact_response(trace)
+    forced_topic = None
+    if not forced and (os.getenv("INFOHUB_RAG_V2_AUTHORITATIVE") or "1").strip() == "1":
+        fact = authoritative_tax_fact_response(trace)
+        if fact:
+            forced_topic, forced = fact
     if forced:
-        print(f"[RAG_V2_ROLLOUT] class={question_class} authoritative=1")
+        print(f"[RAG_V2_ROLLOUT] class={question_class} authoritative=1 topic={forced_topic}")
         return {
             "response": forced,
-            "sources": [dict(TAX_CODE_SOURCE)],
+            "sources": [_curated_source(forced_topic)],
             "retrieved_count": 1,
             "_rag_v2": {"mode": "rollout_authoritative", "question_class": question_class},
         }

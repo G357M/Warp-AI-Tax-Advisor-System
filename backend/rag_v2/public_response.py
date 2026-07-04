@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from .faq_tax_matrix import get_tax_faq_entry
 
@@ -289,11 +289,14 @@ def out_of_jurisdiction_response(trace: Any) -> Optional[str]:
     return answers.get(_response_language(trace), answers["ru"])
 
 
-def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
+def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
     """Authoritative answers for high-value facts that retrieval misses.
 
     Grounded in Georgian law and the firm's standing tax positions. Matched on
     query text because the parser does not reliably tag these question shapes.
+
+    Returns ``(topic, answer)`` so the caller can cite the actual legal basis
+    (most topics rest on the Tax Code; the funded pension rests on its own law).
     """
     parsed = getattr(trace, "parsed_query", None) or {}
     q = str(parsed.get("normalized_query") or "").lower()
@@ -307,7 +310,7 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
     # Tour operator VAT exemption (Tax Code art. 172)
     if ("туропер" in q or "tour oper" in q or "ტუროპერ" in q
             or ((("турист" in q) or ("tourist" in q) or ("ტურист" in q)) and has_vat)):
-        return pick({
+        return "tour_operator_vat", pick({
             "ru": "Организованный въезд иностранных туристов в Грузию (услуги туроператора) освобождён от НДС с правом зачёта входного НДС (Налоговый кодекс Грузии, статья 172). Туроператор по таким услугам НДС не начисляет, но сохраняет право на зачёт входного НДС.",
             "en": "The organized inbound travel of foreign tourists to Georgia (tour operator services) is VAT-exempt with the right to credit input VAT (Georgian Tax Code, Article 172). The operator does not charge VAT on such services but keeps the input VAT credit.",
             "ka": "უცხოელი ტურისტების ორგანიზებული შემოყვანა საქართველოში (ტუროპერატორის მომსახურება) გათავისუფლებულია დღგ-სგან ჩათვლის უფლებით (საგადასახადო კოდექსი, მუხლი 172).",
@@ -315,7 +318,7 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
 
     # VAT registration threshold
     if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "turnover", "registr", "რეგისტრ", "ბრუნვ")):
-        return pick({
+        return "vat_threshold", pick({
             "ru": "Регистрация плательщиком НДС обязательна, когда облагаемый оборот превышает 100 000 лари за любые непрерывные 12 календарных месяцев.",
             "en": "VAT registration is mandatory once taxable turnover exceeds 100,000 GEL over any continuous 12 calendar months.",
             "ka": "დღგ-ის გადამხდელად რეგისტრაცია სავალდებულოა, როცა დასაბეგრი ბრუნვა აღემატება 100 000 ლარს ნებისმიერ უწყვეტ 12 კალენდარულ თვეში.",
@@ -324,17 +327,18 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
     # Micro business — guard removed (Phase 4): retrieval grounds this correctly in
     # ru+en (eval), so the answer now comes from the retrieved law, not curated text.
 
-    # Mandatory funded pension contributions
+    # Mandatory funded pension contributions (Law of Georgia "On Funded Pension",
+    # not the Tax Code — cited accordingly)
     if any(t in q for t in ("пенси", "pension", "საპენსიო", "პენსი")):
-        return pick({
-            "ru": "Накопительная пенсия в Грузии формируется из взносов: 2% удерживает работодатель из зарплаты работника, 2% добавляет работодатель и 2% — государство (для дохода до установленного потолка).",
-            "en": "Georgia's funded pension is built from contributions: 2% withheld from the employee's salary, 2% added by the employer, and 2% by the state (for income up to the cap).",
-            "ka": "საქართველოს დაგროვებითი საპენსიო სისტემა იქმნება შენატანებით: 2% იკავება დასაქმებულის ხელფასიდან, 2% ამატებს დამსაქმებელი და 2% — სახელმწიფო (ჭერამდე შემოსავალზე).",
+        return "funded_pension", pick({
+            "ru": "Накопительная пенсия в Грузии формируется из взносов: 2% удерживает работодатель из зарплаты работника, 2% добавляет работодатель и 2% — государство (для дохода до установленного потолка). Основание — закон Грузии «О накопительной пенсии».",
+            "en": "Georgia's funded pension is built from contributions: 2% withheld from the employee's salary, 2% added by the employer, and 2% by the state (for income up to the cap). Legal basis — the Law of Georgia \"On Funded Pension\".",
+            "ka": "საქართველოს დაგროვებითი საპენსიო სისტემა იქმნება შენატანებით: 2% იკავება დასაქმებულის ხელფასიდან, 2% ამატებს დამსაქმებელი და 2% — სახელმწიფო (ჭერამდე შემოსავალზე). საფუძველი — საქართველოს კანონი „დაგროვებითი პენსიის შესახებ“.",
         })
 
     # Estonian model of profit taxation
     if any(t in q for t in ("эстонск", "estonian", "ესტონ")):
-        return pick({
+        return "estonian_model", pick({
             "ru": "По эстонской модели в Грузии налог на прибыль (15%) уплачивается не на заработанную прибыль, а только при её распределении (например, дивиденды). Нераспределённая и реинвестированная прибыль налогом на прибыль не облагается.",
             "en": "Under Georgia's Estonian model, profit tax (15%) is paid not on earned profit but only when profit is distributed (e.g. dividends). Retained and reinvested profit is not subject to profit tax.",
             "ka": "ესტონური მოდელით საქართველოში მოგების გადასახადი (15%) იხდება არა მიღებულ მოგებაზე, არამედ მხოლოდ მისი განაწილებისას (მაგ. დივიდენდი). გაუნაწილებელი და რეინვესტირებული მოგება მოგების გადასახადით არ იბეგრება.",
@@ -342,7 +346,7 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[str]:
 
     # Property tax
     if any(t in q for t in ("налог на имущество", "имуществ", "property tax", "ქონების გადასახად")):
-        return pick({
+        return "property_tax", pick({
             "ru": "Ставка налога на имущество зависит от плательщика. Для предприятия (организации) — не более 1% стоимости налогооблагаемого имущества (для лизинговой компании по переданному в лизинг имуществу — не более 0.6%). Для физлица фиксированной ставки 1% нет: налог зависит от дохода семьи за предыдущий год и составляет от 0% до 0.8%.",
             "en": "The property tax rate depends on the taxpayer. For a company, it is no more than 1% of the value of taxable property (for a leasing company's leased property, no more than 0.6%). For an individual there is no fixed 1% rate: the tax depends on the family's previous-year income and ranges from 0% to 0.8%.",
             "ka": "ქონების გადასახადის განაკვეთი დამოკიდებულია გადამხდელზე. საწარმოსთვის — დასაბეგრი ქონების ღირებულების არაუმეტეს 1% (სალიზინგო კომპანიის ლიზინგით გაცემულ ქონებაზე — არაუმეტეს 0.6%). ფიზიკური პირისთვის ფიქსირებული 1% არ არსებობს: გადასახადი დამოკიდებულია ოჯახის წინა წლის შემოსავალზე და შეადგენს 0%-დან 0.8%-მდე.",
