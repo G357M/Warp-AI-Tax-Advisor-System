@@ -44,6 +44,11 @@ echo "Extracting decision facts for new court decisions..." | tee -a "$LOG_FILE"
 docker exec "$CONTAINER_NAME" python /app/scripts/extract_decision_facts.py --limit 500 \
     2>&1 | tail -5 | tee -a "$LOG_FILE" || true
 
+# Extract law-amendment facts for the change timeline (incremental). Non-fatal.
+echo "Extracting law amendments..." | tee -a "$LOG_FILE"
+docker exec "$CONTAINER_NAME" python /app/scripts/extract_law_amendments.py --limit 200 \
+    2>&1 | tail -5 | tee -a "$LOG_FILE" || true
+
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
 

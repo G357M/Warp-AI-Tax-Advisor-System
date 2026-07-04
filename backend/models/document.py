@@ -122,3 +122,33 @@ Index("idx_decision_facts_outcome", DecisionFacts.outcome)
 Index("idx_decision_facts_body", DecisionFacts.authority_body)
 Index("idx_decision_facts_date", DecisionFacts.decision_date)
 Index("idx_decision_facts_type", DecisionFacts.dispute_type)
+
+
+class LawAmendment(Base):
+    """Structured attributes of one amendment act ("...კანონში ცვლილების შეტანის შესახებ").
+
+    Feeds the law-change timeline: which law was amended, when the amendment
+    was adopted, when it entered into force, and which articles it touched
+    (with short old/new norm summaries).
+    """
+    __tablename__ = "law_amendments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    amendment_doc_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    target_law_doc_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    target_law_title = Column(String, nullable=True)     # Georgian name of the amended law
+    adoption_date = Column(Date, nullable=True)
+    effective_date = Column(Date, nullable=True)
+    status = Column(String(20), nullable=True)           # in_force | not_yet | unknown
+    affected_articles = Column(JSON, nullable=True)      # [{article, action: amended|added|repealed, summary_ru, old_norm, new_norm}]
+    raw_json = Column(JSON, nullable=True)
+    model = Column(String(60), nullable=True)
+    extraction_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    amendment_document = relationship("Document", foreign_keys=[amendment_doc_id])
+    target_law_document = relationship("Document", foreign_keys=[target_law_doc_id])
+
+
+Index("idx_law_amendments_target", LawAmendment.target_law_doc_id)
+Index("idx_law_amendments_adoption", LawAmendment.adoption_date)

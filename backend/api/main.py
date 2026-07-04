@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from core.config import settings
 from core.database import init_db
-from api.routes import analytics, auth, query, public, scraper
+from api.routes import amendments, analytics, auth, query, public, scraper
 from core.metrics import metrics_middleware, get_metrics
 from core.logging_config import setup_logging, logging_middleware
 from core.rate_limit import rate_limit_middleware
@@ -51,6 +51,7 @@ app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(query.router, prefix=settings.API_PREFIX)
 app.include_router(scraper.router, prefix=settings.API_PREFIX)
 app.include_router(analytics.router, prefix=settings.API_PREFIX)  # Public decision statistics
+app.include_router(amendments.router, prefix=settings.API_PREFIX)  # Law-change timeline
 
 
 @app.on_event("startup")
