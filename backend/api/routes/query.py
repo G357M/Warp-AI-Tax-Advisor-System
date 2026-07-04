@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.plans import get_active_plan, check_and_count_question
 from core.security import get_current_user
 from core.cache import cache_get, cache_set
 from models import User, Conversation, Message
@@ -42,7 +43,11 @@ def process_query(
     cached_response = cache_get(cache_key)
     if cached_response:
         return cached_response
-    
+
+    # Plan quota: free users get a limited number of questions per day
+    plan = get_active_plan(db, current_user)
+    check_and_count_question(current_user, plan)
+
     # Get or create conversation
     if query_data.conversation_id:
         conversation = db.query(Conversation).filter(

@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isLoggedIn } from '@/lib/auth';
 
 const nav = [
   { name: 'Чат', href: '/#chat' },
@@ -12,6 +14,19 @@ const nav = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setAuthed(isLoggedIn());
+    sync();
+    window.addEventListener('ta-auth-changed', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('ta-auth-changed', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
   if (pathname?.startsWith('/admin')) return null;
 
   return (
@@ -21,16 +36,22 @@ export function SiteHeader() {
           <span className="text-[17px] font-semibold tracking-display">Tax Advisor</span>
           <span className="text-xs text-muted-foreground">საქართველო</span>
         </Link>
-        <nav className="hidden items-center gap-7 sm:flex">
+        <nav className="flex items-center gap-7">
           {nav.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              className="hidden text-[13px] text-muted-foreground transition-colors hover:text-foreground sm:block"
             >
               {item.name}
             </Link>
           ))}
+          <Link
+            href={authed ? '/account' : '/login'}
+            className="rounded-full bg-foreground px-4 py-1.5 text-[13px] font-medium text-background transition-opacity hover:opacity-85"
+          >
+            {authed ? 'Кабинет' : 'Войти'}
+          </Link>
         </nav>
       </div>
     </header>
