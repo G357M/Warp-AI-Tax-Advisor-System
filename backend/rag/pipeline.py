@@ -764,13 +764,20 @@ class RAGPipeline:
         metadatas = search_results.get("metadatas", [[]])[0]
         distances = search_results.get("distances", [[]])[0]
 
+        dropped = 0
         for i, chunk_id in enumerate(chunk_ids):
+            similarity = 1 - distances[i] if i < len(distances) else 0.0
+            if similarity < settings.RAG_MIN_SIMILARITY:
+                dropped += 1
+                continue
             chunks.append({
                 "id": chunk_id,
                 "content": documents[i] if i < len(documents) else "",
                 "metadata": metadatas[i] if i < len(metadatas) else {},
-                "similarity": 1 - distances[i] if i < len(distances) else 0.0,
+                "similarity": similarity,
             })
+        if dropped:
+            print(f"[RAG] Dropped {dropped} chunks below RAG_MIN_SIMILARITY={settings.RAG_MIN_SIMILARITY}")
 
         return chunks
 
