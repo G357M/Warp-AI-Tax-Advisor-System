@@ -30,6 +30,9 @@ const input: React.CSSProperties = {
   fontSize: '0.85rem',
 };
 
+// Native dropdown lists need an explicit dark background for readable options.
+const option: React.CSSProperties = { background: '#1e293b', color: 'white' };
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -93,12 +96,12 @@ export default function AdminUsers() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <select style={input} value={plan} onChange={(e) => setPlan(e.target.value as 'pro' | 'business')}>
-            <option value="pro">Pro</option>
-            <option value="business">Business</option>
+            <option value="pro" style={option}>Pro</option>
+            <option value="business" style={option}>Business</option>
           </select>
           <select style={input} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
             {[1, 3, 6, 12].map((m) => (
-              <option key={m} value={m}>{m} мес</option>
+              <option key={m} value={m} style={option}>{m} мес</option>
             ))}
           </select>
           <button
@@ -134,8 +137,8 @@ export default function AdminUsers() {
                 <td style={{ padding: '0.6rem 1rem' }}>{u.email}</td>
                 <td style={{ padding: '0.6rem 1rem' }}>
                   <select style={input} value={u.role} onChange={(e) => setRole(u, e.target.value)}>
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
+                    <option value="user" style={option}>user</option>
+                    <option value="admin" style={option}>admin</option>
                   </select>
                 </td>
                 <td style={{ padding: '0.6rem 1rem' }}>{u.plan}</td>

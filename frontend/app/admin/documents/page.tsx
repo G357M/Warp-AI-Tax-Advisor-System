@@ -31,16 +31,26 @@ const input: React.CSSProperties = {
   fontSize: '0.85rem',
 };
 
+// Native dropdown lists ignore the select's translucent styling — give the
+// options an explicit dark background so text stays readable on Windows.
+const option: React.CSSProperties = { background: '#1e293b', color: 'white' };
+
+const PAGE_SIZE = 50;
+
 export default function AdminDocuments() {
   const [items, setItems] = useState<AdminDoc[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [docType, setDocType] = useState('');
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: '50' });
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(page * PAGE_SIZE),
+    });
     if (search.trim()) params.set('search', search.trim());
     if (docType) params.set('doc_type', docType);
     authFetch(`/api/v1/admin/documents?${params}`)
@@ -51,9 +61,12 @@ export default function AdminDocuments() {
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, [search, docType]);
+  }, [search, docType, page]);
 
   useEffect(load, [load]);
+  useEffect(() => setPage(0), [search, docType]);
+
+  const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   return (
     <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1200px' }}>
@@ -70,7 +83,7 @@ export default function AdminDocuments() {
         />
         <select style={input} value={docType} onChange={(e) => setDocType(e.target.value)}>
           {TYPES.map((t) => (
-            <option key={t} value={t}>{t || 'все типы'}</option>
+            <option key={t} value={t} style={option}>{t || 'все типы'}</option>
           ))}
         </select>
         {loading && <span style={{ alignSelf: 'center', fontSize: '0.8rem', opacity: 0.6 }}>ищу…</span>}
@@ -118,6 +131,26 @@ export default function AdminDocuments() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+        <button
+          onClick={() => setPage((p) => Math.max(p - 1, 0))}
+          disabled={page === 0}
+          style={{ ...input, cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}
+        >
+          ← Назад
+        </button>
+        <span style={{ fontSize: '0.85rem', opacity: 0.75 }}>
+          страница {page + 1} из {pages.toLocaleString('ru-RU')}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(p + 1, pages - 1))}
+          disabled={page >= pages - 1}
+          style={{ ...input, cursor: page >= pages - 1 ? 'not-allowed' : 'pointer', opacity: page >= pages - 1 ? 0.4 : 1 }}
+        >
+          Вперёд →
+        </button>
       </div>
     </div>
   );
