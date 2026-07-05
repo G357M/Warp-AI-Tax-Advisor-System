@@ -28,17 +28,18 @@ export default function LawsPage() {
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-display">Изменения законов</h1>
+      <h1 className="text-3xl font-semibold tracking-display">Изменения законодательства</h1>
       <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-        Хронология поправок к законам Грузии: когда принята, когда вступила в силу,
-        какие статьи затронула и что изменилось по существу.
+        Хронология поправок к законам Грузии и подзаконным актам — включая приказы
+        Минфина (например, №996 об администрировании налогов): когда принята, когда
+        вступила в силу, какие статьи затронула и что изменилось по существу.
       </p>
 
       <input
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        placeholder="Найти закон…"
-        aria-label="Поиск по названию закона"
+        placeholder="Найти закон или приказ…"
+        aria-label="Поиск по названию акта"
         className="mt-8 h-11 w-full max-w-md rounded-full border bg-white px-5 text-[14px] placeholder:text-muted-foreground"
       />
 

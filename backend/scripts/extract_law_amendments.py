@@ -48,16 +48,17 @@ TITLE_LAW_RE = re.compile(r"[„\"]([^“”\"]+)[“”\"]")
 ACTIONS = {"amended", "added", "repealed"}
 STATUSES = {"in_force", "not_yet", "unknown"}
 
-SYSTEM_PROMPT = """You extract structured facts from Georgian amendment acts \
-(acts titled "...კანონში/კოდექსში ცვლილების შეტანის შესახებ"). The text is in Georgian. \
-Respond with ONLY a JSON object:
+SYSTEM_PROMPT = """You extract structured facts from Georgian amendment acts — \
+acts amending laws ("...კანონში/კოდექსში ცვლილების შეტანის შესახებ") or ministerial \
+orders / government resolutions ("...ბრძანებაში/დადგენილებაში ცვლილების ან \
+დამატების შეტანის შესახებ"). The text is in Georgian. Respond with ONLY a JSON object:
 
-- target_law: the Georgian name of the law being amended, as printed (e.g. \
-"საქართველოს საგადასახადო კოდექსი"), or null
+- target_law: the Georgian name of the act being amended, as printed (e.g. \
+"საქართველოს საგადასახადო კოდექსი" or "გადასახადების ადმინისტრირების შესახებ"), or null
 - effective_date: ISO date "YYYY-MM-DD" when the amendment enters into force. It is \
 stated near the end ("ეს კანონი ამოქმედდეს ..."). "გამოქვეყნებისთანავე" means upon \
 publication — then use the publication/adoption date if printed, else null.
-- articles: array of the amended law's articles this act changes, each:
+- articles: array of the amended act's articles this act changes, each:
   {"article": "165", "action": "amended" | "added" | "repealed",
    "summary_ru": one short Russian sentence saying what changed,
    "old_norm": short Russian summary of the previous rule or null if new/unstated,
@@ -165,7 +166,9 @@ def _law_index(db):
     if _law_index_cache is None:
         rows = db.execute(sa_text("""
             SELECT id, title, length(full_text) FROM documents
-            WHERE document_type = 'law' AND title NOT ILIKE '%ცვლილებ%'
+            WHERE document_type IN ('law', 'regulation')
+              AND title NOT ILIKE '%ცვლილებ%'
+              AND title NOT ILIKE '%შეტანის%'
         """)).all()
         _law_index_cache = [
             (row[0], _core_tokens(row[1]), row[2] or 0) for row in rows
@@ -240,10 +243,15 @@ def main() -> None:
 
     db = SessionLocal()
     try:
+        # Amendment formulas: "...ცვლილების შეტანის" (change) and
+        # "...დამატების შეტანის" (addition) — over laws AND ministerial
+        # orders / government resolutions (e.g. MoF order №996).
         pending_sql = """
             SELECT d.id FROM documents d
             LEFT JOIN law_amendments a ON a.amendment_doc_id = d.id
-            WHERE d.document_type = 'law' AND d.title ILIKE '%ცვლილებ%' AND a.id IS NULL
+            WHERE d.document_type IN ('law', 'regulation')
+              AND (d.title ILIKE '%ცვლილებ%' OR d.title ILIKE '%შეტანის%')
+              AND a.id IS NULL
             ORDER BY d.date_published DESC NULLS LAST
         """
         if args.limit:
