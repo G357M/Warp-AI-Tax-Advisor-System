@@ -139,39 +139,46 @@ def normalize(payload: dict) -> dict:
     }
 
 
-def _normalize_law_name(name: str) -> str:
-    """Clean quote artifacts and declension so the name matches corpus titles."""
-    cleaned = re.sub(r'[„“”"]', '', name or '').strip()
-    # drop the generic wrapper — candidates re-append it in both positions
+def _law_name_candidates(name: str) -> list:
+    """Name variants that may match a corpus title.
+
+    Quote glyphs are often glued to words (replace with a space, not empty);
+    the wrapper "საქართველოს კანონი" appears on either side in corpus titles;
+    quoted names sometimes decline adjectives ("ადმინისტრაციულ საპროცესო
+    კოდექსში" -> nominative "ადმინისტრაციული ..."), but some canonical names
+    legitimately keep the bare "ულ" form — so try BOTH variants rather than
+    rewriting one into the other.
+    """
+    cleaned = re.sub(r'[„“”"]', ' ', name or '')
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     cleaned = re.sub(r'^საქართველოს კანონი\s+', '', cleaned)
     cleaned = re.sub(r'\s+საქართველოს კანონი$', '', cleaned).strip(' .')
-    # quoted names decline adjectives ("ადმინისტრაციულ საპროცესო კოდექსში");
-    # corpus titles use the nominative ("ადმინისტრაციული საპროცესო კოდექსი")
-    cleaned = re.sub(r'ულ(?= )', 'ული', cleaned)
-    return cleaned
+    if not cleaned:
+        return []
+    stems = [cleaned]
+    nominative = re.sub(r'ულ(?= )', 'ული', cleaned)
+    if nominative != cleaned:
+        stems.append(nominative)
+    candidates = []
+    for stem in stems:
+        candidates += [stem, f"{stem} საქართველოს კანონი", f"საქართველოს კანონი {stem}"]
+    return candidates
 
 
 def resolve_target_law(db, law_title: str):
     """Match the amended law's name to its corpus document (not another amendment)."""
-    if not law_title:
+    candidates = _law_name_candidates(law_title or "")
+    if not candidates:
         return None
-    law_title = _normalize_law_name(law_title)
-    if not law_title:
-        return None
-    # Corpus titles for plain laws append "საქართველოს კანონი" ("Law of Georgia")
-    # after the quoted name; codes are stored under their own name.
-    row = db.execute(sa_text("""
+    placeholders = ", ".join(f":c{i}" for i in range(len(candidates)))
+    row = db.execute(sa_text(f"""
         SELECT id FROM documents
         WHERE document_type = 'law'
           AND title NOT ILIKE '%ცვლილებ%'
-          AND TRIM(BOTH ' .' FROM title) IN (
-                TRIM(BOTH ' .' FROM :name),
-                TRIM(BOTH ' .' FROM :name) || ' საქართველოს კანონი',
-                'საქართველოს კანონი ' || TRIM(BOTH ' .' FROM :name)
-          )
+          AND TRIM(BOTH ' .' FROM title) IN ({placeholders})
         ORDER BY length(full_text) DESC NULLS LAST
         LIMIT 1
-    """), {"name": law_title}).first()
+    """), {f"c{i}": c for i, c in enumerate(candidates)}).first()
     return row[0] if row else None
 
 
