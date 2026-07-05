@@ -48,6 +48,10 @@ docker exec "$CONTAINER_NAME" python /app/scripts/extract_decision_facts.py --li
 echo "Extracting law amendments..." | tee -a "$LOG_FILE"
 docker exec "$CONTAINER_NAME" python /app/scripts/extract_law_amendments.py --limit 200 \
     2>&1 | tail -5 | tee -a "$LOG_FILE" || true
+# Retry target-law resolution for older rows (no LLM; heals once missing law
+# texts get ingested).
+docker exec "$CONTAINER_NAME" python /app/scripts/extract_law_amendments.py --reresolve \
+    2>&1 | tail -2 | tee -a "$LOG_FILE" || true
 
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
