@@ -139,47 +139,63 @@ def normalize(payload: dict) -> dict:
     }
 
 
-def _law_name_candidates(name: str) -> list:
-    """Name variants that may match a corpus title.
+# Wrapper words that carry no identity: "საქართველოს კანონი/ორგანული კანონი"
+# appears on either side of the actual name in corpus titles.
+_WRAPPER_TOKENS = {"საქართველოს", "კანონი", "ორგანული"}
 
-    Quote glyphs are often glued to words (replace with a space, not empty);
-    the wrapper "საქართველოს კანონი" appears on either side in corpus titles;
-    quoted names sometimes decline adjectives ("ადმინისტრაციულ საპროცესო
-    კოდექსში" -> nominative "ადმინისტრაციული ..."), but some canonical names
-    legitimately keep the bare "ულ" form — so try BOTH variants rather than
-    rewriting one into the other.
+_law_index_cache = None
+
+
+def _core_tokens(name: str):
+    """Normalized identity tokens of a law name.
+
+    Strips quote glyphs (glued to words — replaced with spaces), zero-width/BOM
+    characters that occur in corpus titles, punctuation and wrapper words.
+    Declension variants ("ულ"/"ული") are folded to one form.
     """
-    cleaned = re.sub(r'[„“”"]', ' ', name or '')
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
-    cleaned = re.sub(r'^საქართველოს კანონი\s+', '', cleaned)
-    cleaned = re.sub(r'\s+საქართველოს კანონი$', '', cleaned).strip(' .')
-    if not cleaned:
-        return []
-    stems = [cleaned]
-    nominative = re.sub(r'ულ(?= )', 'ული', cleaned)
-    if nominative != cleaned:
-        stems.append(nominative)
-    candidates = []
-    for stem in stems:
-        candidates += [stem, f"{stem} საქართველოს კანონი", f"საქართველოს კანონი {stem}"]
-    return candidates
+    cleaned = re.sub(r'[„“”"﻿​]', ' ', name or '')
+    cleaned = re.sub(r'[.,;:]+', ' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip().lower()
+    cleaned = re.sub(r'ულ(?= )', 'ული', cleaned)
+    return frozenset(t for t in cleaned.split() if t not in _WRAPPER_TOKENS)
+
+
+def _law_index(db):
+    global _law_index_cache
+    if _law_index_cache is None:
+        rows = db.execute(sa_text("""
+            SELECT id, title, length(full_text) FROM documents
+            WHERE document_type = 'law' AND title NOT ILIKE '%ცვლილებ%'
+        """)).all()
+        _law_index_cache = [
+            (row[0], _core_tokens(row[1]), row[2] or 0) for row in rows
+        ]
+    return _law_index_cache
 
 
 def resolve_target_law(db, law_title: str):
-    """Match the amended law's name to its corpus document (not another amendment)."""
-    candidates = _law_name_candidates(law_title or "")
-    if not candidates:
+    """Match the amended law's name to its corpus document.
+
+    Exact core-token match wins; otherwise a one-token difference is tolerated
+    when at least three tokens agree (corpus titles occasionally drop a word,
+    e.g. "სხვა" in the gambling law). Ambiguous fuzzy matches are skipped.
+    """
+    target = _core_tokens(law_title or "")
+    if not target:
         return None
-    placeholders = ", ".join(f":c{i}" for i in range(len(candidates)))
-    row = db.execute(sa_text(f"""
-        SELECT id FROM documents
-        WHERE document_type = 'law'
-          AND title NOT ILIKE '%ცვლილებ%'
-          AND TRIM(BOTH ' .' FROM title) IN ({placeholders})
-        ORDER BY length(full_text) DESC NULLS LAST
-        LIMIT 1
-    """), {f"c{i}": c for i, c in enumerate(candidates)}).first()
-    return row[0] if row else None
+    exact = [(doc_id, size) for doc_id, tokens, size in _law_index(db) if tokens == target]
+    if exact:
+        return max(exact, key=lambda x: x[1])[0]
+    fuzzy = [
+        (doc_id, size)
+        for doc_id, tokens, size in _law_index(db)
+        if len(tokens & target) >= 3 and len(tokens ^ target) <= 1
+    ]
+    if len(fuzzy) == 1:
+        return fuzzy[0][0]
+    if len(fuzzy) > 1:
+        return max(fuzzy, key=lambda x: x[1])[0] if len({d for d, _ in fuzzy}) == 1 else None
+    return None
 
 
 def main() -> None:

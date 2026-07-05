@@ -71,9 +71,25 @@ def fetch(url: str, binary: bool = False):
 
 
 def pdf_urls() -> list:
-    html = fetch(LISTING_URL)
-    urls = sorted(set(re.findall(r'href="(/files/upload-file/pdf/\d{4}w-administr-krebuli\d+\.pdf)"', html)))
-    return [BASE + u for u in urls]
+    """Digest URLs: listing page merged with the known filename pattern.
+
+    The listing endpoint returns an unstable subset of links between requests,
+    so candidates are also generated for every year/issue; the import loop
+    silently skips candidates that 404.
+    """
+    urls = set()
+    try:
+        html = fetch(LISTING_URL)
+        urls.update(
+            BASE + u
+            for u in re.findall(r'href="(/files/upload-file/pdf/\d{4}w-administr-krebuli\d+\.pdf)"', html)
+        )
+    except Exception as e:
+        logger.warning(f"Listing fetch failed ({e}); falling back to the URL pattern only")
+    for year in range(2013, 2018):
+        for issue in range(1, 13):
+            urls.add(f"{BASE}/files/upload-file/pdf/{year}w-administr-krebuli{issue}.pdf")
+    return sorted(urls)
 
 
 def extract_pdf_text(blob: bytes) -> tuple:
@@ -106,7 +122,12 @@ def main() -> None:
                 continue
             m = FILENAME_RE.search(url)
             year, issue = (int(m.group(1)), int(m.group(2))) if m else (None, None)
-            blob = fetch(url, binary=True)
+            try:
+                blob = fetch(url, binary=True)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    continue  # generated candidate that was never published
+                raise
             raw_text, n_pages = extract_pdf_text(blob)
             text = acadnusx_to_unicode(raw_text)
             if len(text) < 5000:
