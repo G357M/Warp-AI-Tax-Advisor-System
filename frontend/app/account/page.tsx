@@ -71,15 +71,25 @@ export default function AccountPage() {
           <h1 className="text-2xl font-semibold tracking-display">Кабинет</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">{account.email}</p>
         </div>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            clearToken();
-            router.push('/');
-          }}
-        >
-          Выйти
-        </Button>
+        <div className="flex items-center gap-2">
+          {account.role === 'admin' && (
+            <Link
+              href="/admin"
+              className="rounded-full bg-foreground px-4 py-2 text-[13px] font-medium text-background transition-opacity hover:opacity-85"
+            >
+              Админпанель
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            onClick={() => {
+              clearToken();
+              router.push('/');
+            }}
+          >
+            Выйти
+          </Button>
+        </div>
       </div>
 
       <Card className="mt-8 p-6">
