@@ -198,6 +198,20 @@ def resolve_target_law(db, law_title: str):
         return fuzzy[0][0]
     if len(fuzzy) > 1:
         return max(fuzzy, key=lambda x: x[1])[0] if len({d for d, _ in fuzzy}) == 1 else None
+    # Orders are often referenced by number instead of name
+    # ("ფინანსთა მინისტრის ... №994 ბრძანება") — match document_number.
+    number_match = re.search(r'№\s*([0-9]+(?:/[0-9№]+)?)', law_title or '')
+    if number_match:
+        row = db.execute(sa_text("""
+            SELECT id FROM documents
+            WHERE document_type IN ('law', 'regulation')
+              AND title NOT ILIKE '%ცვლილებ%' AND title NOT ILIKE '%შეტანის%'
+              AND document_number = :num
+            ORDER BY length(full_text) DESC NULLS LAST
+            LIMIT 1
+        """), {"num": number_match.group(1)}).first()
+        if row:
+            return row[0]
     return None
 
 
