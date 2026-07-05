@@ -33,6 +33,7 @@ export function SiteHeader() {
   const nav = [
     { name: t('nav.chat'), href: '/#chat' },
     { name: t('nav.laws'), href: '/laws' },
+    { name: t('nav.guides'), href: '/guides' },
     { name: t('nav.stats'), href: '/#stats' },
     { name: t('nav.pricing'), href: '/#pricing' },
   ];

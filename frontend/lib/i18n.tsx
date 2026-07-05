@@ -45,6 +45,7 @@ const DICT: Record<string, Entry> = {
   // Header / footer
   'nav.chat': { ru: 'Чат', ka: 'ჩატი', en: 'Chat' },
   'nav.laws': { ru: 'Законы', ka: 'კანონმდებლობა', en: 'Laws' },
+  'nav.guides': { ru: 'Руководства', ka: 'სახელმძღვანელოები', en: 'Guides' },
   'nav.stats': { ru: 'Статистика решений', ka: 'დავების სტატისტიკა', en: 'Dispute statistics' },
   'nav.pricing': { ru: 'Тарифы', ka: 'ტარიფები', en: 'Pricing' },
   'nav.login': { ru: 'Войти', ka: 'შესვლა', en: 'Sign in' },
@@ -179,6 +180,16 @@ const DICT: Record<string, Entry> = {
     ka: 'ცვლილებების შინაარსობრივი შეჯამებები ამ ეტაპზე რუსულადაა.',
     en: 'Substance summaries of amendments are currently in Russian.',
   },
+
+  // Situational guides
+  'guides.title': { ru: 'Ситуационные руководства', ka: 'სიტუაციური სახელმძღვანელოები', en: 'Situational guides' },
+  'guides.sub': {
+    ru: 'Пошаговые разъяснения Службы доходов по конкретным налоговым ситуациям — от НДС на рекламу нерезидента до вычета нематериальных активов. Каждое руководство открывается в первоисточнике.',
+    ka: 'შემოსავლების სამსახურის ეტაპობრივი განმარტებები კონკრეტულ საგადასახადო სიტუაციებზე — არარეზიდენტის რეკლამის დღგ-დან არამატერიალური აქტივების გამოქვითვამდე. თითოეული იხსნება პირველწყაროში.',
+    en: 'Step-by-step Revenue Service explanations for specific tax situations — from VAT on non-resident advertising to intangible asset deductions. Each guide opens at the official source.',
+  },
+  'guides.search': { ru: 'Найти руководство…', ka: 'იპოვეთ სახელმძღვანელო…', en: 'Find a guide…' },
+  'guides.total': { ru: 'всего: {n}', ka: 'სულ: {n}', en: 'total: {n}' },
 
   // Auth & account
   'auth.login': { ru: 'Вход', ka: 'შესვლა', en: 'Sign in' },

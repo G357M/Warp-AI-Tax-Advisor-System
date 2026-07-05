@@ -141,6 +141,7 @@ class LawAmendment(Base):
     effective_date = Column(Date, nullable=True)
     status = Column(String(20), nullable=True)           # in_force | not_yet | unknown
     affected_articles = Column(JSON, nullable=True)      # [{article, action: amended|added|repealed, summary_ru, old_norm, new_norm}]
+    articles_i18n = Column(JSON, nullable=True)          # {"ka": [{summary, old_norm, new_norm}, ...], "en": [...]} mirroring affected_articles
     raw_json = Column(JSON, nullable=True)
     model = Column(String(60), nullable=True)
     extraction_version = Column(Integer, nullable=False, default=1)

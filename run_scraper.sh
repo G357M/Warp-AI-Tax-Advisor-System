@@ -53,6 +53,11 @@ docker exec "$CONTAINER_NAME" python /app/scripts/extract_law_amendments.py --li
 docker exec "$CONTAINER_NAME" python /app/scripts/extract_law_amendments.py --reresolve \
     2>&1 | tail -2 | tee -a "$LOG_FILE" || true
 
+# Translate new amendment summaries to ka/en for the timeline. Non-fatal.
+echo "Translating amendment summaries..." | tee -a "$LOG_FILE"
+docker exec "$CONTAINER_NAME" python /app/scripts/translate_amendments.py --limit 300 \
+    2>&1 | tail -3 | tee -a "$LOG_FILE" || true
+
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
 

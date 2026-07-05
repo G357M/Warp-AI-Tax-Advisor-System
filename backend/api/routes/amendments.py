@@ -51,6 +51,7 @@ def amended_laws(db: Session = Depends(get_db)):
 def amendment_timeline(
     law_id: UUID,
     article: Optional[str] = Query(default=None, max_length=10),
+    lang: str = Query(default="ru", pattern="^(ru|ka|en)$"),
     db: Session = Depends(get_db),
 ):
     """Chronology of amendments for one law (optionally filtered by article)."""
@@ -63,7 +64,7 @@ def amendment_timeline(
     rows = db.execute(text("""
         SELECT a.id::text, a.adoption_date, a.effective_date, a.status,
                a.affected_articles, d.title AS act_title, d.document_number,
-               d.source_url
+               d.source_url, a.articles_i18n
         FROM law_amendments a
         JOIN documents d ON d.id = a.amendment_doc_id
         WHERE a.target_law_doc_id = :law_id
@@ -76,6 +77,18 @@ def amendment_timeline(
         if article:
             if not any(str(a.get("article")) == article for a in articles):
                 continue
+        if lang != "ru" and r.articles_i18n:
+            translated = (r.articles_i18n or {}).get(lang)
+            if isinstance(translated, list) and len(translated) == len(articles):
+                articles = [
+                    {
+                        **a,
+                        "summary_ru": t.get("summary") or a.get("summary_ru"),
+                        "old_norm": t.get("old_norm") if t.get("old_norm") is not None else a.get("old_norm"),
+                        "new_norm": t.get("new_norm") if t.get("new_norm") is not None else a.get("new_norm"),
+                    }
+                    for a, t in zip(articles, translated)
+                ]
         items.append({
             "id": r[0],
             "adoption_date": r.adoption_date.isoformat() if r.adoption_date else None,

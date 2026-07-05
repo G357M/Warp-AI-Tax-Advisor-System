@@ -45,11 +45,11 @@ export default function LawTimelinePage() {
 
   useEffect(() => {
     if (!lawId) return;
-    fetch(`/api/v1/amendments/timeline?law_id=${lawId}`)
+    fetch(`/api/v1/amendments/timeline?law_id=${lawId}&lang=${lang}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setData)
       .catch(() => setError(true));
-  }, [lawId]);
+  }, [lawId, lang]);
 
   const locale = DATE_LOCALES[lang];
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString(locale) : '—');
@@ -96,10 +96,6 @@ export default function LawTimelinePage() {
                 : t('tl.count', { n: items.length })}
             </span>
           </div>
-          {lang !== 'ru' && t('tl.note_ru') && (
-            <p className="mt-3 text-[12px] text-muted-foreground">{t('tl.note_ru')}</p>
-          )}
-
           <ol className="relative mt-10 space-y-8 border-l pl-8">
             {years.map(({ item, yearMarker }) => (
               <li key={item.id} className="relative">

@@ -5,6 +5,7 @@ pipeline (corpus-tools/export_pipeline/infohub_exporter.py) so that documents
 ingested nightly land in the same buckets the RAG lanes filter on
 (law | regulation | court_decision | guideline | bill | news).
 """
+import re
 from datetime import date, datetime
 from typing import Any, Dict, Optional
 
@@ -51,6 +52,10 @@ def infer_document_type(title: str, metadata: Dict[str, Any]) -> str:
         return "law"
     if "რეგულ" in lowered or "regulation" in lowered:
         return "regulation"
+    # Situational guides ("სიტუაციური სახელმძღვანელო"): titled as a tax topic
+    # plus the guide number, e.g. "…დღგ-ით დაბეგვრა N 1190".
+    if re.search(r"N ?[0-9]{3,5}\s*$", title or ""):
+        return "guideline"
     if "legislativenews" in lowered or "news" in lowered or "სიახლე" in lowered:
         return "news"
     return "guideline"
