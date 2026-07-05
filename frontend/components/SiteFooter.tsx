@@ -1,9 +1,11 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useT } from '@/lib/i18n';
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { t } = useT();
   if (pathname?.startsWith('/admin')) return null;
 
   return (
@@ -13,13 +15,11 @@ export function SiteFooter() {
           <div>
             <div className="text-sm font-semibold">Tax Advisor</div>
             <p className="mt-1 max-w-md text-[13px] leading-relaxed text-muted-foreground">
-              Ответы строятся только на официальной базе: Налоговый кодекс Грузии,
-              подзаконные акты, решения советов по рассмотрению споров. Сервис носит
-              информационный характер и не заменяет юридическую консультацию.
+              {t('footer.disclaimer')}
             </p>
           </div>
           <div className="text-[13px] text-muted-foreground">
-            <div>Источник данных: infohub.rs.ge</div>
+            <div>{t('footer.source')}</div>
             <div className="mt-1">© {new Date().getFullYear()} Tax Advisor</div>
           </div>
         </div>

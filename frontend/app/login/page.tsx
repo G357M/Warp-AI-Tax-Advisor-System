@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useT();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +31,12 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-display">Вход</h1>
+      <h1 className="text-2xl font-semibold tracking-display">{t('auth.login')}</h1>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="Логин"
+          placeholder={t('auth.username')}
           autoComplete="username"
           className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
         />
@@ -42,19 +44,19 @@ export default function LoginPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Пароль"
+          placeholder={t('auth.password')}
           autoComplete="current-password"
           className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
         />
         {error && <p className="text-[13px] text-red-600">{error}</p>}
         <Button type="submit" size="lg" className="w-full" disabled={busy || !username || !password}>
-          {busy ? 'Вхожу…' : 'Войти'}
+          {busy ? t('auth.signing') : t('auth.signin')}
         </Button>
       </form>
       <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        Нет аккаунта?{' '}
+        {t('auth.noaccount')}{' '}
         <Link href="/register" className="text-primary hover:underline">
-          Создать бесплатно
+          {t('auth.createfree')}
         </Link>
       </p>
     </main>

@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { register } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useT();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +20,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     if (password.length < 8) {
-      setError('Пароль — минимум 8 символов.');
+      setError(t('reg.pwshort'));
       return;
     }
     setBusy(true);
@@ -34,15 +36,13 @@ export default function RegisterPage() {
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-display">Регистрация</h1>
-      <p className="mt-2 text-[13px] text-muted-foreground">
-        Бесплатный тариф: 5 вопросов в день с точными источниками.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-display">{t('reg.title')}</h1>
+      <p className="mt-2 text-[13px] text-muted-foreground">{t('reg.sub')}</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="Логин (от 3 символов)"
+          placeholder={t('reg.username')}
           autoComplete="username"
           className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
         />
@@ -58,19 +58,19 @@ export default function RegisterPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Пароль (минимум 8 символов)"
+          placeholder={t('reg.password')}
           autoComplete="new-password"
           className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
         />
         {error && <p className="text-[13px] text-red-600">{error}</p>}
         <Button type="submit" size="lg" className="w-full" disabled={busy || !username || !email || !password}>
-          {busy ? 'Создаю…' : 'Создать аккаунт'}
+          {busy ? t('reg.creating') : t('reg.create')}
         </Button>
       </form>
       <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        Уже есть аккаунт?{' '}
+        {t('reg.have')}{' '}
         <Link href="/login" className="text-primary hover:underline">
-          Войти
+          {t('auth.signin')}
         </Link>
       </p>
     </main>

@@ -5,6 +5,7 @@ import { ChatPanel } from '@/components/ChatPanel';
 import { StatTile } from '@/components/ui/StatTile';
 import { Button } from '@/components/ui/Button';
 import { PLANS } from '@/lib/plans';
+import { useT, DATE_LOCALES } from '@/lib/i18n';
 
 interface DecisionStats {
   coverage: { decisions_in_corpus: number; decisions_extracted: number; documents_total?: number };
@@ -12,25 +13,14 @@ interface DecisionStats {
   top_articles: { article: string; total: number; taxpayer_relief_rate: number | null }[];
 }
 
-const STEPS = [
-  {
-    n: '1',
-    title: 'Вопрос',
-    text: 'Задайте вопрос на русском, грузинском или английском — о ставках, режимах, спорах.',
-  },
-  {
-    n: '2',
-    title: 'Поиск по официальной базе',
-    text: 'Система ищет только в официальных документах: кодексы, приказы, решения советов по спорам.',
-  },
-  {
-    n: '3',
-    title: 'Ответ с цитатой',
-    text: 'Каждый ответ сопровождается точным источником — вплоть до статьи закона. Если ответа в базе нет, система честно говорит об этом.',
-  },
-];
+const PLAN_FEATURE_KEYS: Record<string, string[]> = {
+  free: ['plan.free.f1', 'plan.free.f2', 'plan.free.f3'],
+  pro: ['plan.pro.f1', 'plan.pro.f2', 'plan.pro.f3', 'plan.pro.f4'],
+  business: ['plan.business.f1', 'plan.business.f2', 'plan.business.f3'],
+};
 
 export default function Home() {
+  const { lang, t } = useT();
   const [stats, setStats] = useState<DecisionStats | null>(null);
 
   useEffect(() => {
@@ -40,12 +30,18 @@ export default function Home() {
       .catch(() => null);
   }, []);
 
+  const locale = DATE_LOCALES[lang];
   const docCount = stats?.coverage.documents_total ?? null;
-
   const reliefPct =
     stats?.overall.taxpayer_relief_rate != null
       ? `${Math.round(stats.overall.taxpayer_relief_rate * 100)}%`
       : '—';
+
+  const steps = [1, 2, 3].map((n) => ({
+    n: String(n),
+    title: t(`steps.${n}.title`),
+    text: t(`steps.${n}.text`),
+  }));
 
   return (
     <main>
@@ -54,17 +50,16 @@ export default function Home() {
         <div className="mx-auto max-w-page">
           <div className="mb-5 text-[13px] font-medium text-secondary-foreground">
             {docCount
-              ? `Официальная база · ${docCount.toLocaleString('ru-RU')} документов`
-              : 'Официальная база документов Грузии'}
+              ? t('hero.eyebrow', { n: docCount.toLocaleString(locale) })
+              : t('hero.eyebrow0')}
           </div>
           <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-display sm:text-[56px] sm:leading-[1.08]">
-            Налоговое право Грузии.
+            {t('hero.title1')}
             <br />
-            С точными источниками.
+            {t('hero.title2')}
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-muted-foreground">
-            Ответы строго по официальной базе: Налоговый кодекс, подзаконные акты,
-            решения советов по спорам — и статистика их исходов.
+            {t('hero.sub')}
           </p>
           <div className="mt-10">
             <ChatPanel />
@@ -75,9 +70,9 @@ export default function Home() {
       {/* How it works */}
       <section className="border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-2xl font-semibold tracking-display">Как это работает</h2>
+          <h2 className="text-2xl font-semibold tracking-display">{t('steps.title')}</h2>
           <div className="mt-10 grid gap-10 sm:grid-cols-3">
-            {STEPS.map((s) => (
+            {steps.map((s) => (
               <div key={s.n}>
                 <div className="text-[13px] font-medium text-secondary-foreground">{s.n}</div>
                 <h3 className="mt-2 text-[17px] font-semibold">{s.title}</h3>
@@ -91,32 +86,35 @@ export default function Home() {
       {/* Live dispute statistics */}
       <section id="stats" className="scroll-mt-20 border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-2xl font-semibold tracking-display">Статистика налоговых споров</h2>
+          <h2 className="text-2xl font-semibold tracking-display">{t('stats.title')}</h2>
           <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-            Мы разобрали решения советов по рассмотрению споров Службы доходов и Минфина
-            и посчитали, как они заканчиваются — чтобы вы могли трезво оценить свою стратегию.
+            {t('stats.sub')}
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <StatTile
-              value={stats ? stats.overall.total.toLocaleString('ru-RU') : '…'}
-              label="Решений проанализировано"
+              value={stats ? stats.overall.total.toLocaleString(locale) : '…'}
+              label={t('stats.analyzed')}
               detail={
                 stats
-                  ? `из ${stats.coverage.decisions_in_corpus.toLocaleString('ru-RU')} в базе`
+                  ? t('stats.of', { n: stats.coverage.decisions_in_corpus.toLocaleString(locale) })
                   : undefined
               }
             />
             <StatTile
               value={reliefPct}
-              label="Жалоб получают облегчение"
-              detail="полное или частичное удовлетворение"
+              label={t('stats.relief')}
+              detail={t('stats.relief_detail')}
             />
             <StatTile
-              value={stats?.top_articles?.[0] ? `ст. ${stats.top_articles[0].article}` : '…'}
-              label="Самая спорная статья НК"
+              value={
+                stats?.top_articles?.[0]
+                  ? t('stats.art', { n: stats.top_articles[0].article })
+                  : '…'
+              }
+              label={t('stats.top_article')}
               detail={
                 stats?.top_articles?.[0]
-                  ? `${stats.top_articles[0].total} решений`
+                  ? t('stats.decisions', { n: stats.top_articles[0].total })
                   : undefined
               }
             />
@@ -127,7 +125,7 @@ export default function Home() {
       {/* Pricing */}
       <section id="pricing" className="scroll-mt-20 border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-center text-2xl font-semibold tracking-display">Тарифы</h2>
+          <h2 className="text-center text-2xl font-semibold tracking-display">{t('pricing.title')}</h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {PLANS.map((plan) => (
               <div
@@ -141,14 +139,18 @@ export default function Home() {
                   <span className="text-[34px] font-semibold leading-none tracking-display">
                     {plan.priceGel === 0 ? '0 ₾' : `${plan.priceGel} ₾`}
                   </span>
-                  <span className="text-[13px] text-muted-foreground">{plan.period}</span>
+                  {plan.priceGel > 0 && (
+                    <span className="text-[13px] text-muted-foreground">{t('pricing.month')}</span>
+                  )}
                 </div>
-                <div className="mt-1 text-[13px] text-muted-foreground">{plan.tagline}</div>
+                <div className="mt-1 text-[13px] text-muted-foreground">
+                  {t(`plan.${plan.id}.tagline`)}
+                </div>
                 <ul className="mt-5 flex-1 space-y-2.5">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex gap-2 text-[14px] leading-snug">
+                  {(PLAN_FEATURE_KEYS[plan.id] ?? []).map((key) => (
+                    <li key={key} className="flex gap-2 text-[14px] leading-snug">
                       <span aria-hidden className="mt-[7px] h-1 w-3 shrink-0 rounded-full bg-primary/60" />
-                      {f}
+                      {t(key)}
                     </li>
                   ))}
                 </ul>
@@ -157,14 +159,12 @@ export default function Home() {
                   className="mt-7 w-full"
                   onClick={() => document.getElementById('chat')?.scrollIntoView()}
                 >
-                  {plan.id === 'free' ? 'Начать бесплатно' : 'Скоро — начните с Free'}
+                  {plan.id === 'free' ? t('pricing.free_cta') : t('pricing.paid_cta')}
                 </Button>
               </div>
             ))}
           </div>
-          <p className="mt-6 text-center text-[13px] text-muted-foreground">
-            Подписки Pro и Business откроются вместе с личным кабинетом. Цены предварительные.
-          </p>
+          <p className="mt-6 text-center text-[13px] text-muted-foreground">{t('pricing.note')}</p>
         </div>
       </section>
     </main>

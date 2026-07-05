@@ -39,6 +39,12 @@ ARTICLE_PATTERNS = [
 DOC_NUMBER_PATTERNS = [
     re.compile(r"(?:\b|^)n\s*(\d{3,}(?:/\d+/\d{4})?)\b", re.IGNORECASE),
     re.compile(r"№\s*(\d{3,}(?:/\d+/\d{4})?)", re.IGNORECASE),
+    # bare number right after a document-type word: "ბრძანება 14640", "приказ 996"
+    re.compile(
+        r"(?:ბრძანებ\w*|დადგენილებ\w*|გადაწყვეტილებ\w*|приказ\w*|постановлени\w*|решени\w*|order|resolution|decision)"
+        r"\s+(?:no\.?\s*)?(\d{3,}(?:/\d+/\d{4})?)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 

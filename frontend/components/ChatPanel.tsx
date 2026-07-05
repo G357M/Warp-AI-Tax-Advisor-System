@@ -4,30 +4,19 @@ import { FormEvent, useState } from 'react';
 import { useQuery } from '@/hooks/useQuery';
 import { Button } from '@/components/ui/Button';
 import { SourceChip } from '@/components/ui/SourceChip';
-
-const EXAMPLES = [
-  'Какая ставка НДС в Грузии?',
-  'Может ли ООО применять налог 1%?',
-  'Как обжаловать решение налоговой?',
-];
-
-const LANGUAGES = [
-  { code: 'ru', label: 'Рус' },
-  { code: 'ka', label: 'ქარ' },
-  { code: 'en', label: 'Eng' },
-] as const;
+import { useT } from '@/lib/i18n';
 
 export function ChatPanel() {
   const { data, loading, error, submitQuery } = useQuery();
+  const { lang, t } = useT();
   const [question, setQuestion] = useState('');
-  const [language, setLanguage] = useState<'ru' | 'ka' | 'en'>('ru');
   const [asked, setAsked] = useState<string | null>(null);
 
   const ask = (q: string) => {
     const text = q.trim();
     if (!text || loading) return;
     setAsked(text);
-    submitQuery(text, language);
+    submitQuery(text, lang);
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -35,39 +24,27 @@ export function ChatPanel() {
     ask(question);
   };
 
+  const examples = [t('chat.ex1'), t('chat.ex2'), t('chat.ex3')];
+
   return (
     <div id="chat" className="mx-auto w-full max-w-2xl scroll-mt-24">
       <form onSubmit={onSubmit} className="relative">
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Спросите о налогах Грузии…"
-          aria-label="Вопрос о налоговом праве Грузии"
+          placeholder={t('chat.placeholder')}
+          aria-label={t('chat.placeholder')}
           className="h-14 w-full rounded-full border bg-white pl-6 pr-32 text-[15px] shadow-[0_2px_12px_rgba(0,0,0,0.05)] placeholder:text-muted-foreground focus-visible:border-primary"
         />
         <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2">
           <Button type="submit" disabled={loading || !question.trim()}>
-            {loading ? 'Ищу…' : 'Спросить'}
+            {loading ? t('chat.asking') : t('chat.ask')}
           </Button>
         </div>
       </form>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-        <div className="mr-2 flex overflow-hidden rounded-full border" role="group" aria-label="Язык ответа">
-          {LANGUAGES.map((l) => (
-            <button
-              key={l.code}
-              type="button"
-              onClick={() => setLanguage(l.code)}
-              className={`px-3 py-1 text-xs transition-colors ${
-                language === l.code ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-        {EXAMPLES.map((q) => (
+        {examples.map((q) => (
           <button
             key={q}
             type="button"
@@ -84,15 +61,19 @@ export function ChatPanel() {
 
       {(asked || error) && (
         <div className="mt-8 text-left">
-          {asked && <div className="mb-3 text-[13px] text-muted-foreground">Вопрос: {asked}</div>}
+          {asked && (
+            <div className="mb-3 text-[13px] text-muted-foreground">
+              {t('chat.question')} {asked}
+            </div>
+          )}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-              Не получилось получить ответ: {error}. Попробуйте ещё раз.
+              {t('chat.error')} {error}. {t('chat.retry')}
             </div>
           )}
           {loading && (
             <div className="rounded-lg border bg-white p-5 text-[14px] text-muted-foreground">
-              Ищу ответ в официальной базе…
+              {t('chat.searching')}
             </div>
           )}
           {!loading && data && (
@@ -101,7 +82,7 @@ export function ChatPanel() {
               {data.sources?.length > 0 && (
                 <div className="mt-4 border-t pt-4">
                   <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Источники
+                    {t('chat.sources')}
                   </div>
                   <div className="flex flex-col gap-2">
                     {data.sources.slice(0, 5).map((s: any, i: number) => (

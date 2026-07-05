@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { SourceChip } from '@/components/ui/SourceChip';
+import { useT, DATE_LOCALES } from '@/lib/i18n';
 
 interface AffectedArticle {
   article: string;
@@ -29,24 +30,15 @@ interface Timeline {
   timeline: TimelineItem[];
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  amended: 'изменена',
-  added: 'добавлена',
-  repealed: 'отменена',
+const STATUS_CLASS: Record<string, string> = {
+  in_force: 'bg-success/10 text-success',
+  not_yet: 'bg-secondary text-secondary-foreground',
+  unknown: 'bg-muted text-muted-foreground',
 };
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  in_force: { label: 'действует', className: 'bg-success/10 text-success' },
-  not_yet: { label: 'ещё не вступила', className: 'bg-secondary text-secondary-foreground' },
-  unknown: { label: 'дата вступления не указана', className: 'bg-muted text-muted-foreground' },
-};
-
-function fmt(d: string | null): string {
-  return d ? new Date(d).toLocaleDateString('ru-RU') : '—';
-}
 
 export default function LawTimelinePage() {
   const { lawId } = useParams<{ lawId: string }>();
+  const { lang, t } = useT();
   const [data, setData] = useState<Timeline | null>(null);
   const [error, setError] = useState(false);
   const [article, setArticle] = useState('');
@@ -59,12 +51,13 @@ export default function LawTimelinePage() {
       .catch(() => setError(true));
   }, [lawId]);
 
+  const locale = DATE_LOCALES[lang];
+  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString(locale) : '—');
+
   const items = useMemo(() => {
     if (!data) return [];
     if (!article.trim()) return data.timeline;
-    return data.timeline.filter((t) =>
-      t.articles.some((a) => a.article === article.trim()),
-    );
+    return data.timeline.filter((x) => x.articles.some((a) => a.article === article.trim()));
   }, [data, article]);
 
   const years = useMemo(() => {
@@ -80,14 +73,10 @@ export default function LawTimelinePage() {
   return (
     <main className="mx-auto min-h-[70vh] max-w-3xl px-6 py-16">
       <Link href="/laws" className="text-[13px] text-muted-foreground hover:text-foreground">
-        ← Все законы
+        {t('tl.back')}
       </Link>
-      {error && (
-        <p className="mt-8 text-[14px] text-muted-foreground">
-          Не получилось загрузить таймлайн. Обновите страницу.
-        </p>
-      )}
-      {!data && !error && <p className="mt-8 text-[14px] text-muted-foreground">Загружаю…</p>}
+      {error && <p className="mt-8 text-[14px] text-muted-foreground">{t('laws.error')}</p>}
+      {!data && !error && <p className="mt-8 text-[14px] text-muted-foreground">{t('laws.loading')}</p>}
       {data && (
         <>
           <h1 className="mt-4 text-2xl font-semibold leading-snug tracking-display">
@@ -97,14 +86,19 @@ export default function LawTimelinePage() {
             <input
               value={article}
               onChange={(e) => setArticle(e.target.value)}
-              placeholder="Фильтр по статье, напр. 165"
-              aria-label="Фильтр по номеру статьи"
+              placeholder={t('tl.filter')}
+              aria-label={t('tl.filter')}
               className="h-10 w-56 rounded-full border bg-white px-4 text-[13px] placeholder:text-muted-foreground"
             />
             <span className="text-[13px] text-muted-foreground">
-              {items.length} поправок{article.trim() ? ` к ст. ${article.trim()}` : ''}
+              {article.trim()
+                ? t('tl.count_art', { n: items.length, a: article.trim() })
+                : t('tl.count', { n: items.length })}
             </span>
           </div>
+          {lang !== 'ru' && t('tl.note_ru') && (
+            <p className="mt-3 text-[12px] text-muted-foreground">{t('tl.note_ru')}</p>
+          )}
 
           <ol className="relative mt-10 space-y-8 border-l pl-8">
             {years.map(({ item, yearMarker }) => (
@@ -120,13 +114,13 @@ export default function LawTimelinePage() {
                 )}
                 <div className="rounded-lg border bg-white p-5">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
-                    <span>принята {fmt(item.adoption_date)}</span>
-                    <span>вступила {fmt(item.effective_date)}</span>
-                    {item.status && STATUS_BADGE[item.status] && (
+                    <span>{t('tl.adopted', { d: fmt(item.adoption_date) })}</span>
+                    <span>{t('tl.effective', { d: fmt(item.effective_date) })}</span>
+                    {item.status && (
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[item.status].className}`}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[item.status] ?? ''}`}
                       >
-                        {STATUS_BADGE[item.status].label}
+                        {t(`tl.${item.status}`)}
                       </span>
                     )}
                   </div>
@@ -135,21 +129,19 @@ export default function LawTimelinePage() {
                     <ul className="mt-4 space-y-3">
                       {item.articles.map((a, i) => (
                         <li key={i} className="text-[14px] leading-relaxed">
-                          <span className="font-semibold">ст. {a.article}</span>{' '}
-                          <span className="text-muted-foreground">
-                            {ACTION_LABELS[a.action] ?? a.action}
-                          </span>
+                          <span className="font-semibold">{t('tl.art', { n: a.article })}</span>{' '}
+                          <span className="text-muted-foreground">{t(`tl.${a.action}`)}</span>
                           {a.summary_ru && <> — {a.summary_ru}</>}
                           {(a.old_norm || a.new_norm) && (
                             <div className="mt-1.5 grid gap-1.5 text-[13px] sm:grid-cols-2">
                               {a.old_norm && (
                                 <div className="rounded-md bg-muted px-3 py-2 text-muted-foreground">
-                                  <span className="font-medium">Было:</span> {a.old_norm}
+                                  <span className="font-medium">{t('tl.was')}</span> {a.old_norm}
                                 </div>
                               )}
                               {a.new_norm && (
                                 <div className="rounded-md bg-secondary px-3 py-2 text-secondary-foreground">
-                                  <span className="font-medium">Стало:</span> {a.new_norm}
+                                  <span className="font-medium">{t('tl.became')}</span> {a.new_norm}
                                 </div>
                               )}
                             </div>
@@ -160,11 +152,7 @@ export default function LawTimelinePage() {
                   )}
 
                   <div className="mt-4">
-                    <SourceChip
-                      title={item.act_title}
-                      documentType="law"
-                      url={item.source_url}
-                    />
+                    <SourceChip title={item.act_title} documentType="law" url={item.source_url} />
                   </div>
                 </div>
               </li>
@@ -172,9 +160,7 @@ export default function LawTimelinePage() {
           </ol>
           {items.length === 0 && (
             <p className="mt-8 text-[14px] text-muted-foreground">
-              {article.trim()
-                ? `Поправок к статье ${article.trim()} в базе не найдено.`
-                : 'Поправки к этому закону ещё обрабатываются.'}
+              {article.trim() ? t('tl.none_art', { a: article.trim() }) : t('tl.none')}
             </p>
           )}
         </>

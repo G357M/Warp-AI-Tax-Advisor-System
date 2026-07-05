@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { authFetch, clearToken, isLoggedIn } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useT, DATE_LOCALES } from '@/lib/i18n';
 
 interface Account {
   email: string;
@@ -30,6 +31,7 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function AccountPage() {
   const router = useRouter();
+  const { lang, t } = useT();
   const [account, setAccount] = useState<Account | null>(null);
   const [sub, setSub] = useState<SubscriptionInfo | null>(null);
   const [instructions, setInstructions] = useState<string | null>(null);
@@ -61,14 +63,20 @@ export default function AccountPage() {
   };
 
   if (!account) {
-    return <main className="mx-auto max-w-page px-6 py-16 text-[14px] text-muted-foreground">Загружаю…</main>;
+    return (
+      <main className="mx-auto max-w-page px-6 py-16 text-[14px] text-muted-foreground">
+        {t('acc.loading')}
+      </main>
+    );
   }
+
+  const locale = DATE_LOCALES[lang];
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-2xl px-6 py-16">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-display">Кабинет</h1>
+          <h1 className="text-2xl font-semibold tracking-display">{t('acc.title')}</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">{account.email}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -77,7 +85,7 @@ export default function AccountPage() {
               href="/admin"
               className="rounded-full bg-foreground px-4 py-2 text-[13px] font-medium text-background transition-opacity hover:opacity-85"
             >
-              Админпанель
+              {t('acc.admin')}
             </Link>
           )}
           <Button
@@ -87,7 +95,7 @@ export default function AccountPage() {
               router.push('/');
             }}
           >
-            Выйти
+            {t('acc.logout')}
           </Button>
         </div>
       </div>
@@ -95,19 +103,19 @@ export default function AccountPage() {
       <Card className="mt-8 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-muted-foreground">Тариф</div>
+            <div className="text-xs text-muted-foreground">{t('acc.plan')}</div>
             <div className="mt-1 text-[22px] font-semibold tracking-display">
               {PLAN_LABELS[account.plan] ?? account.plan}
             </div>
             {sub?.period_end && (
               <div className="mt-1 text-[13px] text-muted-foreground">
-                действует до {new Date(sub.period_end).toLocaleDateString('ru-RU')}
+                {t('acc.until', { d: new Date(sub.period_end).toLocaleDateString(locale) })}
               </div>
             )}
           </div>
           {account.plan === 'free' && (
             <div className="flex gap-2">
-              <Button onClick={() => upgrade('pro')}>Перейти на Pro</Button>
+              <Button onClick={() => upgrade('pro')}>{t('acc.upgrade_pro')}</Button>
               <Button variant="secondary" onClick={() => upgrade('business')}>
                 Business
               </Button>
@@ -122,24 +130,25 @@ export default function AccountPage() {
       </Card>
 
       <Card className="mt-4 p-6">
-        <div className="text-xs text-muted-foreground">Вопросы сегодня</div>
+        <div className="text-xs text-muted-foreground">{t('acc.today')}</div>
         <div className="mt-1 text-[22px] font-semibold tracking-display">
           {account.usage.questions_today}
           {account.usage.daily_limit != null && (
             <span className="text-[15px] font-normal text-muted-foreground">
-              {' '}из {account.usage.daily_limit}
+              {' '}
+              {t('acc.of', { n: account.usage.daily_limit })}
             </span>
           )}
         </div>
         {account.usage.daily_limit == null && (
-          <div className="mt-1 text-[13px] text-muted-foreground">без ограничений</div>
+          <div className="mt-1 text-[13px] text-muted-foreground">{t('acc.unlimited')}</div>
         )}
       </Card>
 
       <p className="mt-8 text-[13px] text-muted-foreground">
-        Хронология изменений законов — в разделе{' '}
+        {t('acc.laws_hint')}{' '}
         <Link href="/laws" className="text-primary hover:underline">
-          Законы
+          {t('nav.laws')}
         </Link>
         .
       </p>
