@@ -41,9 +41,16 @@ export function SiteHeader() {
   return (
     <header className="glass sticky top-0 z-50 border-b">
       <div className="mx-auto flex h-14 max-w-page items-center justify-between px-6">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="text-[17px] font-semibold tracking-display">Tax Advisor</span>
-          <span className="text-xs text-muted-foreground">საქართველო</span>
+        <Link href="/" className="flex items-center gap-2.5">
+          <svg viewBox="0 0 64 64" className="h-[22px] w-[22px] shrink-0" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#0E62D9" />
+            <rect x="16" y="17" width="32" height="9" rx="2" fill="#fff" />
+            <rect x="27.5" y="17" width="9" height="30" rx="2" fill="#fff" />
+          </svg>
+          <span className="flex items-baseline gap-2">
+            <span className="text-[17px] font-semibold tracking-display">Tax Advisor</span>
+            <span className="text-xs text-muted-foreground">საქართველო</span>
+          </span>
         </Link>
         <nav className="flex items-center gap-5">
           {nav.map((item) => (
