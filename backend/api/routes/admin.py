@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.security import require_admin
-from models import User
+from models import Feedback, User
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
@@ -208,3 +208,53 @@ def ops_status(db: Session = Depends(get_db)):
             "decision_facts_backfill": _tail("/tmp/decision_facts_backfill.log"),
         },
     }
+
+
+@router.get("/feedback")
+def list_feedback(
+    status: Optional[str] = Query(default=None, pattern="^(new|in_progress|fixed)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    where = "WHERE f.status = :status" if status else ""
+    params = {"status": status} if status else {}
+    total = db.execute(text(f"SELECT count(*) FROM feedback f {where}"), params).scalar()
+    counts = dict(db.execute(text("SELECT status, count(*) FROM feedback GROUP BY status")).all())
+    rows = db.execute(text(f"""
+        SELECT f.id::text, f.message, f.page, f.status, f.created_at, u.email, u.username
+        FROM feedback f JOIN users u ON u.id = f.user_id
+        {where}
+        ORDER BY f.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """), {**params, "limit": limit, "offset": offset}).all()
+    return {
+        "total": total,
+        "counts": {s: counts.get(s, 0) for s in ("new", "in_progress", "fixed")},
+        "items": [
+            {
+                "id": r[0], "message": r[1], "page": r[2], "status": r[3],
+                "created_at": r[4].isoformat() if r[4] else None,
+                "email": r[5], "username": r[6],
+            }
+            for r in rows
+        ],
+    }
+
+
+class FeedbackStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(new|in_progress|fixed)$")
+
+
+@router.patch("/feedback/{feedback_id}")
+def update_feedback_status(
+    feedback_id: UUID,
+    body: FeedbackStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    item = db.get(Feedback, feedback_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    item.status = body.status
+    db.commit()
+    return {"id": str(item.id), "status": item.status}

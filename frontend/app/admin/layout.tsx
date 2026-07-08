@@ -11,6 +11,7 @@ import {
   PersonIcon,
   ActivityLogIcon,
   BarChartIcon,
+  ChatBubbleIcon,
   GearIcon,
   ExitIcon,
 } from '@radix-ui/react-icons';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Documents', href: '/admin/documents', icon: FileTextIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChartIcon },
   { name: 'Users', href: '/admin/users', icon: PersonIcon },
+  { name: 'Feedback', href: '/admin/feedback', icon: ChatBubbleIcon },
   { name: 'Scraper', href: '/admin/scraper', icon: ActivityLogIcon },
   { name: 'Settings', href: '/admin/settings', icon: GearIcon },
 ];
