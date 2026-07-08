@@ -16,6 +16,7 @@ export default function LawsPage() {
   const [laws, setLaws] = useState<AmendedLaw[] | null>(null);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     fetch('/api/v1/amendments/laws')
@@ -26,9 +27,14 @@ export default function LawsPage() {
 
   const locale = DATE_LOCALES[lang];
   const featured = (laws ?? []).slice(0, 4);
-  const shown = (laws ?? []).filter((l) =>
+  const matched = (laws ?? []).filter((l) =>
     l.title.toLowerCase().includes(filter.toLowerCase()),
   );
+  // The full catalog is ~150 rows; collapse it until asked. Search always
+  // runs over everything.
+  const PAGE = 30;
+  const shown = filter.trim() || expanded ? matched : matched.slice(0, PAGE);
+  const hidden = matched.length - shown.length;
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-16">
@@ -49,6 +55,7 @@ export default function LawsPage() {
                 key={law.law_id}
                 href={`/laws/${law.law_id}`}
                 className="flex flex-col justify-between rounded-lg border bg-white p-5 transition-colors hover:border-primary/40"
+                title={law.title}
               >
                 <span className="text-[14px] font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden">
                   {law.title}
@@ -84,6 +91,7 @@ export default function LawsPage() {
             key={law.law_id}
             href={`/laws/${law.law_id}`}
             className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted"
+            title={law.title}
           >
             <span className="min-w-0">
               <span className="block truncate text-[15px] font-medium">{law.title}</span>
@@ -104,6 +112,17 @@ export default function LawsPage() {
           </p>
         )}
       </div>
+
+      {hidden > 0 && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => setExpanded(true)}
+            className="rounded-full border px-6 py-2 text-[14px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            {t('laws.showmore', { n: hidden })}
+          </button>
+        </div>
+      )}
     </main>
   );
 }

@@ -7,7 +7,7 @@ import { isLoggedIn } from '@/lib/auth';
 import { StatTile } from '@/components/ui/StatTile';
 import { Button } from '@/components/ui/Button';
 import { PLANS } from '@/lib/plans';
-import { useT, DATE_LOCALES } from '@/lib/i18n';
+import { useT, formatNum } from '@/lib/i18n';
 
 interface DecisionStats {
   coverage: { decisions_in_corpus: number; decisions_extracted: number; documents_total?: number };
@@ -33,7 +33,6 @@ export default function Home() {
       .catch(() => null);
   }, []);
 
-  const locale = DATE_LOCALES[lang];
   const docCount = stats?.coverage.documents_total ?? null;
   const reliefPct =
     stats?.overall.taxpayer_relief_rate != null
@@ -53,7 +52,7 @@ export default function Home() {
         <div className="mx-auto max-w-page">
           <div className="mb-5 text-[13px] font-medium text-secondary-foreground">
             {docCount
-              ? t('hero.eyebrow', { n: docCount.toLocaleString(locale) })
+              ? t('hero.eyebrow', { n: formatNum(lang, docCount) })
               : t('hero.eyebrow0')}
           </div>
           <h1
@@ -103,11 +102,13 @@ export default function Home() {
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <StatTile
-              value={stats ? stats.overall.total.toLocaleString(locale) : '…'}
+              value={stats ? formatNum(lang, stats.overall.total) : '…'}
               label={t('stats.analyzed')}
               detail={
                 stats
-                  ? t('stats.of', { n: stats.coverage.decisions_in_corpus.toLocaleString(locale) })
+                  ? stats.overall.total < stats.coverage.decisions_in_corpus
+                    ? t('stats.of', { n: formatNum(lang, stats.coverage.decisions_in_corpus) })
+                    : t('stats.analyzed_detail')
                   : undefined
               }
             />

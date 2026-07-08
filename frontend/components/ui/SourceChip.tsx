@@ -42,10 +42,14 @@ export function SourceChip({ title, documentType, url, className }: SourceChipPr
   );
   if (url) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className={base}>
+      <a href={url} target="_blank" rel="noopener noreferrer" className={base} title={title}>
         {body}
       </a>
     );
   }
-  return <span className={base}>{body}</span>;
+  return (
+    <span className={base} title={title}>
+      {body}
+    </span>
+  );
 }

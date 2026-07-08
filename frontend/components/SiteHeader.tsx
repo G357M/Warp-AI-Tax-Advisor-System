@@ -76,8 +76,14 @@ export function SiteHeader() {
     { name: t('nav.pricing'), href: '/#pricing' },
   ];
 
-  const accountHref = authed ? '/account' : '/login';
-  const accountLabel = authed ? t('nav.account') : t('nav.login');
+  // On the auth pages the pill offers the opposite action instead of
+  // duplicating the page itself.
+  const accountHref = authed ? '/account' : pathname === '/login' ? '/register' : '/login';
+  const accountLabel = authed
+    ? t('nav.account')
+    : pathname === '/login'
+      ? t('reg.title')
+      : t('nav.login');
 
   return (
     <header className="glass sticky top-0 z-50 border-b">

@@ -112,6 +112,11 @@ const DICT: Record<string, Entry> = {
   },
   'stats.analyzed': { ru: 'Решений проанализировано', ka: 'გაანალიზებული გადაწყვეტილება', en: 'Decisions analyzed' },
   'stats.of': { ru: 'из {n} в базе', ka: '{n}-დან ბაზაში', en: 'of {n} in the base' },
+  'stats.analyzed_detail': {
+    ru: 'советы по спорам Службы доходов и Минфина',
+    ka: 'შემოსავლების სამსახურისა და ფინანსთა სამინისტროს დავების საბჭოები',
+    en: 'Revenue Service and MoF dispute councils',
+  },
   'stats.relief': { ru: 'Жалоб получают облегчение', ka: 'საჩივრები კმაყოფილდება', en: 'Complaints get relief' },
   'stats.relief_detail': { ru: 'полное или частичное удовлетворение', ka: 'სრულად ან ნაწილობრივ', en: 'full or partial satisfaction' },
   'stats.top_article': { ru: 'Самая спорная статья НК', ka: 'ყველაზე სადავო მუხლი', en: 'Most contested article' },
@@ -150,6 +155,7 @@ const DICT: Record<string, Entry> = {
     en: 'A chronology of amendments to Georgian laws and secondary acts — including MoF orders (e.g. №996 on tax administration): when adopted, when in force, which articles changed and what changed in substance.',
   },
   'laws.search': { ru: 'Найти закон или приказ…', ka: 'იპოვეთ კანონი ან ბრძანება…', en: 'Find a law or order…' },
+  'laws.showmore': { ru: 'Показать ещё {n}', ka: 'კიდევ {n}-ის ჩვენება', en: 'Show {n} more' },
   'laws.featured': { ru: 'Чаще всего меняются', ka: 'ყველაზე ხშირად იცვლება', en: 'Most frequently amended' },
   'laws.last': { ru: 'последняя поправка — {d}', ka: 'ბოლო ცვლილება — {d}', en: 'last amendment — {d}' },
   'laws.amendments': { ru: '{n} поправок', ka: '{n} ცვლილება', en: '{n} amendments' },
@@ -262,3 +268,9 @@ export function useT() {
 }
 
 export const DATE_LOCALES: Record<Lang, string> = { ru: 'ru-RU', ka: 'ka-GE', en: 'en-GB' };
+
+// Number grouping: space for ru and ka (CLDR ka-GE uses commas, which read
+// as English in Georgian text), comma for en.
+export function formatNum(lang: Lang, n: number): string {
+  return n.toLocaleString(lang === 'en' ? 'en-GB' : 'ru-RU');
+}
