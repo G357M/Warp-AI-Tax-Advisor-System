@@ -35,6 +35,9 @@ export default function AccountPage() {
   const [account, setAccount] = useState<Account | null>(null);
   const [sub, setSub] = useState<SubscriptionInfo | null>(null);
   const [instructions, setInstructions] = useState<string | null>(null);
+  const [bugOpen, setBugOpen] = useState(false);
+  const [bugText, setBugText] = useState('');
+  const [bugState, setBugState] = useState<'idle' | 'sending' | 'sent' | 'error' | 'short'>('idle');
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -50,6 +53,26 @@ export default function AccountPage() {
       .then(setSub)
       .catch(() => null);
   }, [router]);
+
+  const sendBug = async () => {
+    if (bugText.trim().length < 5) {
+      setBugState('short');
+      return;
+    }
+    setBugState('sending');
+    try {
+      const res = await authFetch('/api/v1/feedback', {
+        method: 'POST',
+        body: JSON.stringify({ message: bugText.trim(), page: window.location.pathname }),
+      });
+      if (!res.ok) throw new Error();
+      setBugState('sent');
+      setBugText('');
+      setBugOpen(false);
+    } catch {
+      setBugState('error');
+    }
+  };
 
   const upgrade = async (plan: 'pro' | 'business') => {
     const res = await authFetch('/api/v1/billing/checkout', {
@@ -142,6 +165,57 @@ export default function AccountPage() {
         </div>
         {account.usage.daily_limit == null && (
           <div className="mt-1 text-[13px] text-muted-foreground">{t('acc.unlimited')}</div>
+        )}
+      </Card>
+
+      <Card className="mt-4 p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[15px] font-semibold tracking-display">{t('acc.bug_title')}</div>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              {t('acc.bug_hint')}
+            </p>
+          </div>
+          {!bugOpen && bugState !== 'sent' && (
+            <Button variant="secondary" onClick={() => setBugOpen(true)}>
+              {t('acc.bug_button')}
+            </Button>
+          )}
+        </div>
+        {bugOpen && (
+          <div className="mt-4">
+            <textarea
+              value={bugText}
+              onChange={(e) => setBugText(e.target.value)}
+              placeholder={t('acc.bug_placeholder')}
+              rows={4}
+              maxLength={4000}
+              className="w-full rounded-md border bg-white px-4 py-3 text-[14px] placeholder:text-muted-foreground"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <Button onClick={sendBug} disabled={bugState === 'sending'}>
+                {bugState === 'sending' ? t('acc.bug_sending') : t('acc.bug_send')}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setBugOpen(false);
+                  setBugState('idle');
+                }}
+              >
+                ✕
+              </Button>
+              {bugState === 'error' && (
+                <span className="text-[13px] text-red-600">{t('acc.bug_error')}</span>
+              )}
+              {bugState === 'short' && (
+                <span className="text-[13px] text-muted-foreground">{t('acc.bug_short')}</span>
+              )}
+            </div>
+          </div>
+        )}
+        {bugState === 'sent' && (
+          <p className="mt-3 text-[13px] text-emerald-600">{t('acc.bug_sent')}</p>
         )}
       </Card>
 

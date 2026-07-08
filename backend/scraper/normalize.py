@@ -56,6 +56,10 @@ def infer_document_type(title: str, metadata: Dict[str, Any]) -> str:
     # plus the guide number, e.g. "…დღგ-ით დაბეგვრა N 1190".
     if re.search(r"N ?[0-9]{3,5}\s*$", title or ""):
         return "guideline"
+    # Methodical instructions and the situational-guides registry are guidance
+    # content even when posted through LegislativeNews.
+    if "მეთოდური მითითებ" in lowered or "სიტუაციური სახელმძღვანელო" in lowered:
+        return "guideline"
     if "legislativenews" in lowered or "news" in lowered or "სიახლე" in lowered:
         return "news"
     return "guideline"

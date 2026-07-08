@@ -181,15 +181,23 @@ const DICT: Record<string, Entry> = {
     en: 'Substance summaries of amendments are currently in Russian.',
   },
 
-  // Situational guides
-  'guides.title': { ru: 'Ситуационные руководства', ka: 'სიტუაციური სახელმძღვანელოები', en: 'Situational guides' },
+  // Methodological guides (situational-guides registry)
+  'guides.title': { ru: 'Методические руководства', ka: 'მეთოდური სახელმძღვანელოები', en: 'Methodological guides' },
   'guides.sub': {
-    ru: 'Пошаговые разъяснения Службы доходов по конкретным налоговым ситуациям — от НДС на рекламу нерезидента до вычета нематериальных активов. Каждое руководство открывается в первоисточнике.',
-    ka: 'შემოსავლების სამსახურის ეტაპობრივი განმარტებები კონკრეტულ საგადასახადო სიტუაციებზე — არარეზიდენტის რეკლამის დღგ-დან არამატერიალური აქტივების გამოქვითვამდე. თითოეული იხსნება პირველწყაროში.',
-    en: 'Step-by-step Revenue Service explanations for specific tax situations — from VAT on non-resident advertising to intangible asset deductions. Each guide opens at the official source.',
+    ru: 'Реестр ситуационных руководств Службы доходов: пошаговые разъяснения по конкретным налоговым ситуациям. Реестр показывает, какие руководства действуют, а какие отозваны. Каждое руководство открывается в первоисточнике.',
+    ka: 'შემოსავლების სამსახურის სიტუაციური სახელმძღვანელოების რეესტრი: ეტაპობრივი განმარტებები კონკრეტულ საგადასახადო სიტუაციებზე. რეესტრი აჩვენებს, რომელი სახელმძღვანელო მოქმედებს და რომელია ამოღებული. თითოეული იხსნება პირველწყაროში.',
+    en: 'The registry of the Revenue Service situational guides: step-by-step explanations for specific tax situations. The registry shows which guides are in force and which have been withdrawn. Each guide opens at the official source.',
   },
   'guides.search': { ru: 'Найти руководство…', ka: 'იპოვეთ სახელმძღვანელო…', en: 'Find a guide…' },
   'guides.total': { ru: 'всего: {n}', ka: 'სულ: {n}', en: 'total: {n}' },
+  'guides.filter_all': { ru: 'Все', ka: 'ყველა', en: 'All' },
+  'guides.active': { ru: 'Действует', ka: 'მოქმედი', en: 'In force' },
+  'guides.withdrawn': { ru: 'Отозвано', ka: 'ამოღებულია', en: 'Withdrawn' },
+  'guides.active_n': { ru: 'действуют: {n}', ka: 'მოქმედი: {n}', en: 'in force: {n}' },
+  'guides.withdrawn_n': { ru: 'отозваны: {n}', ka: 'ამოღებული: {n}', en: 'withdrawn: {n}' },
+  'guides.edition': { ru: 'редакция от {d}', ka: 'რედაქცია: {d}', en: 'edition of {d}' },
+  'guides.withdrawn_on': { ru: 'отозвано {d}', ka: 'ამოღებულია {d}', en: 'withdrawn {d}' },
+  'guides.registry_src': { ru: 'Официальный реестр', ka: 'ოფიციალური რეესტრი', en: 'Official registry' },
 
   // Auth & account
   'auth.login': { ru: 'Вход', ka: 'შესვლა', en: 'Sign in' },
@@ -218,6 +226,19 @@ const DICT: Record<string, Entry> = {
   'acc.unlimited': { ru: 'без ограничений', ka: 'შეუზღუდავად', en: 'unlimited' },
   'acc.laws_hint': { ru: 'Хронология изменений законов — в разделе', ka: 'კანონმდებლობის ცვლილებების ქრონოლოგია — განყოფილებაში', en: 'The law-change timeline lives in' },
   'acc.loading': { ru: 'Загружаю…', ka: 'იტვირთება…', en: 'Loading…' },
+  'acc.bug_title': { ru: 'Нашли ошибку?', ka: 'იპოვეთ შეცდომა?', en: 'Found a bug?' },
+  'acc.bug_hint': {
+    ru: 'Опишите проблему — неверный ответ, битая ссылка, сбой оплаты. Сообщение сразу попадёт к нам.',
+    ka: 'აღწერეთ პრობლემა — არასწორი პასუხი, გაფუჭებული ბმული, გადახდის შეფერხება. შეტყობინება პირდაპირ ჩვენთან მოვა.',
+    en: 'Describe the problem — a wrong answer, a broken link, a payment failure. The message goes straight to us.',
+  },
+  'acc.bug_button': { ru: 'Сообщить об ошибке', ka: 'შეცდომის შეტყობინება', en: 'Report a bug' },
+  'acc.bug_placeholder': { ru: 'Что пошло не так?', ka: 'რა მოხდა?', en: 'What went wrong?' },
+  'acc.bug_send': { ru: 'Отправить', ka: 'გაგზავნა', en: 'Send' },
+  'acc.bug_sending': { ru: 'Отправляю…', ka: 'იგზავნება…', en: 'Sending…' },
+  'acc.bug_sent': { ru: 'Спасибо! Сообщение отправлено.', ka: 'მადლობა! შეტყობინება გაიგზავნა.', en: 'Thank you! Your report has been sent.' },
+  'acc.bug_error': { ru: 'Не удалось отправить. Попробуйте ещё раз.', ka: 'გაგზავნა ვერ მოხერხდა. სცადეთ ხელახლა.', en: 'Could not send. Please try again.' },
+  'acc.bug_short': { ru: 'Опишите проблему подробнее (минимум 5 символов).', ka: 'აღწერეთ პრობლემა უფრო ვრცლად (მინ. 5 სიმბოლო).', en: 'Please describe the problem in more detail (5+ characters).' },
 };
 
 export function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {
