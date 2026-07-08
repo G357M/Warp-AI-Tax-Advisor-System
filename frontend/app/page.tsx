@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChatPanel } from '@/components/ChatPanel';
+import { isLoggedIn } from '@/lib/auth';
 import { StatTile } from '@/components/ui/StatTile';
 import { Button } from '@/components/ui/Button';
 import { PLANS } from '@/lib/plans';
@@ -20,6 +22,7 @@ const PLAN_FEATURE_KEYS: Record<string, string[]> = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const { lang, t } = useT();
   const [stats, setStats] = useState<DecisionStats | null>(null);
 
@@ -53,7 +56,15 @@ export default function Home() {
               ? t('hero.eyebrow', { n: docCount.toLocaleString(locale) })
               : t('hero.eyebrow0')}
           </div>
-          <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-display sm:text-[56px] sm:leading-[1.08]">
+          <h1
+            className={`mx-auto max-w-3xl font-semibold tracking-display ${
+              // Georgian runs ~35% longer: step the display size down so the
+              // hero stays 2–3 lines on a phone instead of six.
+              lang === 'ka'
+                ? 'text-[28px] leading-[1.2] sm:text-5xl sm:leading-[1.12]'
+                : 'text-4xl leading-tight sm:text-[56px] sm:leading-[1.08]'
+            }`}
+          >
             {t('hero.title1')}
             <br />
             {t('hero.title2')}
@@ -157,7 +168,17 @@ export default function Home() {
                 <Button
                   variant={plan.highlighted ? 'primary' : 'secondary'}
                   className="mt-7 w-full"
-                  onClick={() => document.getElementById('chat')?.scrollIntoView()}
+                  onClick={() => {
+                    if (plan.id === 'free') {
+                      if (isLoggedIn()) {
+                        document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        router.push('/register');
+                      }
+                    } else {
+                      router.push(isLoggedIn() ? '/account' : '/register');
+                    }
+                  }}
                 >
                   {plan.id === 'free' ? t('pricing.free_cta') : t('pricing.paid_cta')}
                 </Button>

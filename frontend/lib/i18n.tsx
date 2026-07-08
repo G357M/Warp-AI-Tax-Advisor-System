@@ -44,10 +44,11 @@ type Entry = { ru: string; ka: string; en: string };
 const DICT: Record<string, Entry> = {
   // Header / footer
   'nav.chat': { ru: 'Чат', ka: 'ჩატი', en: 'Chat' },
-  'nav.laws': { ru: 'Законы', ka: 'კანონმდებლობა', en: 'Laws' },
+  'nav.laws': { ru: 'Законы', ka: 'კანონები', en: 'Laws' },
   'nav.guides': { ru: 'Руководства', ka: 'სახელმძღვანელოები', en: 'Guides' },
-  'nav.stats': { ru: 'Статистика решений', ka: 'დავების სტატისტიკა', en: 'Dispute statistics' },
+  'nav.stats': { ru: 'Статистика решений', ka: 'სტატისტიკა', en: 'Dispute statistics' },
   'nav.pricing': { ru: 'Тарифы', ka: 'ტარიფები', en: 'Pricing' },
+  'nav.menu': { ru: 'Меню', ka: 'მენიუ', en: 'Menu' },
   'nav.login': { ru: 'Войти', ka: 'შესვლა', en: 'Sign in' },
   'nav.account': { ru: 'Кабинет', ka: 'კაბინეტი', en: 'Account' },
   'footer.disclaimer': {
@@ -121,11 +122,11 @@ const DICT: Record<string, Entry> = {
   'pricing.title': { ru: 'Тарифы', ka: 'ტარიფები', en: 'Pricing' },
   'pricing.month': { ru: '/мес', ka: '/თვე', en: '/mo' },
   'pricing.free_cta': { ru: 'Начать бесплатно', ka: 'დაიწყეთ უფასოდ', en: 'Start free' },
-  'pricing.paid_cta': { ru: 'Скоро — начните с Free', ka: 'მალე — დაიწყეთ Free-ით', en: 'Soon — start with Free' },
+  'pricing.paid_cta': { ru: 'Подключить', ka: 'გამოწერა', en: 'Subscribe' },
   'pricing.note': {
-    ru: 'Подписки Pro и Business откроются вместе с личным кабинетом. Цены предварительные.',
-    ka: 'Pro და Business გამოწერები მალე გაიხსნება. ფასები წინასწარია.',
-    en: 'Pro and Business subscriptions open soon. Prices are preliminary.',
+    ru: 'Оформление — в личном кабинете, оплата по счёту. Активируем в течение рабочего дня. Цены предварительные.',
+    ka: 'გამოწერა — პირად კაბინეტში, გადახდა ინვოისით. გააქტიურება ერთი სამუშაო დღის განმავლობაში. ფასები წინასწარია.',
+    en: 'Subscribe from your account; pay by invoice. Activated within one business day. Prices are preliminary.',
   },
   'plan.free.tagline': { ru: 'Познакомиться с сервисом', ka: 'სერვისის გასაცნობად', en: 'Get to know the service' },
   'plan.free.f1': { ru: '5 вопросов в день', ka: '5 კითხვა დღეში', en: '5 questions a day' },
