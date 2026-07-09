@@ -102,12 +102,12 @@ const DICT: Record<string, Entry> = {
   // Hero
   'hero.eyebrow': { ru: 'Официальная база · {n} документов', ka: 'ოფიციალური ბაზა · {n} დოკუმენტი', en: 'Official database · {n} documents' },
   'hero.eyebrow0': { ru: 'Официальная база документов Грузии', ka: 'საქართველოს ოფიციალური დოკუმენტების ბაზა', en: 'Georgia’s official document base' },
-  'hero.title1': { ru: 'Налоговое право Грузии.', ka: 'საქართველოს საგადასახადო სამართალი.', en: 'Georgian tax law.' },
-  'hero.title2': { ru: 'С точными источниками.', ka: 'ზუსტი წყაროებით.', en: 'With precise sources.' },
+  'hero.title1': { ru: 'Спросите о налогах Грузии.', ka: 'გვკითხეთ გადასახადებზე.', en: 'Ask about Georgian taxes.' },
+  'hero.title2': { ru: 'Ответим статьёй закона.', ka: 'გიპასუხებთ კანონის მუხლით.', en: 'We’ll answer with the law.' },
   'hero.sub': {
-    ru: 'Ответы строго по официальной базе: Налоговый кодекс, подзаконные акты, решения советов по спорам — и статистика их исходов.',
-    ka: 'პასუხები მკაცრად ოფიციალური ბაზიდან: საგადასახადო კოდექსი, კანონქვემდებარე აქტები, დავების საბჭოების გადაწყვეტილებები — და მათი შედეგების სტატისტიკა.',
-    en: 'Answers strictly from the official database: the Tax Code, secondary acts, dispute-council decisions — and outcome statistics.',
+    ru: 'Мы собрали в одну базу Налоговый кодекс, приказы Минфина и решения по спорам. Спросите своими словами — найдём, что говорит закон, и покажем, откуда это взято. А если ответа в базе нет, так и скажем.',
+    ka: 'ერთ ბაზაში შევკრიბეთ საგადასახადო კოდექსი, ფინანსთა სამინისტროს ბრძანებები და დავების გადაწყვეტილებები. იკითხეთ თქვენი სიტყვებით — ვიპოვით, რას ამბობს კანონი, და გაჩვენებთ ზუსტ წყაროს. თუ პასუხი ბაზაში არ არის, პირდაპირ გეტყვით.',
+    en: 'We put the Tax Code, Ministry of Finance orders and dispute decisions into one base. Ask in your own words — we’ll find what the law says and show you exactly where it says it. And if the base has no answer, we’ll tell you straight.',
   },
 
   // Chat

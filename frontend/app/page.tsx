@@ -121,11 +121,11 @@ export default function Home() {
             </span>
           </div>
           <h1
-            className={`mx-auto max-w-4xl font-heading italic leading-[0.95] tracking-tight text-white ${
+            className={`mx-auto max-w-4xl text-balance font-heading italic leading-[0.95] tracking-tight text-white ${
               // Georgian runs ~35% longer: step the display size down so the
               // hero stays 2–3 lines on a phone instead of six.
               lang === 'ka'
-                ? 'text-4xl sm:text-6xl'
+                ? 'text-[30px] leading-[1.08] sm:text-6xl sm:leading-[0.95]'
                 : 'text-5xl sm:text-7xl lg:text-[5.25rem]'
             }`}
           >
