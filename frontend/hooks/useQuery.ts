@@ -3,17 +3,34 @@
  */
 
 import { useState, useCallback } from 'react';
+import axios from 'axios';
 import { apiClient, QueryRequest, QueryResponse } from '@/lib/api';
+
+/**
+ * Errors reach the UI as a kind, never as a raw exception message:
+ * the component maps each kind to localized, human copy.
+ */
+export type QueryErrorKind = 'network' | 'rate_limit' | 'service';
 
 interface UseQueryState {
   data: QueryResponse | null;
   loading: boolean;
-  error: string | null;
+  error: QueryErrorKind | null;
 }
 
 interface UseQueryReturn extends UseQueryState {
   submitQuery: (query: string, language: 'ka' | 'ru' | 'en') => Promise<void>;
   reset: () => void;
+}
+
+function classifyError(err: unknown): QueryErrorKind {
+  if (axios.isAxiosError(err)) {
+    // Timeout means our side is slow, not that the user is offline.
+    if (err.code === 'ECONNABORTED') return 'service';
+    if (!err.response) return 'network';
+    if (err.response.status === 429) return 'rate_limit';
+  }
+  return 'service';
 }
 
 export function useQuery(): UseQueryReturn {
@@ -41,12 +58,10 @@ export function useQuery(): UseQueryReturn {
         error: null,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      
       setState({
         data: null,
         loading: false,
-        error: errorMessage,
+        error: classifyError(err),
       });
     }
   }, []);

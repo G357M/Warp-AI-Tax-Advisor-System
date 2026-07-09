@@ -98,7 +98,7 @@ export default function GuidesPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('guides.search')}
           aria-label={t('guides.search')}
-          className="h-11 w-full max-w-md rounded-full border bg-white px-5 text-[14px] placeholder:text-muted-foreground"
+          className="h-11 w-full max-w-md rounded-full border border-white/15 bg-white/5 px-5 text-[14px] text-white placeholder:text-white/50"
         />
         <div className="flex gap-1.5">
           {(['all', 'active', 'withdrawn'] as StatusFilter[]).map((f) => (
@@ -107,7 +107,7 @@ export default function GuidesPage() {
               onClick={() => setFilter(f)}
               className={`rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
                 filter === f
-                  ? 'border-foreground bg-foreground text-background'
+                  ? 'border-primary bg-primary text-white'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -129,7 +129,7 @@ export default function GuidesPage() {
               <span className="text-muted-foreground">{section.code}</span>
               {section.name}
             </h2>
-            <div className="mt-3 divide-y rounded-lg border bg-white">
+            <div className="mt-3 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
               {section.items.map((g) => {
                 const inner = (
                   <>

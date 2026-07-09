@@ -88,7 +88,7 @@ export default function LawTimelinePage() {
               onChange={(e) => setArticle(e.target.value)}
               placeholder={t('tl.filter')}
               aria-label={t('tl.filter')}
-              className="h-10 w-56 rounded-full border bg-white px-4 text-[13px] placeholder:text-muted-foreground"
+              className="h-10 w-56 rounded-full border border-white/15 bg-white/5 px-4 text-[13px] text-white placeholder:text-white/50"
             />
             <span className="text-[13px] text-muted-foreground">
               {article.trim()
@@ -108,7 +108,7 @@ export default function LawTimelinePage() {
                     {yearMarker}
                   </div>
                 )}
-                <div className="rounded-lg border bg-white p-5">
+                <div className="liquid-glass rounded-2xl p-5">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
                     <span>{t('tl.adopted', { d: fmt(item.adoption_date) })}</span>
                     <span>{t('tl.effective', { d: fmt(item.effective_date) })}</span>

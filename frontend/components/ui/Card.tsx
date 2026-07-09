@@ -1,11 +1,7 @@
 import { HTMLAttributes } from 'react';
 import { clsx } from 'clsx';
 
+/** Liquid-glass surface — the shared Modern Ecosystem card. */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={clsx('rounded-lg border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:bg-muted', className)}
-      {...props}
-    />
-  );
+  return <div className={clsx('liquid-glass rounded-2xl', className)} {...props} />;
 }

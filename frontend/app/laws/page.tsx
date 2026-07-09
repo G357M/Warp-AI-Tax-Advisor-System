@@ -57,7 +57,7 @@ export default function LawsPage() {
               <Link
                 key={law.law_id}
                 href={`/laws/${law.law_id}`}
-                className="flex flex-col justify-between rounded-lg border bg-white p-5 transition-colors hover:border-primary/40"
+                className="liquid-glass flex flex-col justify-between rounded-2xl p-5 transition-all duration-300 hover:bg-white/5"
                 title={law.title}
               >
                 <span className="text-[14px] font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden">
@@ -82,13 +82,13 @@ export default function LawsPage() {
         onChange={(e) => setFilter(e.target.value)}
         placeholder={t('laws.search')}
         aria-label={t('laws.search')}
-        className="mt-10 h-11 w-full max-w-md rounded-full border bg-white px-5 text-[14px] placeholder:text-muted-foreground"
+        className="mt-10 h-11 w-full max-w-md rounded-full border border-white/15 bg-white/5 px-5 text-[14px] text-white placeholder:text-white/50"
       />
 
       {error && <p className="mt-10 text-[14px] text-muted-foreground">{t('laws.error')}</p>}
       {!laws && !error && <p className="mt-10 text-[14px] text-muted-foreground">{t('laws.loading')}</p>}
 
-      <div className="mt-6 divide-y rounded-lg border bg-white">
+      <div className="mt-6 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
         {shown.map((law) => (
           <Link
             key={law.law_id}

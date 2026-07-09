@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-09T20:00:00Z",
+  "title": "Design System: Tax Advisor (tax-advisor.ge)",
+  "extensions": {
+    "colorMeta": {
+      "signal-red": {
+        "role": "primary",
+        "displayName": "Сигнальный красный",
+        "canonical": "hsl(0 72% 51%)",
+        "tonalRamp": ["#430A0A", "#751212", "#A81919", "#DB2121", "#E55151", "#ED8383", "#F4B6B6", "#FCE9E9"]
+      },
+      "signal-red-deep": {
+        "role": "primary",
+        "displayName": "Глубокий красный",
+        "canonical": "hsl(0 74% 42%)",
+        "tonalRamp": ["#430A0A", "#751212", "#A81919", "#DB2121", "#E55151", "#ED8383", "#F4B6B6", "#FCE9E9"]
+      },
+      "pure-black": {
+        "role": "neutral",
+        "displayName": "Чистый чёрный",
+        "canonical": "hsl(0 0% 0%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "Белый",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "secondary-ink": {
+        "role": "neutral",
+        "displayName": "Вторичные чернила",
+        "canonical": "hsl(0 0% 64%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Панель",
+        "canonical": "hsl(0 0% 7%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "quiet-surface": {
+        "role": "neutral",
+        "displayName": "Тихая поверхность",
+        "canonical": "hsl(0 0% 12%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "hsl(0 0% 16%)",
+        "tonalRamp": ["#262626", "#434343", "#616161", "#7E7E7E", "#9B9B9B", "#B8B8B8", "#D5D5D5", "#F2F2F2"]
+      },
+      "relief-green": {
+        "role": "tertiary",
+        "displayName": "Зелёный исхода",
+        "canonical": "hsl(147 55% 47%)",
+        "tonalRamp": ["#0F3E24", "#1A6D3F", "#259C5B", "#30CC76", "#5DD995", "#8CE4B4", "#BBEFD3", "#EAFAF1"]
+      },
+      "error-wash": {
+        "role": "tertiary",
+        "displayName": "Ошибка · заливка",
+        "canonical": "hsl(0 40% 12%)",
+        "tonalRamp": ["#430A0A", "#751212", "#A81919", "#DB2121", "#E55151", "#ED8383", "#F4B6B6", "#FCE9E9"]
+      },
+      "error-ink": {
+        "role": "tertiary",
+        "displayName": "Ошибка · чернила",
+        "canonical": "hsl(0 90% 72%)",
+        "tonalRamp": ["#430A0A", "#751212", "#A81919", "#DB2121", "#E55151", "#ED8383", "#F4B6B6", "#FCE9E9"]
+      },
+      "error-border": {
+        "role": "tertiary",
+        "displayName": "Ошибка · граница",
+        "canonical": "hsl(0 40% 26%)",
+        "tonalRamp": ["#430A0A", "#751212", "#A81919", "#DB2121", "#E55151", "#ED8383", "#F4B6B6", "#FCE9E9"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero главной; Instrument Serif italic, пословный blur-in; ka — Noto Serif Georgian, кириллица — Georgia italic." },
+      "headline": { "displayName": "Headline", "purpose": "Заголовки секций: на лендинге — под glass-бейджем по центру, на внутренних — с красной планкой (SectionTitle)." },
+      "title": { "displayName": "Title", "purpose": "Заголовки карточек, имена тарифов и продуктов экосистемы, мобильное меню." },
+      "body": { "displayName": "Body", "purpose": "Barlow 300 (кириллица — Inter, ka — Noto Sans Georgian), white/60, ≤75ch." },
+      "label": { "displayName": "Label", "purpose": "Бейджи, навигация, кнопки, подписи (12–13px, 400–500)." }
+    },
+    "shadows": [
+      { "name": "pro-glow", "value": "0 0 48px -12px hsl(0 72% 51% / 0.45)", "purpose": "Единственное свечение системы — рекомендованный тариф (вместе с ring-1 ring-primary/50)." }
+    ],
+    "motion": [
+      { "name": "blur-in", "value": "ta-blur-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both", "purpose": "Пословное появление hero-заголовка (stagger 100ms/слово); гаснет под prefers-reduced-motion." },
+      { "name": "hero-mesh", "value": "ta-mesh 16s ease-in-out infinite alternate", "purpose": "Медленный дрейф красных радиальных свечений за hero." },
+      { "name": "state-transition", "value": "all 300ms ease", "purpose": "Hover/focus всех интерактивных элементов (transition-all duration-300)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "page-max", "value": "1120px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Главное действие: пилюля Сигнального красного, hover темнеет до Глубокого красного.",
+      "html": "<button class=\"ds-btn-primary\">Задать вопрос</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; border: none; border-radius: 9999px; background: #DC2626; color: #fff; font-weight: 500; font-size: 14px; cursor: pointer; transition: all 300ms ease; } .ds-btn-primary:hover { background: #B91C1C; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #000, 0 0 0 4px #DC2626; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Glass Button",
+      "kind": "button",
+      "refersTo": "button-glass",
+      "description": "Вторичное действие: liquid-glass пилюля с белым текстом.",
+      "html": "<button class=\"ds-btn-glass\">Посмотреть тарифы</button>",
+      "css": ".ds-btn-glass { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; border: 1px solid rgba(255,255,255,0.25); border-radius: 9999px; background: rgba(18,18,18,0.9); color: #fff; font-weight: 500; font-size: 14px; cursor: pointer; box-shadow: inset 0 1px 1px rgba(255,255,255,0.15); backdrop-filter: blur(50px); transition: all 300ms ease; } .ds-btn-glass:hover { background: rgba(255,255,255,0.06); } .ds-btn-glass:focus-visible { outline: none; box-shadow: 0 0 0 2px #000, 0 0 0 4px #DC2626; }"
+    },
+    {
+      "name": "SourceChip",
+      "kind": "chip",
+      "refersTo": "chip-source",
+      "description": "Фирменный компонент: источник ответа — glass-чип с красной цитатной планкой и локализованным типом документа.",
+      "html": "<a href=\"#\" class=\"ds-source-chip\"><span class=\"ds-source-tick\"></span><span class=\"ds-source-body\"><span class=\"ds-source-title\">საქართველოს საგადასახადო კოდექსი, მუხლი 168</span><span class=\"ds-source-type\">закон</span></span></a>",
+      "css": ".ds-source-chip { display: flex; align-items: flex-start; gap: 10px; max-width: 100%; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; background: rgba(10,10,10,0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.1); text-decoration: none; transition: all 300ms ease; } .ds-source-chip:hover { background: rgba(255,255,255,0.05); } .ds-source-tick { flex-shrink: 0; margin-top: 5px; width: 3px; height: 14px; border-radius: 9999px; background: #DC2626; } .ds-source-body { min-width: 0; display: block; } .ds-source-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 20px; color: #fff; } .ds-source-type { display: block; font-size: 12px; color: rgba(255,255,255,0.64); }"
+    },
+    {
+      "name": "SectionTitle",
+      "kind": "custom",
+      "refersTo": "headline",
+      "description": "Заголовок внутренних страниц: красная цитатная планка + Instrument Serif italic.",
+      "html": "<h2 class=\"ds-section-title\"><span class=\"ds-section-tick\"></span><span>Изменения законодательства</span></h2>",
+      "css": ".ds-section-title { display: flex; align-items: center; gap: 16px; margin: 0; padding: 12px; background: #000; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 32px; font-weight: 400; letter-spacing: -0.02em; line-height: 0.95; color: #fff; } .ds-section-tick { flex-shrink: 0; width: 4px; height: 0.85em; border-radius: 9999px; background: #DC2626; }"
+    },
+    {
+      "name": "Section Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Экосистемный glass-бейдж над заголовками секций лендинга; может нести красный мини-таг.",
+      "html": "<span class=\"ds-badge\"><span class=\"ds-badge-tag\">AI</span>Официальная база документов Грузии</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; background: rgba(12,12,12,0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.1); font-size: 12px; font-weight: 300; color: rgba(255,255,255,0.8); } .ds-badge-tag { padding: 2px 10px; border-radius: 9999px; background: #DC2626; color: #fff; font-weight: 500; }"
+    },
+    {
+      "name": "Chat Input",
+      "kind": "input",
+      "refersTo": "input-chat",
+      "description": "Главное действие продукта: liquid-glass-strong пилюля 56px с красной submit-кнопкой.",
+      "html": "<div class=\"ds-chat-wrap\"><input class=\"ds-input-chat\" type=\"text\" placeholder=\"Спросите о налогах…\" /><button class=\"ds-chat-submit\">Спросить</button></div>",
+      "css": ".ds-chat-wrap { position: relative; display: block; max-width: 560px; border: 1px solid rgba(255,255,255,0.25); border-radius: 9999px; background: rgba(12,12,12,0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.15); backdrop-filter: blur(50px); } .ds-input-chat { width: 100%; height: 56px; padding: 0 120px 0 24px; border: none; border-radius: 9999px; background: transparent; font-size: 15px; color: #fff; } .ds-input-chat::placeholder { color: rgba(255,255,255,0.5); } .ds-input-chat:focus-visible { outline: none; box-shadow: 0 0 0 2px #DC2626; border-radius: 9999px; } .ds-chat-submit { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); height: 40px; padding: 0 20px; border: none; border-radius: 9999px; background: #DC2626; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 300ms ease; } .ds-chat-submit:hover { background: #B91C1C; }"
+    },
+    {
+      "name": "Nav Pill",
+      "kind": "nav",
+      "refersTo": "badge",
+      "description": "Фиксированная glass-пилюля навигации хедера.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" class=\"ds-nav-link\">Чат</a><a href=\"#\" class=\"ds-nav-link\">Законы</a><a href=\"#\" class=\"ds-nav-link ds-nav-active\">Руководства</a><a href=\"#\" class=\"ds-nav-link\">Тарифы</a></nav>",
+      "css": ".ds-nav { display: inline-flex; align-items: center; gap: 24px; padding: 10px 24px; border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; background: rgba(12,12,12,0.92); box-shadow: inset 0 1px 1px rgba(255,255,255,0.1); } .ds-nav-link { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.8); text-decoration: none; transition: color 300ms ease; } .ds-nav-link:hover { color: #fff; } .ds-nav-active { color: #fff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Досье консультанта в тёмном переплёте",
+    "overview": "Tax Advisor носит общую кожу Modern Ecosystem: чистый чёрный холст, liquid-glass поверхности, курсивный сериф в заголовках — и отличается своим цветом: Сигнальный красный #DC2626, как красные чернила, которыми консультант помечает существенное. Каждая страница — факт с приложенным первоисточником; фирменный мотив — красная цитатная планка. Материал системы — два класса стекла; классических теней нет, глубина оптическая. Система отвергает шаблонную анонимность: узнаваемость — экосистемная грамматика плюс красные планки и честный копирайт.",
+    "keyCharacteristics": [
+      "Чистый чёрный фон; liquid-glass как единственный материал поверхностей",
+      "Сигнальный красный ≈≤10% экрана: цитаты, главные действия, выделение Pro",
+      "Два голоса типографики: сериф-курсив (заголовки, числа) + лёгкий гротеск",
+      "Пилюли для интерактивного, 16px карточки, 12px чипы",
+      "Движение: blur-in героя + дрейф меша; всё гаснет под prefers-reduced-motion",
+      "Экосистемный футер с пятью продуктами Modern на каждой странице"
+    ],
+    "rules": [
+      { "name": "Правило заверения", "body": "Красный означает «источник», «главное действие» или «рекомендуем» — и ничего больше. Красная иконка для красоты, красный градиент, красный текст-декор — запрещены. На красных заливках текст белый.", "section": "colors" },
+      { "name": "Правило чистого чёрного", "body": "Фон — #000 без исключений. Глубина создаётся стеклом и радиальными свечениями ≤10% непрозрачности, не серыми простынями и не картинками.", "section": "colors" },
+      { "name": "Правило двух голосов", "body": "Сериф-курсив — только заголовки, крупные числа и имена продуктов. Кнопки, навигация, бейджи, текст — всегда Barlow.", "section": "typography" },
+      { "name": "Правило грузинской строки", "body": "Любой макет проверяется грузинским текстом (+35%) на 390px до сдачи. Плейсхолдеры и заголовки не обрезаются — меняется копия или размер, не правило.", "section": "typography" },
+      { "name": "Правило стекла", "body": "Поверхность — только .liquid-glass / .liquid-glass-strong. Ручные подложки — в одном словаре: white/5 фон + white/10–15 граница. Новые вариации стекла не изобретаются.", "section": "elevation" },
+      { "name": "Правило одного свечения", "body": "Glow существует только у рекомендованного тарифа. Тень или свечение на обычной карточке, кнопке, инпуте — запрещены.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do держи красный ≈≤10% экрана: цитаты, главные действия, Pro — и всё.",
+      "Do строй поверхности только из .liquid-glass / .liquid-glass-strong и словаря white/5–white/15.",
+      "Do проверяй каждый макет грузинским текстом (+35%) и на 390px; плейсхолдеры — тоже текст.",
+      "Do держи контраст: body ≥4.5:1 (white/60 на чёрном = 7.4:1), плейсхолдеры white/50 — минимум.",
+      "Do пиши копирайт фактами: живые счётчики, даты, статусы; нет данных — говорим прямо, «…» запрещено.",
+      "Do глуши всю анимацию под prefers-reduced-motion (глобально в globals.css — не обходить).",
+      "Do заканчивай каждую страницу экосистемным футером с пятью продуктами Modern."
+    ],
+    "donts": [
+      "Don't — шаблонная анонимность: безликий AI-generated SaaS, неотличимый от тысячи других (анти-референс PRODUCT.md дословно).",
+      "Don't используй gradient text, декоративные линейные градиенты, stripe-фоны; радиальные свечения — ≤10% и только в цвет бренда.",
+      "Don't добавляй классические box-shadow: глубина — стекло; единственное свечение — Pro-glow.",
+      "Don't превращай цитатную планку в border-left и не крась её ничем, кроме красного (на красном — белая).",
+      "Don't ставь сериф в body-текст, кнопки или бейджи — и не тяни гротеск в display.",
+      "Don't изобретай третий вариант стекла или новые радиусы: 9999/16/12px (+24px панель статистики) — весь словарь.",
+      "Don't используй Зелёный исхода вне статистики споров и красный ошибок вне error-состояний.",
+      "Don't оркеструй появление секций скроллом; движение — blur-in героя, дрейф меша, hover-проявления. Всё."
+    ]
+  }
+}

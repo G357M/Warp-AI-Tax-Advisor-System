@@ -24,10 +24,26 @@ export function setLang(lang: Lang) {
   window.dispatchEvent(new Event('ta-lang-changed'));
 }
 
+/**
+ * The document shell must follow the UI language: screen readers pick the
+ * pronunciation from <html lang>, and the tab title is the product's face.
+ */
+function applyDocumentLang(lang: Lang) {
+  document.documentElement.lang = lang;
+  document.title = translate(lang, 'meta.title');
+  document
+    .querySelector('meta[name="description"]')
+    ?.setAttribute('content', translate(lang, 'meta.desc'));
+}
+
 export function useLang(): Lang {
   const [lang, set] = useState<Lang>('ru');
   useEffect(() => {
-    const sync = () => set(getLang());
+    const sync = () => {
+      const l = getLang();
+      set(l);
+      applyDocumentLang(l);
+    };
     sync();
     window.addEventListener('ta-lang-changed', sync);
     window.addEventListener('storage', sync);
@@ -42,6 +58,18 @@ export function useLang(): Lang {
 type Entry = { ru: string; ka: string; en: string };
 
 const DICT: Record<string, Entry> = {
+  // Document shell
+  'meta.title': {
+    ru: 'Tax Advisor — налоговое право Грузии с точными источниками',
+    ka: 'Tax Advisor — საქართველოს საგადასახადო სამართალი ზუსტი წყაროებით',
+    en: 'Tax Advisor — Georgian tax law with exact sources',
+  },
+  'meta.desc': {
+    ru: 'Ответы по налоговому праву Грузии строго по официальной базе: Налоговый кодекс, решения советов по спорам, статистика исходов.',
+    ka: 'პასუხები საქართველოს საგადასახადო სამართალზე მხოლოდ ოფიციალური ბაზიდან: საგადასახადო კოდექსი, დავების საბჭოების გადაწყვეტილებები, შედეგების სტატისტიკა.',
+    en: 'Answers on Georgian tax law strictly from the official base: the Tax Code, dispute-council decisions, outcome statistics.',
+  },
+
   // Header / footer
   'nav.chat': { ru: 'Чат', ka: 'ჩატი', en: 'Chat' },
   'nav.laws': { ru: 'Законы', ka: 'კანონები', en: 'Laws' },
@@ -57,6 +85,17 @@ const DICT: Record<string, Entry> = {
     en: 'Answers rest solely on the official database: the Georgian Tax Code, secondary legislation and dispute-council decisions. The service is informational and does not replace legal advice.',
   },
   'footer.source': { ru: 'Источник данных: infohub.rs.ge', ka: 'მონაცემთა წყარო: infohub.rs.ge', en: 'Data source: infohub.rs.ge' },
+  'footer.ecosystem': { ru: 'часть экосистемы Modern', ka: 'Modern ეკოსისტემის ნაწილი', en: 'part of the Modern Ecosystem' },
+  'eco.badge': { ru: 'Часть экосистемы Modern', ka: 'Modern ეკოსისტემის ნაწილი', en: 'Part of the Modern Ecosystem' },
+  'hero.tag': { ru: 'AI', ka: 'AI', en: 'AI' },
+  'cta.title': { ru: 'Ваш первый вопрос — бесплатно.', ka: 'თქვენი პირველი კითხვა — უფასოა.', en: 'Your first question is free.' },
+  'cta.sub': {
+    ru: 'Спросите прямо сейчас. Без карты. Каждый ответ — со ссылкой на источник.',
+    ka: 'იკითხეთ ახლავე. ბარათის გარეშე. ყოველი პასუხი — წყაროს მითითებით.',
+    en: 'Ask right now. No card required. Every answer cites its source.',
+  },
+  'cta.ask': { ru: 'Задать вопрос', ka: 'კითხვის დასმა', en: 'Ask a question' },
+  'cta.pricing': { ru: 'Посмотреть тарифы', ka: 'ტარიფების ნახვა', en: 'See pricing' },
   'footer.sections': { ru: 'Разделы', ka: 'განყოფილებები', en: 'Sections' },
   'footer.contact': { ru: 'Контакты', ka: 'კონტაქტი', en: 'Contact' },
 
@@ -72,14 +111,36 @@ const DICT: Record<string, Entry> = {
   },
 
   // Chat
-  'chat.placeholder': { ru: 'Спросите о налогах Грузии…', ka: 'ჰკითხეთ საქართველოს გადასახადებზე…', en: 'Ask about Georgian taxes…' },
+  'chat.placeholder': { ru: 'Спросите о налогах…', ka: 'დასვით კითხვა…', en: 'Ask about taxes…' },
   'chat.ask': { ru: 'Спросить', ka: 'კითხვა', en: 'Ask' },
   'chat.asking': { ru: 'Ищу…', ka: 'ვეძებ…', en: 'Searching…' },
   'chat.question': { ru: 'Вопрос:', ka: 'კითხვა:', en: 'Question:' },
   'chat.searching': { ru: 'Ищу ответ в официальной базе…', ka: 'ვეძებ პასუხს ოფიციალურ ბაზაში…', en: 'Searching the official database…' },
-  'chat.error': { ru: 'Не получилось получить ответ:', ka: 'პასუხის მიღება ვერ მოხერხდა:', en: 'Could not get an answer:' },
-  'chat.retry': { ru: 'Попробуйте ещё раз.', ka: 'სცადეთ თავიდან.', en: 'Please try again.' },
+  'chat.err.network': {
+    ru: 'Не получилось связаться с сервером. Проверьте подключение к интернету и попробуйте ещё раз.',
+    ka: 'სერვერთან დაკავშირება ვერ მოხერხდა. შეამოწმეთ ინტერნეტ-კავშირი და სცადეთ თავიდან.',
+    en: 'We couldn’t reach the server. Check your connection and try again.',
+  },
+  'chat.err.service': {
+    ru: 'Не получилось получить ответ — проблема на нашей стороне. Попробуйте ещё раз через минуту.',
+    ka: 'პასუხის მიღება ვერ მოხერხდა — პრობლემა ჩვენს მხარესაა. სცადეთ თავიდან ერთ წუთში.',
+    en: 'We couldn’t get an answer — the problem is on our side. Try again in a minute.',
+  },
+  'chat.err.rate': {
+    ru: 'Дневной лимит вопросов исчерпан — он обновится завтра. На тарифе Pro вопросы без ограничений.',
+    ka: 'კითხვების დღიური ლიმიტი ამოიწურა — განახლდება ხვალ. Pro ტარიფზე კითხვები შეუზღუდავია.',
+    en: 'You’ve used today’s question limit — it resets tomorrow. The Pro plan has unlimited questions.',
+  },
+  'chat.err.retry_cta': { ru: 'Повторить вопрос', ka: 'კითხვის გამეორება', en: 'Ask again' },
   'chat.sources': { ru: 'Источники', ka: 'წყაროები', en: 'Sources' },
+
+  // Document types (SourceChip)
+  'doc.law': { ru: 'закон', ka: 'კანონი', en: 'law' },
+  'doc.regulation': { ru: 'подзаконный акт', ka: 'კანონქვემდებარე აქტი', en: 'regulation' },
+  'doc.court_decision': { ru: 'решение по спору', ka: 'დავის გადაწყვეტილება', en: 'dispute decision' },
+  'doc.guideline': { ru: 'разъяснение', ka: 'განმარტება', en: 'guideline' },
+  'doc.news': { ru: 'новости законодательства', ka: 'საკანონმდებლო სიახლე', en: 'legislation news' },
+  'doc.bill': { ru: 'законопроект', ka: 'კანონპროექტი', en: 'bill' },
   'chat.ex1': { ru: 'Какая ставка НДС в Грузии?', ka: 'რა არის დღგ-ის განაკვეთი საქართველოში?', en: 'What is the VAT rate in Georgia?' },
   'chat.ex2': { ru: 'Может ли ООО применять налог 1%?', ka: 'შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?', en: 'Can an LLC use the 1% tax regime?' },
   'chat.ex3': { ru: 'Как обжаловать решение налоговой?', ka: 'როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?', en: 'How do I appeal a tax decision?' },
@@ -106,6 +167,16 @@ const DICT: Record<string, Entry> = {
   },
 
   // Stats section
+  'steps.heading': {
+    ru: 'Задайте вопрос. Получите ответ с источником.',
+    ka: 'დასვით კითხვა. მიიღეთ პასუხი წყაროთი.',
+    en: 'Ask a question. Get a sourced answer.',
+  },
+  'pricing.heading': {
+    ru: 'Начните бесплатно. Растите с нами.',
+    ka: 'დაიწყეთ უფასოდ. იზარდეთ ჩვენთან.',
+    en: 'Start free. Grow with us.',
+  },
   'stats.title': { ru: 'Статистика налоговых споров', ka: 'საგადასახადო დავების სტატისტიკა', en: 'Tax dispute statistics' },
   'stats.sub': {
     ru: 'Мы разобрали решения советов по рассмотрению споров Службы доходов и Минфина и посчитали, как они заканчиваются — чтобы вы могли трезво оценить свою стратегию.',
@@ -124,10 +195,17 @@ const DICT: Record<string, Entry> = {
   'stats.top_article': { ru: 'Самая спорная статья НК', ka: 'ყველაზე სადავო მუხლი', en: 'Most contested article' },
   'stats.decisions': { ru: '{n} решений', ka: '{n} გადაწყვეტილება', en: '{n} decisions' },
   'stats.art': { ru: 'ст. {n}', ka: 'მუხ. {n}', en: 'art. {n}' },
+  'stats.unavailable': {
+    ru: 'Статистика временно недоступна — данные не загрузились. Приблизительные числа мы не показываем.',
+    ka: 'სტატისტიკა დროებით მიუწვდომელია — მონაცემები ვერ ჩაიტვირთა. მიახლოებით რიცხვებს არ ვაჩვენებთ.',
+    en: 'Statistics are temporarily unavailable — the data did not load. We don’t show approximate numbers.',
+  },
+  'stats.retry': { ru: 'Обновить', ka: 'განახლება', en: 'Retry' },
 
   // Pricing
   'pricing.title': { ru: 'Тарифы', ka: 'ტარიფები', en: 'Pricing' },
   'pricing.month': { ru: '/мес', ka: '/თვე', en: '/mo' },
+  'pricing.recommended': { ru: 'Рекомендуем', ka: 'გირჩევთ', en: 'Recommended' },
   'pricing.free_cta': { ru: 'Начать бесплатно', ka: 'დაიწყეთ უფასოდ', en: 'Start free' },
   'pricing.paid_cta': { ru: 'Подключить', ka: 'გამოწერა', en: 'Subscribe' },
   'pricing.note': {

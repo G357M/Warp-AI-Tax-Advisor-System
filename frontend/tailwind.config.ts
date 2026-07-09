@@ -28,6 +28,11 @@ const config: Config = {
           foreground: 'hsl(var(--muted-foreground))',
         },
         success: 'hsl(var(--success))',
+        error: {
+          DEFAULT: 'hsl(var(--error))',
+          foreground: 'hsl(var(--error-foreground))',
+          border: 'hsl(var(--error-border))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -35,12 +40,23 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
+        heading: [
+          'var(--font-instrument)',
+          'var(--font-georgian-serif)',
+          'Georgia',
+          'serif',
+        ],
+        body: [
+          'var(--font-barlow)',
           'var(--font-inter)',
           'var(--font-georgian)',
-          'Segoe UI',
+          'system-ui',
+          'sans-serif',
+        ],
+        sans: [
+          'var(--font-barlow)',
+          'var(--font-inter)',
+          'var(--font-georgian)',
           'system-ui',
           'sans-serif',
         ],
@@ -49,7 +65,7 @@ const config: Config = {
         display: '-0.02em',
       },
       maxWidth: {
-        page: '1080px',
+        page: '1120px',
       },
     },
   },

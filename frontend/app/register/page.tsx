@@ -44,7 +44,7 @@ export default function RegisterPage() {
           onChange={(e) => setUsername(e.target.value)}
           placeholder={t('reg.username')}
           autoComplete="username"
-          className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
+          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
         />
         <input
           type="email"
@@ -52,7 +52,7 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
           autoComplete="email"
-          className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
+          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
         />
         <input
           type="password"
@@ -60,7 +60,7 @@ export default function RegisterPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder={t('reg.password')}
           autoComplete="new-password"
-          className="h-11 w-full rounded-md border bg-white px-4 text-[14px] placeholder:text-muted-foreground"
+          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
         />
         {error && <p className="text-[13px] text-red-600">{error}</p>}
         <Button type="submit" size="lg" className="w-full" disabled={busy || !username || !email || !password}>

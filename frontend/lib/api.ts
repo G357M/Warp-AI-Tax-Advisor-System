@@ -7,6 +7,9 @@ const API_URL = '/api/v1/public'
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  // RAG answers can take a while, but a hung request must eventually
+  // surface as an honest error instead of an endless "searching" state.
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }

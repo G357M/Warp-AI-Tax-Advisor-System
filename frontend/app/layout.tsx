@@ -1,11 +1,27 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter, Noto_Sans_Georgian } from 'next/font/google'
+import { Instrument_Serif, Barlow, Inter, Noto_Sans_Georgian, Noto_Serif_Georgian } from 'next/font/google'
 import { SiteHeader } from '@/components/SiteHeader'
 import { SiteFooter } from '@/components/SiteFooter'
 
+const instrument = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: 'italic',
+  variable: '--font-instrument',
+  display: 'swap',
+})
+
+// Barlow has no Cyrillic in Google Fonts; Inter carries ru per-glyph fallback.
+const barlow = Barlow({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-barlow',
+  display: 'swap',
+})
+
 const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
+  subsets: ['cyrillic'],
   variable: '--font-inter',
   display: 'swap',
 })
@@ -13,6 +29,12 @@ const inter = Inter({
 const georgian = Noto_Sans_Georgian({
   subsets: ['georgian'],
   variable: '--font-georgian',
+  display: 'swap',
+})
+
+const georgianSerif = Noto_Serif_Georgian({
+  subsets: ['georgian'],
+  variable: '--font-georgian-serif',
   display: 'swap',
 })
 
@@ -28,10 +50,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ru" className={`${inter.variable} ${georgian.variable}`}>
-      <body className="font-sans">
+    <html
+      lang="ru"
+      className={`${instrument.variable} ${barlow.variable} ${inter.variable} ${georgian.variable} ${georgianSerif.variable}`}
+    >
+      <body className="bg-black font-body">
         <SiteHeader />
-        {children}
+        {/* Offset for the fixed floating header */}
+        <div className="pt-24">{children}</div>
         <SiteFooter />
       </body>
     </html>

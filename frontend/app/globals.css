@@ -2,42 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens — Apple-style light-first system.
-   Palette: near-white cool base, single deep-blue accent, hairline borders.
-   Signature element: the source-citation chip (see components/ui/SourceChip). */
+/* Design tokens — Modern Ecosystem skin (Variant C "Balanced Modern").
+   Pure black canvas, liquid-glass surfaces, Instrument Serif italic headings.
+   Tax Advisor's ecosystem accent: Signal Red #DC2626.
+   Signature element: the red citation tick (see components/ui/SourceChip). */
 :root {
-  --background: 240 20% 99%;        /* #FAFAFC */
-  --foreground: 240 7% 11%;         /* #1B1B1E ink */
-  --muted: 240 9% 96%;              /* panels */
-  --muted-foreground: 240 4% 45%;   /* #6E6E73 secondary ink */
-  --primary: 216 88% 45%;           /* #0E62D9 deep blue */
+  --background: 0 0% 0%;            /* pure black */
+  --foreground: 0 0% 100%;
+  --muted: 0 0% 7%;                 /* solid panels when glass is too light */
+  --muted-foreground: 0 0% 64%;     /* ~white/64 on black */
+  --primary: 0 72% 51%;             /* #DC2626 Signal Red */
   --primary-foreground: 0 0% 100%;
-  --secondary: 216 90% 96%;         /* soft blue wash */
-  --secondary-foreground: 216 88% 38%;
-  --accent: 216 88% 45%;
+  --secondary: 0 0% 12%;            /* quiet raised surface */
+  --secondary-foreground: 0 0% 100%;
+  --accent: 0 72% 51%;
   --accent-foreground: 0 0% 100%;
-  --success: 147 62% 30%;           /* relief green for stats */
-  --border: 240 6% 89%;
-  --input: 240 6% 89%;
-  --ring: 216 88% 45%;
-  --radius: 1.125rem;               /* 18px cards */
-}
-
-.dark {
-  --background: 240 7% 7%;
-  --foreground: 0 0% 98%;
-  --muted: 240 6% 12%;
-  --muted-foreground: 240 5% 65%;
-  --primary: 214 92% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 216 50% 16%;
-  --secondary-foreground: 214 92% 72%;
-  --accent: 214 92% 60%;
-  --accent-foreground: 0 0% 100%;
-  --success: 147 50% 45%;
-  --border: 240 6% 18%;
-  --input: 240 6% 18%;
-  --ring: 214 92% 60%;
+  --success: 147 55% 47%;           /* relief green, lifted for black bg */
+  --error: 0 40% 12%;               /* error wash (bg) */
+  --error-foreground: 0 90% 72%;    /* error ink */
+  --error-border: 0 40% 26%;
+  --border: 0 0% 16%;               /* hairline on black (≈ white/16) */
+  --input: 0 0% 16%;
+  --ring: 0 72% 51%;
+  --radius: 1rem;                   /* 16px cards (rounded-2xl vocabulary) */
 }
 
 @layer base {
@@ -48,11 +35,12 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-body text-foreground antialiased;
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    @apply bg-secondary text-secondary-foreground;
+    background: hsl(var(--primary) / 0.35);
+    color: #fff;
   }
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
@@ -69,11 +57,81 @@
   }
 }
 
+@layer components {
+  /* Liquid glass — the shared Modern Ecosystem surface. */
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: none;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%,
+      rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+      rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border: none;
+    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  .liquid-glass-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 20%,
+      rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+      rgba(255,255,255,0.2) 80%, rgba(255,255,255,0.5) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
 @layer utilities {
-  /* Frosted header — the one glass moment on the page */
-  .glass {
-    background: hsl(var(--background) / 0.72);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  /* Word-by-word hero reveal: content is visible-by-default at animation end;
+     prefers-reduced-motion collapses it to an instant appearance. */
+  .blur-in {
+    animation: ta-blur-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes ta-blur-in {
+    0%   { opacity: 0; transform: translateY(28px); filter: blur(10px); }
+    60%  { opacity: 0.6; filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  /* Slow red data-mesh drift behind the hero. */
+  .hero-mesh {
+    background:
+      radial-gradient(42% 34% at 22% 28%, hsl(var(--primary) / 0.16), transparent 70%),
+      radial-gradient(36% 30% at 78% 24%, hsl(var(--primary) / 0.10), transparent 70%),
+      radial-gradient(50% 42% at 55% 78%, hsl(var(--primary) / 0.08), transparent 72%);
+    animation: ta-mesh 16s ease-in-out infinite alternate;
+  }
+  @keyframes ta-mesh {
+    from { transform: translate3d(-2%, -1%, 0) scale(1); }
+    to   { transform: translate3d(2%, 2%, 0) scale(1.06); }
   }
 }

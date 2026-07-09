@@ -106,7 +106,7 @@ export default function AccountPage() {
           {account.role === 'admin' && (
             <Link
               href="/admin"
-              className="rounded-full bg-foreground px-4 py-2 text-[13px] font-medium text-background transition-opacity hover:opacity-85"
+              className="rounded-full bg-primary px-4 py-2 text-[13px] font-medium text-white transition-all duration-300 hover:bg-[#B91C1C]"
             >
               {t('acc.admin')}
             </Link>
@@ -139,7 +139,7 @@ export default function AccountPage() {
           {account.plan === 'free' && (
             <div className="flex gap-2">
               <Button onClick={() => upgrade('pro')}>{t('acc.upgrade_pro')}</Button>
-              <Button variant="secondary" onClick={() => upgrade('business')}>
+              <Button variant="glass" onClick={() => upgrade('business')}>
                 Business
               </Button>
             </div>
@@ -177,7 +177,7 @@ export default function AccountPage() {
             </p>
           </div>
           {!bugOpen && bugState !== 'sent' && (
-            <Button variant="secondary" onClick={() => setBugOpen(true)}>
+            <Button variant="glass" onClick={() => setBugOpen(true)}>
               {t('acc.bug_button')}
             </Button>
           )}
@@ -190,7 +190,7 @@ export default function AccountPage() {
               placeholder={t('acc.bug_placeholder')}
               rows={4}
               maxLength={4000}
-              className="w-full rounded-md border bg-white px-4 py-3 text-[14px] placeholder:text-muted-foreground"
+              className="w-full rounded-md border border-white/15 bg-white/5 px-4 py-3 text-[14px] text-white placeholder:text-white/50"
             />
             <div className="mt-3 flex items-center gap-3">
               <Button onClick={sendBug} disabled={bugState === 'sending'}>
