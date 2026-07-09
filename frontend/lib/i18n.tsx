@@ -190,9 +190,16 @@ const DICT: Record<string, Entry> = {
     ka: 'შემოსავლების სამსახურისა და ფინანსთა სამინისტროს დავების საბჭოები',
     en: 'Revenue Service and MoF dispute councils',
   },
-  'stats.relief': { ru: 'Жалоб получают облегчение', ka: 'საჩივრები კმაყოფილდება', en: 'Complaints get relief' },
-  'stats.relief_detail': { ru: 'полное или частичное удовлетворение', ka: 'სრულად ან ნაწილობრივ', en: 'full or partial satisfaction' },
-  'stats.top_article': { ru: 'Самая спорная статья НК', ka: 'ყველაზე სადავო მუხლი', en: 'Most contested article' },
+  'stats.relief': {
+    ru: 'Жалоб достигают полного или частичного удовлетворения',
+    ka: 'საჩივრები კმაყოფილდება სრულად ან ნაწილობრივ',
+    en: 'Complaints granted full or partial relief',
+  },
+  'stats.top_article': {
+    ru: 'Самая оспариваемая статья НК',
+    ka: 'სსკ-ის ყველაზე გასაჩივრებული მუხლი',
+    en: 'Most contested Tax Code article',
+  },
   'stats.decisions': { ru: '{n} решений', ka: '{n} გადაწყვეტილება', en: '{n} decisions' },
   'stats.art': { ru: 'ст. {n}', ka: 'მუხ. {n}', en: 'art. {n}' },
   'stats.unavailable': {
