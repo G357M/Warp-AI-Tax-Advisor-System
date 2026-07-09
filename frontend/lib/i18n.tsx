@@ -57,6 +57,8 @@ const DICT: Record<string, Entry> = {
     en: 'Answers rest solely on the official database: the Georgian Tax Code, secondary legislation and dispute-council decisions. The service is informational and does not replace legal advice.',
   },
   'footer.source': { ru: 'Источник данных: infohub.rs.ge', ka: 'მონაცემთა წყარო: infohub.rs.ge', en: 'Data source: infohub.rs.ge' },
+  'footer.sections': { ru: 'Разделы', ka: 'განყოფილებები', en: 'Sections' },
+  'footer.contact': { ru: 'Контакты', ka: 'კონტაქტი', en: 'Contact' },
 
   // Hero
   'hero.eyebrow': { ru: 'Официальная база · {n} документов', ka: 'ოფიციალური ბაზა · {n} დოკუმენტი', en: 'Official database · {n} documents' },

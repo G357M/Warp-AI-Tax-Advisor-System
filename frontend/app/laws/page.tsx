@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SectionTitle } from '@/components/ui/SectionTitle';
 import { useT, DATE_LOCALES } from '@/lib/i18n';
 
 interface AmendedLaw {
@@ -38,7 +39,9 @@ export default function LawsPage() {
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-display">{t('laws.title')}</h1>
+      <SectionTitle as="h1" className="text-3xl font-semibold tracking-display">
+        {t('laws.title')}
+      </SectionTitle>
       <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
         {t('laws.sub')}
       </p>

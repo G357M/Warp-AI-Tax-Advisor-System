@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { SectionTitle } from '@/components/ui/SectionTitle';
 import { useT } from '@/lib/i18n';
 
 interface RegistryItem {
@@ -62,7 +63,9 @@ export default function GuidesPage() {
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-display">{t('guides.title')}</h1>
+      <SectionTitle as="h1" className="text-3xl font-semibold tracking-display">
+        {t('guides.title')}
+      </SectionTitle>
       <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
         {t('guides.sub')}
       </p>

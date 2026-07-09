@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatPanel } from '@/components/ChatPanel';
 import { isLoggedIn } from '@/lib/auth';
+import { SectionTitle } from '@/components/ui/SectionTitle';
 import { StatTile } from '@/components/ui/StatTile';
 import { Button } from '@/components/ui/Button';
 import { PLANS } from '@/lib/plans';
@@ -80,7 +81,9 @@ export default function Home() {
       {/* How it works */}
       <section className="border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-2xl font-semibold tracking-display">{t('steps.title')}</h2>
+          <SectionTitle className="text-2xl font-semibold tracking-display">
+            {t('steps.title')}
+          </SectionTitle>
           <div className="mt-10 grid gap-10 sm:grid-cols-3">
             {steps.map((s) => (
               <div key={s.n}>
@@ -96,7 +99,9 @@ export default function Home() {
       {/* Live dispute statistics */}
       <section id="stats" className="scroll-mt-20 border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-2xl font-semibold tracking-display">{t('stats.title')}</h2>
+          <SectionTitle className="text-2xl font-semibold tracking-display">
+            {t('stats.title')}
+          </SectionTitle>
           <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
             {t('stats.sub')}
           </p>
@@ -137,7 +142,9 @@ export default function Home() {
       {/* Pricing */}
       <section id="pricing" className="scroll-mt-20 border-t px-6 py-20">
         <div className="mx-auto max-w-page">
-          <h2 className="text-center text-2xl font-semibold tracking-display">{t('pricing.title')}</h2>
+          <SectionTitle className="text-2xl font-semibold tracking-display">
+            {t('pricing.title')}
+          </SectionTitle>
           <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {PLANS.map((plan) => (
               <div
