@@ -39,10 +39,22 @@ NEW_DOCS="${NEW_DOCS:-?}"
 "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
 
 # Extract structured facts from newly ingested dispute decisions (incremental;
-# skips documents that already have a decision_facts row). Non-fatal on error.
+# --new-only keeps the nightly run off the v1->v2 upgrade backlog, which is a
+# separate manual backfill). Non-fatal on error.
 echo "Extracting decision facts for new court decisions..." | tee -a "$LOG_FILE"
-docker exec "$CONTAINER_NAME" python /app/scripts/extract_decision_facts.py --limit 500 \
+docker exec "$CONTAINER_NAME" python /app/scripts/extract_decision_facts.py --limit 500 --new-only \
     2>&1 | tail -5 | tee -a "$LOG_FILE" || true
+
+# Classify news subtypes for newly ingested documents the ingest rules could
+# not place (LLM fallback; incremental). Non-fatal.
+echo "Classifying news subtypes..." | tee -a "$LOG_FILE"
+docker exec "$CONTAINER_NAME" python /app/scripts/classify_news_subtypes.py --llm --limit 200 \
+    2>&1 | tail -3 | tee -a "$LOG_FILE" || true
+
+# Re-link appeal chains when new decision facts arrived. Deterministic, cheap.
+echo "Linking appeal chains..." | tee -a "$LOG_FILE"
+docker exec "$CONTAINER_NAME" python /app/scripts/link_decision_chains.py --apply \
+    2>&1 | tail -3 | tee -a "$LOG_FILE" || true
 
 # Extract law-amendment facts for the change timeline (incremental). Non-fatal.
 echo "Extracting law amendments..." | tee -a "$LOG_FILE"

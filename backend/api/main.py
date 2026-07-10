@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from core.config import settings
 from core.database import init_db
-from api.routes import account, admin, amendments, analytics, auth, billing, feedback, guides, query, public, scraper
+from api.routes import account, admin, amendments, analytics, auth, billing, feedback, guides, news, query, public, scraper
 from core.metrics import metrics_middleware, get_metrics
 from core.logging_config import setup_logging, logging_middleware
 from core.rate_limit import rate_limit_middleware
@@ -57,6 +57,7 @@ app.include_router(account.router, prefix=settings.API_PREFIX)     # Client cabi
 app.include_router(admin.router, prefix=settings.API_PREFIX)       # Admin panel (role-gated)
 app.include_router(guides.router, prefix=settings.API_PREFIX)      # Situational guides catalog
 app.include_router(feedback.router, prefix=settings.API_PREFIX)    # Bug reports from the cabinet
+app.include_router(news.router, prefix=settings.API_PREFIX)        # Public news feed by subcategory
 
 
 @app.on_event("startup")

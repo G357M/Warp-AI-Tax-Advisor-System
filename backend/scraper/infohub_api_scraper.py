@@ -38,7 +38,7 @@ from core.database import SessionLocal
 from models.document import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
 from rag.vector_store_pgvector import vector_store
-from scraper.normalize import infer_document_type, parse_receipt_date
+from scraper.normalize import classify_news_subtype, infer_document_type, parse_receipt_date
 
 logger = logging.getLogger(__name__)
 
@@ -135,14 +135,18 @@ class InfoHubAPIScraper:
         base_type = detail.get("baseType")
         base_type_name = base_type.get("name") if isinstance(base_type, dict) else None
         title = detail.get("name") or "Untitled"
+        type_meta = {
+            "type": doc_type_name,
+            "baseType": base_type_name,
+            "species": detail.get("species"),
+        }
+        subtype = classify_news_subtype(title, type_meta)
         document = Document(
             source_url=source_url,
             title=title,
-            document_type=infer_document_type(title, {
-                "type": doc_type_name,
-                "baseType": base_type_name,
-                "species": detail.get("species"),
-            }),
+            document_type=infer_document_type(title, type_meta),
+            subtype=subtype,
+            subtype_source="rule" if subtype else None,
             date_published=parse_receipt_date(detail.get("receiptDate")),
             document_number=(str(detail.get("documentNumber")).strip() or None) if detail.get("documentNumber") else None,
             full_text=text,

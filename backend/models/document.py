@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Index,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from pgvector.sqlalchemy import Vector
@@ -35,6 +36,8 @@ class Document(Base):
     date_effective = Column(Date, nullable=True)
     language = Column(String(2), nullable=False, default="ka")
     category = Column(String(50), nullable=True)
+    subtype = Column(String(50), nullable=True)         # news subcategory (treaty | loss_norms | dispute_decisions | guidance | legislation | orders_resolutions | general)
+    subtype_source = Column(String(10), nullable=True)  # 'rule' | 'llm'
     authority = Column(String(50), nullable=True)
     status = Column(String(20), nullable=False, default="active")
     full_text = Column(Text, nullable=True)
@@ -52,6 +55,7 @@ class Document(Base):
 
 Index("idx_documents_type", Document.document_type)
 Index("idx_documents_category", Document.category)
+Index("idx_documents_subtype", Document.subtype)
 Index("idx_documents_date", Document.date_published)
 Index("idx_documents_language", Document.language)
 Index("idx_documents_status", Document.status)
@@ -110,6 +114,9 @@ class DecisionFacts(Base):
     amount_gel = Column(Float, nullable=True)            # disputed amount when stated
     outcome = Column(String(30), nullable=True)          # satisfied | partially_satisfied | rejected | unclear
     in_favor = Column(String(20), nullable=True)         # taxpayer | authority | partial | unclear
+    case_number = Column(String(100), nullable=True)     # internal case/complaint number when distinct from decision_number
+    prior_refs = Column(JSON, nullable=True)             # [{number, body, date}] lower-instance decisions this one reviews
+    prior_body = Column(String(40), nullable=True)       # body of the first prior ref (convenience)
     raw_json = Column(JSON, nullable=True)               # full LLM extraction payload
     model = Column(String(60), nullable=True)
     extraction_version = Column(Integer, nullable=False, default=1)
@@ -122,6 +129,32 @@ Index("idx_decision_facts_outcome", DecisionFacts.outcome)
 Index("idx_decision_facts_body", DecisionFacts.authority_body)
 Index("idx_decision_facts_date", DecisionFacts.decision_date)
 Index("idx_decision_facts_type", DecisionFacts.dispute_type)
+Index("idx_decision_facts_case", DecisionFacts.case_number)
+Index("idx_decision_facts_number", DecisionFacts.decision_number)
+
+
+class DecisionLink(Base):
+    """One appeal edge between two dispute decisions of the same case.
+
+    ``from_facts_id`` is the higher-instance (reviewing) decision,
+    ``to_facts_id`` the lower-instance decision it reviews. Built
+    deterministically by scripts/link_decision_chains.py — rebuilt from
+    scratch on every --apply run, only where the match is unambiguous.
+    """
+    __tablename__ = "decision_links"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    from_facts_id = Column(UUID(as_uuid=True), ForeignKey("decision_facts.id", ondelete="CASCADE"), nullable=False)
+    to_facts_id = Column(UUID(as_uuid=True), ForeignKey("decision_facts.id", ondelete="CASCADE"), nullable=False)
+    method = Column(String(20), nullable=False)          # 'prior_ref' | 'case_number'
+    confidence = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (UniqueConstraint("from_facts_id", "to_facts_id", name="uq_decision_links_pair"),)
+
+
+Index("idx_decision_links_from", DecisionLink.from_facts_id)
+Index("idx_decision_links_to", DecisionLink.to_facts_id)
 
 
 class LawAmendment(Base):

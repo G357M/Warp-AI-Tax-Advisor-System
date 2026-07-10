@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChatPanel } from '@/components/ChatPanel';
 import { isLoggedIn } from '@/lib/auth';
@@ -234,23 +235,23 @@ export default function Home() {
             )}
             {statsState === 'ready' && stats && (
               <div className="grid grid-cols-1 gap-10 sm:grid-cols-3">
-                <div>
+                <Link href="/disputes" className="rounded-2xl p-2 transition-colors hover:bg-white/5">
                   <div className="font-heading text-5xl italic text-white md:text-6xl">
                     {formatNum(lang, stats.overall.total)}
                   </div>
                   <div className="mt-2 font-body text-sm font-light text-white/60">
                     {t('stats.analyzed')}
                   </div>
-                </div>
-                <div>
+                </Link>
+                <Link href="/disputes" className="rounded-2xl p-2 transition-colors hover:bg-white/5">
                   <div className="font-heading text-5xl italic text-white md:text-6xl">
                     {reliefPct}
                   </div>
                   <div className="mt-2 font-body text-sm font-light text-white/60">
                     {t('stats.relief')}
                   </div>
-                </div>
-                <div>
+                </Link>
+                <Link href="/disputes" className="rounded-2xl p-2 transition-colors hover:bg-white/5">
                   <div className="font-heading text-5xl italic text-white md:text-6xl">
                     {stats.top_articles?.[0]
                       ? t('stats.art', { n: stats.top_articles[0].article })
@@ -259,10 +260,18 @@ export default function Home() {
                   <div className="mt-2 font-body text-sm font-light text-white/60">
                     {t('stats.top_article')}
                   </div>
-                </div>
+                </Link>
               </div>
             )}
           </div>
+          {statsState === 'ready' && (
+            <Link
+              href="/disputes"
+              className="mt-8 inline-flex items-center gap-2 font-body text-sm text-primary transition-colors hover:text-white"
+            >
+              {t('stats.more')} →
+            </Link>
+          )}
         </div>
       </section>
 
