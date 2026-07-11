@@ -48,6 +48,15 @@ def main() -> None:
             print("\nDry-run only. Re-run with --apply to retype and clean decision_facts.")
             return
 
+        # 2026-07-11 incident guard: this script once swallowed 5.9k dispute
+        # decisions because the subtype rules had mis-tagged them. A guide
+        # retype should be a handful of docs — a large set means the input
+        # classification is wrong, not the corpus.
+        if len(rows) > 50:
+            print(f"\nABORT: {len(rows)} candidates is far beyond the expected scale "
+                  "for this fix — check subtype classification first.")
+            return
+
         doc_ids = [r.id for r in rows]
         if doc_ids:
             deleted = db.execute(sa_text(

@@ -142,7 +142,11 @@ def classify_news_subtype(title: str, metadata: Dict[str, Any]) -> Optional[str]
         for token in ("მეთოდური მითითებ", "სიტუაციური სახელმძღვანელო", "პროცედურული სახელმძღვანელო")
     ):
         return "guidance"
-    if re.search(r"N ?[0-9]{3,5}\s*$", title):
+    # The trailing-guide-number heuristic is only safe for news announcements:
+    # old bulk-imported dispute-council orders ("ბრძანება N 15328") also end
+    # with a number and carry NO metadata — 2026-07-11 this rule untagged
+    # ~5.9k of them into guidance and cascaded into a doctype/facts wipe.
+    if species == "legislativenews" and re.search(r"N ?[0-9]{3,5}\s*$", title):
         return "guidance"
     # Subordinate normative acts read as orders, not primary legislation.
     if "კანონქვემდებარე" in combined:
