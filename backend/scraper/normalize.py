@@ -11,6 +11,13 @@ from typing import Any, Dict, Optional
 
 
 def infer_document_type(title: str, metadata: Dict[str, Any]) -> str:
+    # baseType is the donor's authoritative kind; guide announcements carry the
+    # guide TOPIC as title/type (free text that may contain "გადაწყვეტილება" —
+    # guide N 0301 "უიმედო ვალი (სასამართლოს გადაწყვეტილება...)" was landing in
+    # court_decision), so the baseType verdict must precede the keyword rules.
+    base_type = str(metadata.get("baseType") or "").lower()
+    if "სახელმძღვანელო" in base_type or "მეთოდური მითითებ" in base_type:
+        return "guideline"
     lowered = " ".join(
         [
             title or "",
