@@ -44,13 +44,18 @@ def _decision_filters(
     if dispute_type and dispute_type not in DISPUTE_TYPES:
         raise HTTPException(status_code=400, detail=f"Unknown dispute_type: {dispute_type}")
 
+    # 'other' bodies are reference material (CJEU translations, municipal
+    # resolutions), not Georgian dispute instances — excluded from public
+    # stats unless explicitly requested via body=other.
     clauses, params = ["1=1"], {}
-    if article:
-        clauses.append("f.contested_articles::jsonb ? :article")
-        params["article"] = article.strip()
     if body:
         clauses.append("f.authority_body = :body")
         params["body"] = body
+    else:
+        clauses.append("f.authority_body IS DISTINCT FROM 'other'")
+    if article:
+        clauses.append("f.contested_articles::jsonb ? :article")
+        params["article"] = article.strip()
     if outcome:
         clauses.append("f.outcome = :outcome")
         params["outcome"] = outcome
@@ -236,6 +241,7 @@ def decision_articles(
                percentile_cont(0.5) WITHIN GROUP (ORDER BY f.amount_gel) AS amount_median,
                {body_columns}
         FROM decision_facts f, jsonb_array_elements_text(f.contested_articles::jsonb) AS a(value)
+        WHERE f.authority_body IS DISTINCT FROM 'other'
         GROUP BY 1 HAVING count(*) >= :min_count
         ORDER BY 2 DESC LIMIT :limit
     """), {"min_count": min_count, "limit": limit}).all()
@@ -345,10 +351,15 @@ def decision_statistics(
     article: Optional[str] = Query(default=None, max_length=10, description="Tax Code article number, e.g. 275"),
     db: Session = Depends(get_db),
 ):
-    """Aggregated outcomes of tax/customs dispute decisions in the corpus."""
+    """Aggregated outcomes of tax/customs dispute decisions in the corpus.
+
+    Facts with authority_body='other' (CJEU translations, municipal
+    resolutions — reference material, not Georgian dispute instances) are
+    excluded from all public aggregates.
+    """
     params = {}
     article_join = ""
-    where = "WHERE 1=1"
+    where = "WHERE f.authority_body IS DISTINCT FROM 'other'"
     if article:
         article_clause = "AND f.contested_articles::jsonb ? :article"
         params["article"] = article.strip()
@@ -382,6 +393,7 @@ def decision_statistics(
         top_articles = db.execute(text(f"""
             SELECT a.value AS article, {OUTCOME_COLUMNS}
             FROM decision_facts f, jsonb_array_elements_text(f.contested_articles::jsonb) AS a(value)
+            WHERE f.authority_body IS DISTINCT FROM 'other'
             GROUP BY 1 HAVING count(*) >= 5 ORDER BY 2 DESC LIMIT 20
         """)).all()
 
