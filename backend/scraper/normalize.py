@@ -73,6 +73,7 @@ NEWS_SUBTYPES = {
     "treaty",              # double-taxation avoidance & other interstate agreements
     "loss_norms",          # industry loss-norm instructions
     "dispute_decisions",   # dispute council / court decision publications
+    "cjeu_practice",       # EU Court of Justice (CJEU) decision translations
     "guidance",            # methodological / situational / procedural guides
     "legislation",         # laws, bills, code amendments
     "orders_resolutions",  # minister orders, government resolutions
@@ -89,8 +90,20 @@ def classify_news_subtype(title: str, metadata: Dict[str, Any]) -> Optional[str]
     title = title or ""
     lowered_title = title.lower()
     meta_type = str(metadata.get("type") or "").lower()
+    base_type = str(metadata.get("baseType") or "").lower()
     species = str(metadata.get("species") or "").lower()
     combined = f"{lowered_title} {meta_type}"
+
+    # Situational-guide announcements carry the guide TOPIC as their type
+    # ("0301 - უიმედო ვალი (სასამართლოს გადაწყვეტილება...)") — topic wording
+    # can contain anything, so decide by the numbered-type shape / baseType
+    # BEFORE any keyword rule (guide N 0301 was landing in dispute_decisions).
+    if re.match(r"^\d{4}\b", meta_type) or "სახელმძღვანელო" in base_type or "მეთოდური მითითებ" in base_type:
+        return "guidance"
+    # CJEU decision translations get their own shelf; must precede the
+    # dispute rule (the type string ends with "გადაწყვეტილება" too).
+    if "მართლმსაჯულების სასამართლო" in combined or "cjeu" in combined:
+        return "cjeu_practice"
 
     # Interstate / intergovernmental agreements (double-taxation treaties).
     if "სახელმწიფოთაშორისი" in meta_type or "მთავრობათაშორისი" in meta_type:

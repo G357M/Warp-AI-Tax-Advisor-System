@@ -20,7 +20,9 @@ from scraper.normalize import NEWS_SUBTYPES
 
 router = APIRouter(prefix="/news", tags=["News"])
 
-NEWS_SCOPE_SQL = "((metadata->>'species') = 'LegislativeNews' OR document_type = 'news')"
+# LegislativeNews + news-typed docs + the CJEU practice shelf (those arrive as
+# NewDocument court decisions but belong on the public news page as a category).
+NEWS_SCOPE_SQL = "((metadata->>'species') = 'LegislativeNews' OR document_type = 'news' OR subtype = 'cjeu_practice')"
 
 _GEORGIAN_RE = re.compile(r"[Ⴀ-ჿ]")
 _pg_trgm_available: Optional[bool] = None

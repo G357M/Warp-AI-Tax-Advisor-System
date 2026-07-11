@@ -8,6 +8,7 @@ const SUBTYPES = [
   'treaty',
   'loss_norms',
   'dispute_decisions',
+  'cjeu_practice',
   'guidance',
   'legislation',
   'orders_resolutions',

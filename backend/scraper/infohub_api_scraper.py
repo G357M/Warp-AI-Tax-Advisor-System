@@ -158,6 +158,7 @@ class InfoHubAPIScraper:
                 "uniqueKey": detail.get("uniqueKey"),
                 "receiptDate": detail.get("receiptDate"),
                 "type": doc_type_name,
+                "baseType": base_type_name,
             },
             file_hash=hashlib.md5(text.encode("utf-8")).hexdigest(),
         )

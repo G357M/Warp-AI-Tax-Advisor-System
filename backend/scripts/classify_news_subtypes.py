@@ -68,7 +68,8 @@ If unsure, answer "general" rather than guessing."""
 
 def rule_stage(db, apply: bool) -> None:
     rows = db.execute(sa_text("""
-        SELECT id, title, metadata->>'type' AS orig_type, metadata->>'species' AS species,
+        SELECT id, title, metadata->>'type' AS orig_type, metadata->>'baseType' AS base_type,
+               metadata->>'species' AS species,
                CASE WHEN {scope} THEN 1 ELSE 0 END AS in_scope
         FROM documents
         WHERE subtype IS NULL OR subtype_source = 'rule'
@@ -78,7 +79,9 @@ def rule_stage(db, apply: bool) -> None:
     unmatched_in_scope = []
     updates = []
     for r in rows:
-        subtype = classify_news_subtype(r.title or "", {"type": r.orig_type, "species": r.species})
+        subtype = classify_news_subtype(
+            r.title or "", {"type": r.orig_type, "baseType": r.base_type, "species": r.species}
+        )
         if subtype:
             verdicts[subtype] += 1
             updates.append({"id": r.id, "subtype": subtype})

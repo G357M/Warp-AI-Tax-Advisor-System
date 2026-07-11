@@ -311,6 +311,7 @@ const DICT: Record<string, Entry> = {
   },
   'news.cat.loss_norms': { ru: 'Нормы потерь', ka: 'დანაკარგის ნორმები', en: 'Loss norms' },
   'news.cat.dispute_decisions': { ru: 'Решения по спорам', ka: 'დავების გადაწყვეტილებები', en: 'Dispute decisions' },
+  'news.cat.cjeu_practice': { ru: 'Практика Суда ЕС', ka: 'ევროკავშირის სასამართლოს პრაქტიკა', en: 'EU Court practice' },
   'news.cat.guidance': { ru: 'Руководства и указания', ka: 'სახელმძღვანელოები და მითითებები', en: 'Guides & instructions' },
   'news.cat.legislation': { ru: 'Законы и законопроекты', ka: 'კანონები და კანონპროექტები', en: 'Laws & bills' },
   'news.cat.orders_resolutions': { ru: 'Приказы и постановления', ka: 'ბრძანებები და დადგენილებები', en: 'Orders & resolutions' },
