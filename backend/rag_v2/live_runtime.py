@@ -331,15 +331,22 @@ def _fetch_doc_chunks(
             # to the text scan for documents not yet rechunked.
             section_text = None
             if article_ref:
-                art_chunks = (
-                    db.query(DocumentChunk)
-                    .filter(DocumentChunk.document_id == doc.id)
-                    .filter(DocumentChunk.metadata_json["article_ref"].astext == str(article_ref))
-                    .order_by(DocumentChunk.chunk_index.asc())
-                    .all()
-                )
-                if art_chunks:
-                    section_text = "\n\n".join((c.content or "").strip() for c in art_chunks).strip()
+                try:
+                    # metadata is a plain JSON column (no JSONB comparator, so
+                    # no .astext) — use the raw ->> operator. Any failure here
+                    # must degrade to the full_text scan, never break the query.
+                    art_chunks = (
+                        db.query(DocumentChunk)
+                        .filter(DocumentChunk.document_id == doc.id)
+                        .filter(DocumentChunk.metadata_json.op("->>")("article_ref") == str(article_ref))
+                        .order_by(DocumentChunk.chunk_index.asc())
+                        .all()
+                    )
+                    if art_chunks:
+                        section_text = "\n\n".join((c.content or "").strip() for c in art_chunks).strip()
+                except Exception as exc:
+                    print(f"[RAG_V2] article_ref chunk lookup failed, falling back to text scan: {exc}")
+                    section_text = None
             if not section_text:
                 section_text = _extract_section_text(doc.full_text, {
                     "section_label": section_label,
