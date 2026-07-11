@@ -61,8 +61,20 @@ def _build_search_clauses(db: Session, search: str, params: dict) -> tuple:
         except Exception:
             query_ka = None
     if query_ka:
-        params["search_ka"] = f"%{query_ka}%"
-        exact.append("title ILIKE :search_ka")
+        # Match every word of the translation (crudely stemmed: drop the last
+        # letter of longer words so დაბეგვრა also hits დაბეგვრის), not the
+        # whole phrase as one substring — a lossy translation of a keyword
+        # query ('double taxation' -> 'დაბეგვრა') would otherwise match half
+        # the corpus. Longest 3 words carry the meaning; if AND turns out too
+        # strict the zero-results fuzzy rescue below still fires.
+        words = sorted(re.split(r"\s+", query_ka), key=len, reverse=True)
+        stems = [w[:-1] if len(w) >= 5 else w for w in words if len(w) >= 3][:3]
+        if stems:
+            ka_parts = []
+            for i, stem in enumerate(stems):
+                params[f"ka_w{i}"] = f"%{stem}%"
+                ka_parts.append(f"title ILIKE :ka_w{i}")
+            exact.append("(" + " AND ".join(ka_parts) + ")")
 
     fuzzy = None
     if _has_pg_trgm(db):
