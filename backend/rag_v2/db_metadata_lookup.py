@@ -34,6 +34,14 @@ TOPIC_TITLE_STEMS: Dict[str, List[str]] = {
 AMENDMENT_TITLE_STEMS = ["საგადასახადო კოდექსში ცვლილების შეტანის შესახებ", "ცვლილების შეტანის შესახებ"]
 CANONICAL_TAX_CODE_TITLE_STEMS = ["საგადასახადო კოდექსი"]
 
+# Registration-threshold questions point at the registration article, not the
+# rate article (vat -> 166 is the 18% rate; the 100k threshold lives in 165).
+# A pointer, not a curated answer: the text still comes from the law chunk.
+CANONICAL_THRESHOLD_ARTICLES: Dict[str, str] = {"vat": "165"}
+THRESHOLD_QUERY_TOKENS = (
+    "регистр", "оборот", "порог", "registr", "threshold", "turnover", "რეგისტრ", "ბრუნვ",
+)
+
 
 def _extract_year(raw_query: str) -> Optional[str]:
     match = re.search(r"\b(20\d{2})\b", raw_query or "")
@@ -92,7 +100,7 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
             ]
         return []
 
-    if parsed.topic in CANONICAL_RATE_ARTICLES and parsed.goal == "rate_lookup":
+    def _canonical_tax_code_candidates(article_ref: str, why: str) -> List[CandidateDocument]:
         clauses = [
             "document_type ILIKE %s",
             "(source_url = %s OR TRIM(BOTH '.' FROM title) = %s)",
@@ -104,18 +112,30 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
         ]
         sql = METADATA_SEARCH_BASE_SQL.format(where_clause=f"WHERE {' AND '.join(clauses)}")
         rows = run_query(sql, [*params, limit])
-        if rows:
-            candidates = [
-                _candidate_from_row(row, parsed, "db canonical tax code rate lookup", 0.99)
-                for row in rows
-            ]
-            article_ref = CANONICAL_RATE_ARTICLES[parsed.topic]
-            for item in candidates:
-                item.metadata = {
-                    **(item.metadata or {}),
-                    "article_ref": article_ref,
-                    "section_label": f"მუხლი {article_ref}",
-                }
+        candidates = [_candidate_from_row(row, parsed, why, 0.99) for row in rows or []]
+        for item in candidates:
+            item.metadata = {
+                **(item.metadata or {}),
+                "article_ref": article_ref,
+                "section_label": f"მუხლი {article_ref}",
+            }
+        return candidates
+
+    # Threshold/registration questions win over the rate mapping: they share
+    # the topic (vat) but need the registration article, not the rate one.
+    normalized = str(getattr(parsed, "normalized_query", "") or "").lower()
+    if parsed.topic in CANONICAL_THRESHOLD_ARTICLES and any(t in normalized for t in THRESHOLD_QUERY_TOKENS):
+        candidates = _canonical_tax_code_candidates(
+            CANONICAL_THRESHOLD_ARTICLES[parsed.topic], "db canonical tax code threshold lookup"
+        )
+        if candidates:
+            return candidates
+
+    if parsed.topic in CANONICAL_RATE_ARTICLES and parsed.goal == "rate_lookup":
+        candidates = _canonical_tax_code_candidates(
+            CANONICAL_RATE_ARTICLES[parsed.topic], "db canonical tax code rate lookup"
+        )
+        if candidates:
             return candidates
 
     if parsed.goal == "amendment_tracking":
