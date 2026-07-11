@@ -325,11 +325,27 @@ def _fetch_doc_chunks(
             return []
 
         if section_label or article_ref or point_ref:
-            section_text = _extract_section_text(doc.full_text, {
-                "section_label": section_label,
-                "article_ref": article_ref,
-                "point_ref": point_ref,
-            })
+            # Fast path: after article-level rechunking (П1) primary-legislation
+            # chunks carry metadata.article_ref, so the exact article resolves by
+            # chunk metadata instead of a regex scan over full_text. Falls back
+            # to the text scan for documents not yet rechunked.
+            section_text = None
+            if article_ref:
+                art_chunks = (
+                    db.query(DocumentChunk)
+                    .filter(DocumentChunk.document_id == doc.id)
+                    .filter(DocumentChunk.metadata_json["article_ref"].astext == str(article_ref))
+                    .order_by(DocumentChunk.chunk_index.asc())
+                    .all()
+                )
+                if art_chunks:
+                    section_text = "\n\n".join((c.content or "").strip() for c in art_chunks).strip()
+            if not section_text:
+                section_text = _extract_section_text(doc.full_text, {
+                    "section_label": section_label,
+                    "article_ref": article_ref,
+                    "point_ref": point_ref,
+                })
             if section_text:
                 if point_ref and not _has_explicit_point(section_text, point_ref):
                     article_num, point_num = point_ref.split(".", 1)
@@ -475,6 +491,17 @@ def _filtered_rollout_docs(trace) -> List[Dict[str, Any]]:
 
 
 def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
+    """Turn ranked candidates into grounding chunks for generation.
+
+    Two paths, and the split matters (Phase B, 2026-07-03): candidates that
+    carry inline ``chunk_content`` (semantic_search) are used as-is, while
+    metadata-only candidates (article/citation/exact resolvers,
+    metadata_search) go through ``_fetch_doc_chunks``, whose hint-based
+    resolution (article_ref/section_label/chunk_hint) does real work for
+    rate/definition lookups. Reranker changes must never flip a
+    metadata-channel winner below a semantic candidate solely on
+    chunk-content signals — that broke pit_rate/vat_rate_more in attempts 1-3.
+    """
     ranked = _filtered_rollout_docs(trace)
     chunks: List[Dict[str, Any]] = []
     for index, doc in enumerate(ranked):

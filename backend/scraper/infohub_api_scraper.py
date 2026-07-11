@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import SessionLocal
 from models.document import Document, DocumentChunk
+from processor.chunker import text_chunker
 from rag.embeddings import embeddings_generator
 from rag.vector_store_pgvector import vector_store
 from scraper.normalize import classify_news_subtype, infer_document_type, parse_receipt_date
@@ -163,14 +164,29 @@ class InfoHubAPIScraper:
         db.add(document)
         db.flush()
 
-        chunks = self.chunk_text(text)
-        embeddings = embeddings_generator.encode(chunks) if embeddings_generator.model else None
-        for i, chunk_text in enumerate(chunks):
+        # Primary legislation is chunked one-article-per-chunk so each chunk
+        # carries article_ref for exact citation resolution (П1); everything
+        # else keeps the plain fixed-size chunking.
+        if document.document_type in ("law", "regulation", "guideline"):
+            chunk_dicts = text_chunker.chunk_by_article(text, {})
+            chunk_contents = [c["content"] for c in chunk_dicts]
+            chunk_metas = [
+                {**(c.get("metadata") or {}), "position": i, "total_chunks": len(chunk_dicts)}
+                for i, c in enumerate(chunk_dicts)
+            ]
+        else:
+            chunk_contents = self.chunk_text(text)
+            chunk_metas = [
+                {"position": i, "total_chunks": len(chunk_contents)}
+                for i in range(len(chunk_contents))
+            ]
+        embeddings = embeddings_generator.encode(chunk_contents) if embeddings_generator.model else None
+        for i, content in enumerate(chunk_contents):
             chunk = DocumentChunk(
                 document_id=document.id,
                 chunk_index=i,
-                content=chunk_text,
-                metadata_json={"position": i, "total_chunks": len(chunks)},
+                content=content,
+                metadata_json=chunk_metas[i],
             )
             if embeddings is not None:
                 emb = embeddings[i]

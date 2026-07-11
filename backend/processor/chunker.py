@@ -82,16 +82,35 @@ class TextChunker:
         return chunks
 
     def _split_long_article(self, article_text: str, max_chars: int) -> List[str]:
-        """Greedily pack an over-long article's paragraphs into <=max_chars parts."""
-        paragraphs = self._split_paragraphs(article_text)
+        """Greedily pack an over-long article's paragraphs into <=max_chars parts.
+
+        A single paragraph longer than max_chars (e.g. Tax Code article 309's
+        transitional provisions use single newlines throughout) is further
+        split at line boundaries so no part exceeds the embedding-safe size.
+        """
+        pieces: List[str] = []
+        for para in self._split_paragraphs(article_text):
+            if len(para) <= max_chars:
+                pieces.append(para)
+                continue
+            current = ""
+            for line in para.splitlines():
+                if current and len(current) + len(line) + 1 > max_chars:
+                    pieces.append(current.strip())
+                    current = line
+                else:
+                    current = f"{current}\n{line}" if current else line
+            if current.strip():
+                pieces.append(current.strip())
+
         parts: List[str] = []
         current = ""
-        for para in paragraphs:
-            if current and len(current) + len(para) + 2 > max_chars:
+        for piece in pieces:
+            if current and len(current) + len(piece) + 2 > max_chars:
                 parts.append(current.strip())
-                current = para
+                current = piece
             else:
-                current = f"{current}\n\n{para}" if current else para
+                current = f"{current}\n\n{piece}" if current else piece
         if current.strip():
             parts.append(current.strip())
         return parts or [article_text]
