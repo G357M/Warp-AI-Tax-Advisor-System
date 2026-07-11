@@ -1,8 +1,11 @@
 """
 LLM integration for generating responses.
 """
+import hashlib
 import re
 from typing import List, Dict, Any, Optional
+
+import redis
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,8 +13,30 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from core.config import settings
 
 
-# Cross-lingual retrieval translates each query once; cache so repeats are free.
+# Cross-lingual retrieval translates each query once. Two cache layers:
+# in-process dict (free repeats within a process) + Redis (persistent across
+# processes/restarts — the same query always searches with the same Georgian
+# wording, which also makes eval runs reproducible). Redis is fail-open,
+# mirroring core/plans.py: translation must never take the chat down.
 _TRANSLATION_CACHE: Dict[str, str] = {}
+_TRANSLATION_REDIS_PREFIX = "ta:translate:ka:v1:"
+_TRANSLATION_REDIS_TTL = 60 * 60 * 24 * 90  # 90 days
+_redis_client: Optional[redis.Redis] = None
+
+
+def _translation_redis() -> Optional[redis.Redis]:
+    global _redis_client
+    if _redis_client is None:
+        try:
+            _redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+        except Exception:
+            return None
+    return _redis_client
+
+
+def _translation_key(text: str) -> str:
+    normalized = re.sub(r"\s+", " ", text.strip().lower())
+    return _TRANSLATION_REDIS_PREFIX + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 class LLMClient:
@@ -20,6 +45,7 @@ class LLMClient:
     def __init__(self):
         """Initialize LLM client."""
         self.client = None
+        self.translator = None  # dedicated temperature-0 client for query translation
         self._initialize_client()
 
     def _initialize_client(self):
@@ -36,6 +62,16 @@ class LLMClient:
                     max_tokens=settings.LLM_MAX_TOKENS,
                     openai_api_key=settings.OPENAI_API_KEY,
                 )
+                # Translation must be deterministic: at the default generation
+                # temperature the Georgian wording drifts between processes and
+                # occasionally misses the corpus phrasing (root of the eval
+                # noise floor, see docs/RAG_HARDENING_PLAN_2026-07.md П0).
+                self.translator = ChatOpenAI(
+                    model=settings.LLM_MODEL,
+                    temperature=0,
+                    max_tokens=settings.LLM_MAX_TOKENS,
+                    openai_api_key=settings.OPENAI_API_KEY,
+                )
                 print(f"✓ OpenAI LLM initialized: {settings.LLM_MODEL}")
 
             elif settings.LLM_PROVIDER == "anthropic":
@@ -46,6 +82,12 @@ class LLMClient:
                 self.client = ChatAnthropic(
                     model=settings.LLM_MODEL,
                     temperature=settings.LLM_TEMPERATURE,
+                    max_tokens=settings.LLM_MAX_TOKENS,
+                    anthropic_api_key=settings.ANTHROPIC_API_KEY,
+                )
+                self.translator = ChatAnthropic(
+                    model=settings.LLM_MODEL,
+                    temperature=0,
                     max_tokens=settings.LLM_MAX_TOKENS,
                     anthropic_api_key=settings.ANTHROPIC_API_KEY,
                 )
@@ -114,6 +156,17 @@ class LLMClient:
             return text
         if key in _TRANSLATION_CACHE:
             return _TRANSLATION_CACHE[key]
+        redis_key = _translation_key(key)
+        client = _translation_redis()
+        if client is not None:
+            try:
+                cached = client.get(redis_key)
+                if cached:
+                    if len(_TRANSLATION_CACHE) < 5000:
+                        _TRANSLATION_CACHE[key] = cached
+                    return cached
+            except Exception:
+                pass
         try:
             messages = [
                 SystemMessage(content=(
@@ -130,12 +183,19 @@ class LLMClient:
                 )),
                 HumanMessage(content=text),
             ]
-            out = self._clean_response_text(self.client.invoke(messages).content) or text
+            translator = self.translator or self.client
+            out = self._clean_response_text(translator.invoke(messages).content) or text
         except Exception as e:
             print(f"Error translating query: {e}")
-            out = text
+            # Do not cache failures — the next call should retry the LLM.
+            return text
         if len(_TRANSLATION_CACHE) < 5000:
             _TRANSLATION_CACHE[key] = out
+        if client is not None and out != text:
+            try:
+                client.set(redis_key, out, ex=_TRANSLATION_REDIS_TTL)
+            except Exception:
+                pass
         return out
 
     def _clean_response_text(self, text: Any) -> str:

@@ -128,8 +128,10 @@ def main():
         sourced = len(sources) > 0
         grounded = None
         retrieval_correct = None  # answer from the pure-law path (v1, no guards/canned) — Phase 4 readiness
+        v2 = res.get("_rag_v2") or {}
+        chunk_texts = []
         if kind == "fact":
-            used = (res.get("_rag_v2") or {}).get("used_chunks")
+            used = v2.get("used_chunks")
             chunk_texts = used if used else retrieved_chunk_texts(query, lang)
             nchunks = norm(" ".join(chunk_texts))
             grounded = any(norm(g) in nchunks for g in ground) if ground else None
@@ -145,6 +147,16 @@ def main():
             "retrieval_correct": retrieval_correct,
             "elapsed_s": round(time.time() - t0, 2),
             "response": resp, "n_sources": len(sources),
+            # Diagnostics: enough to explain any failure from the artifact alone,
+            # without re-running the pipeline (П0.2 of the hardening plan).
+            "v2_mode": v2.get("mode"),
+            "question_class": v2.get("question_class"),
+            "channels_used": v2.get("channels_used"),
+            "top_titles": v2.get("top_titles"),
+            "used_chunks_n": len(chunk_texts),
+            "used_chunks_preview": [
+                {"len": len(c or ""), "head": (c or "")[:300]} for c in chunk_texts[:5]
+            ],
         })
         if not quiet:
             print(f"[{qid}] correct={correct} sourced={sourced} grounded={grounded}", file=sys.stderr)

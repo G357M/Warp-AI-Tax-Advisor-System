@@ -70,6 +70,14 @@ echo "Translating amendment summaries..." | tee -a "$LOG_FILE"
 docker exec "$CONTAINER_NAME" python /app/scripts/translate_amendments.py --limit 300 \
     2>&1 | tail -3 | tee -a "$LOG_FILE" || true
 
+# Nightly RAG canary: 10 known-answer questions through the real pipeline.
+# Alerts to Telegram when below threshold (>1 failure). Non-fatal.
+echo "Running RAG canary..." | tee -a "$LOG_FILE"
+CANARY_EXIT=0
+CANARY_OUT="$(docker exec "$CONTAINER_NAME" python /app/scripts/canary_eval.py 2>>"$LOG_FILE")" || CANARY_EXIT=$?
+echo "$CANARY_OUT" | tee -a "$LOG_FILE"
+"$(dirname "$0")/canary_alert.sh" "$CANARY_EXIT" "$(echo "$CANARY_OUT" | grep '^CANARY:' | tail -1)" 2>&1 | tee -a "$LOG_FILE" || true
+
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
 
