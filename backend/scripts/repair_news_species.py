@@ -41,7 +41,7 @@ logger = logging.getLogger("news_species_repair")
 
 API_BASE = "https://infohubapi.rs.ge/api"
 SPECIES = "LegislativeNews"
-PAGE_SIZE = 100
+PAGE_SIZE = 50  # the API 422s on larger take values
 
 
 def fetch_page(skip: int) -> tuple:
