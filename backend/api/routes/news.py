@@ -38,17 +38,18 @@ def _has_pg_trgm(db: Session) -> bool:
     return _pg_trgm_available
 
 
-def _build_search_clause(db: Session, search: str, params: dict) -> str:
-    """Cross-lingual, fuzzy-tolerant title/number search (П5).
+def _build_search_clauses(db: Session, search: str, params: dict) -> tuple:
+    """Cross-lingual title/number search (П5). Returns (exact, fuzzy_or_None).
 
-    The corpus titles are Georgian; a RU/EN query is translated once (Redis-cached,
-    deterministic — see rag/llm.py) and both forms are matched. word_similarity
-    tolerates Georgian word-form endings when pg_trgm is enabled; without the
-    extension the clause quietly stays substring-only.
+    The corpus titles are Georgian; a RU/EN query is translated once
+    (Redis-cached, deterministic — see rag/llm.py) and both forms are matched
+    by substring. The fuzzy word_similarity clause is a RESCUE used only when
+    the exact clause finds nothing — always OR-ing it in dilutes good queries
+    (common stems like დაბეგვრ appear in hundreds of titles).
     """
     query = search.strip()
     params["search"] = f"%{query}%"
-    clauses = ["title ILIKE :search", "document_number ILIKE :search"]
+    exact = ["title ILIKE :search", "document_number ILIKE :search"]
 
     query_ka = None
     if not _GEORGIAN_RE.search(query):
@@ -61,13 +62,14 @@ def _build_search_clause(db: Session, search: str, params: dict) -> str:
             query_ka = None
     if query_ka:
         params["search_ka"] = f"%{query_ka}%"
-        clauses.append("title ILIKE :search_ka")
+        exact.append("title ILIKE :search_ka")
 
+    fuzzy = None
     if _has_pg_trgm(db):
         params["sim_probe"] = query_ka or query
-        clauses.append("word_similarity(:sim_probe, title) > 0.5")
+        fuzzy = "word_similarity(:sim_probe, title) > 0.5"
 
-    return "(" + " OR ".join(clauses) + ")"
+    return "(" + " OR ".join(exact) + ")", fuzzy
 
 
 @router.get("")
@@ -82,19 +84,31 @@ def list_news(
     if subtype and subtype not in NEWS_SUBTYPES:
         raise HTTPException(status_code=400, detail=f"Unknown subtype: {subtype}")
 
+    def subtype_counts(where_sql: str, where_params: dict) -> dict:
+        # Per-subtype counts respect the search but ignore the subtype filter
+        # so the category chips stay populated while one of them is active.
+        return dict(db.execute(text(f"""
+            SELECT coalesce(subtype, 'general'), count(*)
+            FROM documents WHERE {where_sql}
+            GROUP BY 1
+        """), where_params).all())
+
     clauses, params = [NEWS_SCOPE_SQL], {}
+    fuzzy_clause = None
     if search:
-        clauses.append(_build_search_clause(db, search, params))
+        exact_clause, fuzzy_clause = _build_search_clauses(db, search, params)
+        clauses.append(exact_clause)
     scope_where = " AND ".join(clauses)
 
-    # Per-subtype counts respect the search but ignore the subtype filter so
-    # the category chips stay populated while one of them is active.
-    counts = dict(db.execute(text(f"""
-        SELECT coalesce(subtype, 'general'), count(*)
-        FROM documents WHERE {scope_where}
-        GROUP BY 1
-    """), params).all())
+    counts = subtype_counts(scope_where, params)
     total = sum(counts.values())
+
+    # Fuzzy rescue: exact/substring search found nothing — retry with
+    # trigram word similarity (typos, Georgian word-form endings).
+    if search and total == 0 and fuzzy_clause:
+        scope_where = " AND ".join([NEWS_SCOPE_SQL, f"({fuzzy_clause})"])
+        counts = subtype_counts(scope_where, params)
+        total = sum(counts.values())
 
     where = scope_where
     if subtype:
