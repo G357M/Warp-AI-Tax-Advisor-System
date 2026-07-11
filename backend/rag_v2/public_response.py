@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import os
 import re
 from typing import Any, Dict, Optional, Tuple
 
 from .faq_tax_matrix import get_tax_faq_entry
+
+
+def _disabled_guard_topics() -> set:
+    """Per-topic kill switch for the authoritative guards (П3 of the hardening
+    plan): INFOHUB_DISABLED_GUARDS=vat_threshold,estonian_model routes those
+    topics through real retrieval instead of the curated answer. Env-driven so
+    a guard flips with a container recreate, no rebuild needed."""
+    raw = os.getenv("INFOHUB_DISABLED_GUARDS", "")
+    return {t.strip() for t in raw.split(",") if t.strip()}
 
 
 def _response_language(trace: Any) -> str:
@@ -292,8 +302,18 @@ def out_of_jurisdiction_response(trace: Any) -> Optional[str]:
 def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
     """Authoritative answers for high-value facts that retrieval misses.
 
-    Grounded in Georgian law and the firm's standing tax positions. Matched on
-    query text because the parser does not reliably tag these question shapes.
+    Topics listed in INFOHUB_DISABLED_GUARDS fall through to real retrieval —
+    the guard-removal path of the hardening plan (П3), one topic at a time.
+    """
+    result = _authoritative_tax_fact_impl(trace)
+    if result and result[0] in _disabled_guard_topics():
+        return None
+    return result
+
+
+def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
+    """Curated high-value facts, matched on query text because the parser does
+    not reliably tag these question shapes.
 
     Returns ``(topic, answer)`` so the caller can cite the actual legal basis
     (most topics rest on the Tax Code; the funded pension rests on its own law).

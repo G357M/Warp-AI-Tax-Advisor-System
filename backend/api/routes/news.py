@@ -8,6 +8,7 @@ public news feed. Subcategories live in ``documents.subtype`` (rule-based at
 ingest + LLM backfill, see scripts/classify_news_subtypes.py); unclassified
 rows read as 'general'.
 """
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,53 @@ from scraper.normalize import NEWS_SUBTYPES
 router = APIRouter(prefix="/news", tags=["News"])
 
 NEWS_SCOPE_SQL = "((metadata->>'species') = 'LegislativeNews' OR document_type = 'news')"
+
+_GEORGIAN_RE = re.compile(r"[Ⴀ-ჿ]")
+_pg_trgm_available: Optional[bool] = None
+
+
+def _has_pg_trgm(db: Session) -> bool:
+    global _pg_trgm_available
+    if _pg_trgm_available is None:
+        try:
+            _pg_trgm_available = bool(db.execute(text(
+                "SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'"
+            )).scalar())
+        except Exception:
+            _pg_trgm_available = False
+    return _pg_trgm_available
+
+
+def _build_search_clause(db: Session, search: str, params: dict) -> str:
+    """Cross-lingual, fuzzy-tolerant title/number search (П5).
+
+    The corpus titles are Georgian; a RU/EN query is translated once (Redis-cached,
+    deterministic — see rag/llm.py) and both forms are matched. word_similarity
+    tolerates Georgian word-form endings when pg_trgm is enabled; without the
+    extension the clause quietly stays substring-only.
+    """
+    query = search.strip()
+    params["search"] = f"%{query}%"
+    clauses = ["title ILIKE :search", "document_number ILIKE :search"]
+
+    query_ka = None
+    if not _GEORGIAN_RE.search(query):
+        try:
+            from rag.llm import llm_client
+            translated = llm_client.translate_to_georgian(query)
+            if translated and translated.strip() and translated.strip() != query:
+                query_ka = translated.strip()
+        except Exception:
+            query_ka = None
+    if query_ka:
+        params["search_ka"] = f"%{query_ka}%"
+        clauses.append("title ILIKE :search_ka")
+
+    if _has_pg_trgm(db):
+        params["sim_probe"] = query_ka or query
+        clauses.append("word_similarity(:sim_probe, title) > 0.5")
+
+    return "(" + " OR ".join(clauses) + ")"
 
 
 @router.get("")
@@ -36,8 +84,7 @@ def list_news(
 
     clauses, params = [NEWS_SCOPE_SQL], {}
     if search:
-        clauses.append("title ILIKE :search")
-        params["search"] = f"%{search.strip()}%"
+        clauses.append(_build_search_clause(db, search, params))
     scope_where = " AND ".join(clauses)
 
     # Per-subtype counts respect the search but ignore the subtype filter so
