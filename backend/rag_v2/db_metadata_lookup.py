@@ -42,6 +42,28 @@ THRESHOLD_QUERY_TOKENS = (
     "регистр", "оборот", "порог", "registr", "threshold", "turnover", "რეგისტრ", "ბრუნვ",
 )
 
+# Canonical pointers for the former guard topics (П3): unambiguous query
+# tokens -> the article that answers the question. title_stem=None means the
+# Tax Code; the funded pension rests on its own law (base act, amendment acts
+# excluded by the NOT ILIKE in the lookup). Article targets verified against
+# the live texts 2026-07-11: 97 distributed-profit object, 172 VAT exemption
+# with credit (tour operators), 202 property tax rates, pension law art. 3
+# (the 2% contributions).
+GUARD_TOPIC_POINTERS = [
+    (("эстонск", "estonian", "ესტონ"), None, "97"),
+    (("туропер", "tour oper", "ტუროპერ"), None, "172"),
+    (("налог на имущество", "имуществ", "property tax", "ქონების გადასახად"), None, "202"),
+    (("пенси", "pension", "საპენსიო", "პენსი"), "დაგროვებითი პენსიის შესახებ", "3"),
+]
+
+CANONICAL_LAW_BY_TITLE_SQL = """
+SELECT id::text AS document_id, title, document_type, source_url
+FROM documents
+WHERE document_type ILIKE %s AND title ILIKE %s AND title NOT ILIKE %s
+ORDER BY updated_at DESC NULLS LAST
+LIMIT %s
+"""
+
 
 def _extract_year(raw_query: str) -> Optional[str]:
     match = re.search(r"\b(20\d{2})\b", raw_query or "")
@@ -130,6 +152,33 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
         )
         if candidates:
             return candidates
+
+    # Former guard topics: token-matched pointer to the answering article.
+    for tokens, title_stem, article_ref in GUARD_TOPIC_POINTERS:
+        if not any(t in normalized for t in tokens):
+            continue
+        if title_stem is None:
+            candidates = _canonical_tax_code_candidates(
+                article_ref, "db canonical guard-topic article lookup"
+            )
+        else:
+            rows = run_query(
+                CANONICAL_LAW_BY_TITLE_SQL,
+                ["%law%", f"%{title_stem}%", "%ცვლილებ%", limit],
+            )
+            candidates = [
+                _candidate_from_row(row, parsed, "db canonical law-by-title article lookup", 0.99)
+                for row in rows or []
+            ]
+            for item in candidates:
+                item.metadata = {
+                    **(item.metadata or {}),
+                    "article_ref": article_ref,
+                    "section_label": f"მუხლი {article_ref}",
+                }
+        if candidates:
+            return candidates
+        break
 
     if parsed.topic in CANONICAL_RATE_ARTICLES and parsed.goal == "rate_lookup":
         candidates = _canonical_tax_code_candidates(
