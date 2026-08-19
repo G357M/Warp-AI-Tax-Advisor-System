@@ -1,6 +1,7 @@
 """
 Public API routes (no authentication required).
 """
+import logging
 import time
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
@@ -12,6 +13,7 @@ from rag_v2.live_runtime import maybe_run_live_rollout
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
+logger = logging.getLogger(__name__)
 
 
 class PublicQueryRequest(BaseModel):
@@ -163,10 +165,11 @@ def process_public_query(query_data: PublicQueryRequest):
             processing_time=processing_time
         )
 
-    except Exception as e:
+    except Exception:
+        logger.exception("Public query processing failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing query: {str(e)}"
+            detail="Unable to process the query right now. Please try again later."
         )
 
 
@@ -183,7 +186,6 @@ def get_public_stats():
     return {
         "app_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "environment": settings.ENVIRONMENT,
         "total_documents": vector_store.get_count() if vector_store.client else 0,
         "supported_languages": ["ka", "ru", "en"],
         "features": {

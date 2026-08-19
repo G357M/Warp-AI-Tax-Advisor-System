@@ -1,6 +1,7 @@
 """
 Query processing API routes.
 """
+import logging
 import time
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,6 +19,7 @@ from rag_v2.live_runtime import maybe_run_live_rollout
 
 
 router = APIRouter(prefix="/query", tags=["Query"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=QueryResponse)
@@ -101,11 +103,12 @@ def process_query(
                 conversation_history=conversation_history,
                 language=query_data.language
             )
-    except Exception as e:
+    except Exception:
         db.rollback()
+        logger.exception("Authenticated query processing failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing query: {str(e)}"
+            detail="Unable to process the query right now. Please try again later."
         )
     
     maybe_run_shadow(

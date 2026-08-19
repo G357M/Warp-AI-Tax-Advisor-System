@@ -1,6 +1,7 @@
 """
 RAG (Retrieval-Augmented Generation) pipeline.
 """
+import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy import or_, desc, case
 from sqlalchemy.orm import Session
@@ -11,6 +12,9 @@ from models import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
 from rag.vector_store import vector_store
 from rag.llm import llm_client
+
+
+logger = logging.getLogger(__name__)
 
 
 class RAGPipeline:
@@ -736,10 +740,10 @@ class RAGPipeline:
                 "retrieved_count": len(retrieved_chunks),
             }
 
-        except Exception as e:
-            print(f"Error in RAG pipeline: {e}")
+        except Exception:
+            logger.exception("RAG pipeline failed")
             return {
-                "response": f"Извините, произошла ошибка при обработке запроса: {str(e)}",
+                "response": "Извините, сейчас не удалось обработать запрос. Попробуйте ещё раз позднее.",
                 "sources": [],
                 "retrieved_count": 0,
             }

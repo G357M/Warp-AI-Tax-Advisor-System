@@ -2,14 +2,19 @@
 Scraper API routes.
 """
 import asyncio
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, Dict
 
 from scraper.infohub_scraper import InfoHubScraper
+from core.security import require_admin
 
 
-router = APIRouter(prefix="/scraper", tags=["Scraper"])
+router = APIRouter(
+    prefix="/scraper",
+    tags=["Scraper"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 # In-memory task storage (in production, use Redis or database)

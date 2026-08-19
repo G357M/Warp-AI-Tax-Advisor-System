@@ -2,6 +2,7 @@
 LLM integration for generating responses.
 """
 import hashlib
+import logging
 import re
 from typing import List, Dict, Any, Optional
 
@@ -11,6 +12,9 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 # Cross-lingual retrieval translates each query once. Two cache layers:
@@ -140,9 +144,9 @@ class LLMClient:
             response = self.client.invoke(messages)
             return self._clean_response_text(response.content)
 
-        except Exception as e:
-            print(f"Error generating LLM response: {e}")
-            return f"Error generating response: {str(e)}"
+        except Exception:
+            logger.exception("LLM response generation failed")
+            return "Извините, сейчас не удалось сформировать ответ. Попробуйте ещё раз позднее."
 
     def translate_to_georgian(self, text: str) -> str:
         """Translate a query into Georgian for cross-lingual retrieval.

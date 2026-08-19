@@ -2,8 +2,9 @@
 Rate limiting middleware using Redis.
 """
 import time
+import ipaddress
 from typing import Callable
-from fastapi import Request, HTTPException, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 import redis.asyncio as redis
 
@@ -123,15 +124,15 @@ def get_client_ip(request: Request) -> str:
     Returns:
         Client IP address
     """
-    # Check for forwarded IP (behind proxy)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    
-    # Check for real IP
+    # Production traffic reaches the backend only through our Nginx container.
+    # Nginx validates Cloudflare peers and overwrites X-Real-IP, so never trust a
+    # client-supplied X-Forwarded-For chain here.
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
-        return real_ip
+        try:
+            return str(ipaddress.ip_address(real_ip.strip()))
+        except ValueError:
+            pass
     
     # Fallback to direct connection
     return request.client.host if request.client else "unknown"
@@ -181,16 +182,10 @@ async def rate_limit_middleware(
         window_seconds=window_seconds
     )
     
-    # Add rate limit headers to response
-    response = await call_next(request)
-    
-    if info:
-        response.headers["X-RateLimit-Limit"] = str(info["limit"])
-        response.headers["X-RateLimit-Remaining"] = str(info["remaining"])
-        response.headers["X-RateLimit-Reset"] = str(info["reset"])
-    
-    # Block if rate limit exceeded
+    # Reject before invoking the endpoint. In particular, an over-limit request
+    # must not reach retrieval or consume an LLM call.
     if not allowed:
+        retry_after = max(0, info.get("reset", int(time.time())) - int(time.time()))
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={
@@ -202,8 +197,15 @@ async def rate_limit_middleware(
                 "X-RateLimit-Limit": str(info["limit"]),
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-Reset": str(info["reset"]),
-                "Retry-After": str(info["reset"] - int(time.time())),
+                "Retry-After": str(retry_after),
             }
         )
-    
+
+    response = await call_next(request)
+
+    if info:
+        response.headers["X-RateLimit-Limit"] = str(info["limit"])
+        response.headers["X-RateLimit-Remaining"] = str(info["remaining"])
+        response.headers["X-RateLimit-Reset"] = str(info["reset"])
+
     return response
