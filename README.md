@@ -273,12 +273,17 @@ curl https://tax-advisor.ge/api/v1/public/health
 docker exec infohub-postgres psql -U infohub_user -d infohub_ai -c "select count(*) from documents;"
 ```
 
-### Пересобрать backend после backend-изменений
+### Безопасно развернуть изменения из GitHub
 
 ```bash
-docker compose build backend
-docker compose up -d backend
+cd /root/infohub
+./scripts/deploy_production.sh
 ```
+
+Скрипт делает только fast-forward из `origin/main`, сохраняет rollback-теги
+образов, выполняет preflight backend/БД и проверяет public health. Процедуры
+TLS renewal, логов и проверки резервных копий описаны в
+[`docs/PRODUCTION_OPERATIONS.md`](docs/PRODUCTION_OPERATIONS.md).
 
 ---
 

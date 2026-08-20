@@ -36,7 +36,7 @@ NEW_DOCS="$(grep -oE '\+[0-9]+ new docs' "$LOG_FILE" | tail -1 | grep -oE '[0-9]
 NEW_DOCS="${NEW_DOCS:-?}"
 
 # Alert (Telegram) on failure, or on too many consecutive 0-new runs.
-"$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
+bash "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
 
 # Extract structured facts from newly ingested dispute decisions (incremental;
 # --new-only keeps the nightly run off the v1->v2 upgrade backlog, which is a
