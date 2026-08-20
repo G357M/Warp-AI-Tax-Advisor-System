@@ -111,7 +111,7 @@ Production baseline на `e52ecac` прошёл `12/12`, все метрики �
 Остаётся:
 
 1. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt; deterministic JSON baseline уже формирует машинную основу, а LLM-набор остаётся ручным и bounded.
-2. Выборочная экспертная проверка новых `decision_facts`.
+2. Принять production baseline нового read-only `decision_facts` quality contract и передать детерминированную review-выборку профильному эксперту. Контракт измеряет структурную гигиену, но намеренно не выдаёт её за юридическую верификацию выводов.
 
 ### P2 — operational maturity
 

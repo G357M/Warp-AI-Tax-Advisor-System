@@ -189,3 +189,59 @@ queries, answers and sources and must remain an operational artifact. Only the
 aggregate `--baseline-output` allowlist is suitable for Git. This suite is not
 scheduled automatically: changing its questions, thresholds or LLM ceiling
 requires a reviewed commit first.
+
+## Decision-facts quality and expert-review manifest
+
+Validate the versioned plan without connecting to PostgreSQL:
+
+```bash
+cd /root/infohub
+docker exec infohub-backend python /app/scripts/evaluate_decision_facts_quality.py
+```
+
+Run the read-only production audit and create separate operational/aggregate
+artifacts:
+
+```bash
+docker exec infohub-backend python /app/scripts/evaluate_decision_facts_quality.py \
+  --execute \
+  --commit "$(git rev-parse HEAD)" \
+  --output /tmp/decision_facts_quality_report.json \
+  --baseline-output /tmp/decision_facts_quality_baseline.json
+```
+
+The evaluator performs no LLM calls and issues SELECT queries only. The full
+report contains a deterministic review manifest with public document IDs,
+titles and official URLs. Keep it server-side with restricted permissions; do
+not put it in Git:
+
+```bash
+install -d -m 0700 /root/infohub/.state
+docker cp infohub-backend:/tmp/decision_facts_quality_report.json \
+  /root/infohub/.state/decision_facts_quality_report.json
+chmod 0600 /root/infohub/.state/decision_facts_quality_report.json
+```
+
+Only the aggregate `--baseline-output` allowlist is suitable for versioning.
+Passing structural metrics do not mean that the extracted legal outcome was
+verified by a lawyer; the manifest exists specifically for that human review.
+
+Existing deterministic normalization defects can be inspected without writes:
+
+```bash
+docker exec infohub-backend python /app/scripts/repair_decision_fact_normalization.py
+```
+
+Apply only the exact fresh dry-run scope:
+
+```bash
+docker exec infohub-backend python /app/scripts/repair_decision_fact_normalization.py \
+  --apply --expected-changed-rows N
+```
+
+This repair can clear non-positive amounts, deduplicate identical article
+references and remove self-references. It never changes `raw_json`, so the
+original extraction remains auditable. A v1 extraction backlog is separate and
+requires bounded LLM calls; inspect it first with
+`extract_decision_facts.py --check-pending`, then set both `--limit N` and
+`--max-llm-calls N` to the exact reviewed count.
