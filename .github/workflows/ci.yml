@@ -115,6 +115,7 @@ jobs:
           scripts/deploy_production.sh
           scripts/rotate_jwt_secret.sh
           scripts/finalize_jwt_rotation.sh
+          scripts/rotate_database_password.sh
           scripts/prune_infohub_rollbacks.sh
           run_scraper.sh
           scraper_alert.sh

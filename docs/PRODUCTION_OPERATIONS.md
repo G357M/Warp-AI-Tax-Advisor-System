@@ -118,3 +118,24 @@ printed policy with:
 
 BuildKit cache is shared by every project on the host and therefore remains
 outside this automated policy. Review it separately before any global prune.
+
+## Database credential rotation
+
+Database URLs and passwords must come only from the environment. The RAG v2
+adapter and helper scripts deliberately have no fallback credential. Rotate the
+application role from the production repository with:
+
+```bash
+cd /root/infohub
+./scripts/rotate_database_password.sh --check
+./scripts/rotate_database_password.sh
+```
+
+The script verifies the existing backend connection and local PostgreSQL
+administrative path, creates a mode-600 environment backup under the ignored
+`.state/` directory, atomically updates `POSTGRES_PASSWORD`, changes the role
+password, recreates only the backend, and checks both a fresh SQL connection and
+the public health endpoint. A failed verification restores the previous role
+password and environment automatically. After a successful rotation, verify the
+independent weekly off-host backup job because it may use its own stored copy of
+the database credential.

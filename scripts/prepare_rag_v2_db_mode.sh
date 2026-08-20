@@ -15,7 +15,12 @@ for arg in "$@"; do
 done
 
 export INFOHUB_V2_BACKEND_MODE="${INFOHUB_V2_BACKEND_MODE:-db}"
-export INFOHUB_DATABASE_URL="${INFOHUB_DATABASE_URL:-postgresql://infohub_user:xcX88l6XiMs-jDK@localhost:5432/infohub_ai}"
+export INFOHUB_DATABASE_URL="${INFOHUB_DATABASE_URL:-${DATABASE_URL:-}}"
+
+if [[ -z "$INFOHUB_DATABASE_URL" ]]; then
+  echo "INFOHUB_DATABASE_URL or DATABASE_URL must be configured explicitly." >&2
+  exit 1
+fi
 
 cd "$ROOT"
 

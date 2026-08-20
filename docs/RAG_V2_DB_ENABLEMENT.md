@@ -13,28 +13,34 @@ This is the minimal path to switch the local `backend/rag_v2` shadow-eval from f
 The helper script sets:
 
 - `INFOHUB_V2_BACKEND_MODE=db`
-- `INFOHUB_DATABASE_URL=postgresql://infohub_user:xcX88l6XiMs-jDK@localhost:5432/infohub_ai`
+- `INFOHUB_DATABASE_URL` from an already configured `INFOHUB_DATABASE_URL` or
+  `DATABASE_URL`
 
-You can override both through environment variables.
+The script deliberately has no embedded database URL or password. Configure one
+of these variables through the environment or the production container before
+running it.
 
 ## Step 1. Install DB dependency
 
 ```bash
-cd /root/.openclaw/workspace
+cd /root/infohub
+export INFOHUB_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 python3 -m pip install -r requirements-rag_v2_db.txt
 ```
 
 Or via helper:
 
 ```bash
-cd /root/.openclaw/workspace
+cd /root/infohub
+export INFOHUB_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 ./scripts/prepare_rag_v2_db_mode.sh --install-deps --no-eval
 ```
 
 ## Step 2. Probe DB connectivity
 
 ```bash
-cd /root/.openclaw/workspace
+cd /root/infohub
+export INFOHUB_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 ./scripts/prepare_rag_v2_db_mode.sh --no-eval
 ```
 
@@ -53,7 +59,8 @@ Expected success shape:
 ## Step 3. Run live-aware shadow eval
 
 ```bash
-cd /root/.openclaw/workspace
+cd /root/infohub
+export INFOHUB_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 ./scripts/prepare_rag_v2_db_mode.sh
 ```
 

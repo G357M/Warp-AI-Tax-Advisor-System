@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from core.config import Settings
+from rag_v2.adapters import load_backend_config
 
 
 REQUIRED_ENV = {
@@ -75,3 +76,13 @@ def test_env_file_ignores_unrelated_legacy_entries(monkeypatch):
         "https://tax-advisor.ge",
         "https://www.tax-advisor.ge",
     ]
+
+
+def test_rag_db_adapter_has_no_embedded_connection_fallback(monkeypatch):
+    monkeypatch.delenv("INFOHUB_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    config = load_backend_config()
+
+    assert config.database_url is None
+    assert config.mode == "fixtures"
