@@ -3,7 +3,7 @@ Pydantic schemas for API requests and responses.
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from uuid import UUID
 
 
@@ -35,6 +35,8 @@ class Token(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     username: str
     email: str
@@ -42,10 +44,6 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 
 # ==================== Query Schemas ====================
 
@@ -109,16 +107,14 @@ class DocumentCreate(DocumentBase):
 
 
 class DocumentResponse(DocumentBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     date_published: Optional[datetime]
     status: str
     source_url: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
 
 class DocumentDetailResponse(DocumentResponse):
     full_text: Optional[str] = None
@@ -135,26 +131,22 @@ class DocumentListResponse(BaseModel):
 # ==================== Conversation Schemas ====================
 
 class MessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     role: str
     content: str
     sources: Optional[List[SourceInfo]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
-
 class ConversationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     title: Optional[str]
     created_at: datetime
     updated_at: datetime
     messages_count: int = 0
-
-    class Config:
-        from_attributes = True
-
 
 class ConversationDetailResponse(ConversationResponse):
     messages: List[MessageResponse]

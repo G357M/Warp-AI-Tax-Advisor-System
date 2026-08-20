@@ -49,11 +49,13 @@ jobs:
       - name: Run current API contracts
         run: >-
           python -m pytest
+          tests/test_config_contract.py
           tests/test_security_hardening.py
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
           tests/test_integration.py
           -q -p no:cacheprovider
+          -W error::pydantic.warnings.PydanticDeprecatedSince20
 
       - name: Audit production dependency resolution
         run: |

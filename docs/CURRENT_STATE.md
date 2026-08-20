@@ -125,6 +125,7 @@ Main containers:
 9. **Frontend runtime is current and checked.** Next 16 использует стандартный Turbopack, route types генерируются перед отдельным `tsc`, а React 19 hooks rules проходят без исключений. Desktop и 390 px smoke-test production-сборки подтверждает навигацию и мобильное меню.
 10. **ML runtime is CPU-only by contract.** PyTorch устанавливается из официального CPU index; Docker build и production preflight отклоняют CUDA-сборку до замены работающего backend.
 11. **Rollback retention is bounded and dry-run-first.** Для backend/frontend сохраняются три новейших main-branch rollback-тега; неизвестные теги, active `:latest`, volumes и общий BuildKit cache не затрагиваются.
+12. **Backend configuration uses native Pydantic 2 contracts.** Environment names are explicit model fields, CORS accepts both production JSON and documented comma-separated values, and Celery defaults to the configured Docker `REDIS_URL`; ORM schemas and the declarative base use current Pydantic/SQLAlchemy APIs.
 
 ---
 

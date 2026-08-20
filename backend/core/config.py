@@ -1,134 +1,149 @@
-"""
-Application configuration settings.
-"""
-from typing import Optional
-from pydantic_settings import BaseSettings
-from pydantic import Field, validator
+"""Application configuration settings."""
+
+import json
+from typing import Any, Optional
+
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
     # Application
     APP_NAME: str = "InfoHub AI Tax Advisor"
     APP_VERSION: str = "0.1.0"
-    ENVIRONMENT: str = Field(default="development", env="ENVIRONMENT")
-    DEBUG: bool = Field(default=True, env="DEBUG")
-    
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = True
+
     # API
-    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
-    API_PORT: int = Field(default=8000, env="API_PORT")
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
     API_PREFIX: str = "/api/v1"
-    
+
     # Security
-    SECRET_KEY: str = Field(..., env="SECRET_KEY")
-    JWT_SECRET_KEY: str = Field(..., env="JWT_SECRET_KEY")
-    JWT_PREVIOUS_SECRET_KEYS: str = Field(default="", env="JWT_PREVIOUS_SECRET_KEYS")
-    JWT_PREVIOUS_SECRET_ACCEPT_UNTIL: str = Field(
-        default="",
-        env="JWT_PREVIOUS_SECRET_ACCEPT_UNTIL",
-    )
-    ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
-    
+    SECRET_KEY: str
+    JWT_SECRET_KEY: str
+    JWT_PREVIOUS_SECRET_KEYS: str = ""
+    JWT_PREVIOUS_SECRET_ACCEPT_UNTIL: str = ""
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
     # CORS
-    CORS_ORIGINS: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:80"],
-        env="CORS_ORIGINS"
+    # The str branch keeps comma-separated values compatible with
+    # pydantic-settings 2.1; the validator always normalizes it to a list.
+    CORS_ORIGINS: list[str] | str = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:80"]
     )
-    CORS_ALLOW_CREDENTIALS: bool = Field(default=True, env="CORS_ALLOW_CREDENTIALS")
-    
+    CORS_ALLOW_CREDENTIALS: bool = True
+
     # Database
-    DATABASE_URL: str = Field(..., env="DATABASE_URL")
-    DB_POOL_SIZE: int = Field(default=20, env="DB_POOL_SIZE")
-    DB_MAX_OVERFLOW: int = Field(default=10, env="DB_MAX_OVERFLOW")
-    
+    DATABASE_URL: str
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+
     # Redis
-    REDIS_URL: str = Field(..., env="REDIS_URL")
-    CACHE_ENABLED: bool = Field(default=True, env="CACHE_ENABLED")
-    CACHE_TTL_QUERY: int = Field(default=3600, env="CACHE_TTL_QUERY")
-    CACHE_TTL_DOCUMENT: int = Field(default=7200, env="CACHE_TTL_DOCUMENT")
-    
+    REDIS_URL: str
+    CACHE_ENABLED: bool = True
+    CACHE_TTL_QUERY: int = 3600
+    CACHE_TTL_DOCUMENT: int = 7200
+
     # Vector Database
-    VECTOR_DB_TYPE: str = Field(default="pgvector", env="VECTOR_DB_TYPE")
-    CHROMA_HOST: Optional[str] = Field(default=None, env="CHROMA_HOST")
-    CHROMA_PORT: Optional[int] = Field(default=None, env="CHROMA_PORT")
-    CHROMA_AUTH_TOKEN: Optional[str] = Field(default=None, env="CHROMA_AUTH_TOKEN")
-    
+    VECTOR_DB_TYPE: str = "pgvector"
+    CHROMA_HOST: Optional[str] = None
+    CHROMA_PORT: Optional[int] = None
+    CHROMA_AUTH_TOKEN: Optional[str] = None
+
     # AI/ML
-    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
-    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
-    LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")
-    LLM_MODEL: str = Field(default="gpt-4o-mini", env="LLM_MODEL")
-    LLM_TEMPERATURE: float = Field(default=0.3, env="LLM_TEMPERATURE")
-    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
-    
-    EMBEDDING_MODEL: str = Field(
-        default="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-        env="EMBEDDING_MODEL"
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    LLM_PROVIDER: str = "openai"
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_TEMPERATURE: float = 0.3
+    LLM_MAX_TOKENS: int = 2000
+
+    EMBEDDING_MODEL: str = (
+        "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
-    EMBEDDING_DIMENSION: int = Field(default=768, env="EMBEDDING_DIMENSION")
-    
+    EMBEDDING_DIMENSION: int = 768
+
     # RAG Configuration
-    RAG_TOP_K: int = Field(default=10, env="RAG_TOP_K")
-    RAG_RERANK_TOP_K: int = Field(default=5, env="RAG_RERANK_TOP_K")
-    RAG_CHUNK_SIZE: int = Field(default=1024, env="RAG_CHUNK_SIZE")
-    RAG_CHUNK_OVERLAP: int = Field(default=128, env="RAG_CHUNK_OVERLAP")
-    RAG_MIN_SIMILARITY: float = Field(default=0.5, env="RAG_MIN_SIMILARITY")
-    
+    RAG_TOP_K: int = 10
+    RAG_RERANK_TOP_K: int = 5
+    RAG_CHUNK_SIZE: int = 1024
+    RAG_CHUNK_OVERLAP: int = 128
+    RAG_MIN_SIMILARITY: float = 0.5
+
     # Web Scraper
-    SCRAPER_USER_AGENT: str = Field(
-        default="InfoHubAI-Bot/1.0",
-        env="SCRAPER_USER_AGENT"
-    )
-    SCRAPER_DELAY: float = Field(default=2.0, env="SCRAPER_DELAY")
-    SCRAPER_CONCURRENT_REQUESTS: int = Field(default=5, env="SCRAPER_CONCURRENT_REQUESTS")
-    SCRAPER_RESPECT_ROBOTS_TXT: bool = Field(default=True, env="SCRAPER_RESPECT_ROBOTS_TXT")
-    
+    SCRAPER_USER_AGENT: str = "InfoHubAI-Bot/1.0"
+    SCRAPER_DELAY: float = 2.0
+    SCRAPER_CONCURRENT_REQUESTS: int = 5
+    SCRAPER_RESPECT_ROBOTS_TXT: bool = True
+
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = Field(default=True, env="RATE_LIMIT_ENABLED")
-    RATE_LIMIT_GUEST: str = Field(default="10/minute", env="RATE_LIMIT_GUEST")
-    RATE_LIMIT_USER: str = Field(default="60/minute", env="RATE_LIMIT_USER")
-    RATE_LIMIT_ADMIN: str = Field(default="1000/minute", env="RATE_LIMIT_ADMIN")
-    RATE_LIMIT_BYPASS_TOKEN: str = Field(default="", env="RATE_LIMIT_BYPASS_TOKEN")
-    
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_GUEST: str = "10/minute"
+    RATE_LIMIT_USER: str = "60/minute"
+    RATE_LIMIT_ADMIN: str = "1000/minute"
+    RATE_LIMIT_BYPASS_TOKEN: str = ""
+
     # Logging
-    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
-    LOG_FORMAT: str = Field(default="json", env="LOG_FORMAT")
-    LOG_FILE_PATH: str = Field(default="logs/app.log", env="LOG_FILE_PATH")
-    
-    # Celery
-    CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
-    CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
-    CELERY_TASK_TIME_LIMIT: int = Field(default=3600, env="CELERY_TASK_TIME_LIMIT")
-    
-    @validator("CORS_ORIGINS", pre=True)
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from string or list."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
-    
-    @validator("LLM_PROVIDER")
-    def validate_llm_provider(cls, v):
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+    LOG_FILE_PATH: str = "logs/app.log"
+
+    # Celery. Explicit Celery variables win; REDIS_URL remains the fallback.
+    CELERY_BROKER_URL: str = Field(
+        default="redis://localhost:6379/0",
+        validation_alias=AliasChoices("CELERY_BROKER_URL", "REDIS_URL"),
+    )
+    CELERY_RESULT_BACKEND: str = Field(
+        default="redis://localhost:6379/0",
+        validation_alias=AliasChoices("CELERY_RESULT_BACKEND", "REDIS_URL"),
+    )
+    CELERY_TASK_TIME_LIMIT: int = 3600
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> Any:
+        """Accept both JSON arrays and the documented comma-separated form."""
+        if not isinstance(value, str):
+            return value
+
+        raw = value.strip()
+        if not raw:
+            return []
+        if raw.startswith("["):
+            decoded = json.loads(raw)
+            if not isinstance(decoded, list):
+                raise ValueError("CORS_ORIGINS JSON value must be an array")
+            return decoded
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    @field_validator("LLM_PROVIDER")
+    @classmethod
+    def validate_llm_provider(cls, value: str) -> str:
         """Validate LLM provider."""
         allowed = ["openai", "anthropic"]
-        if v not in allowed:
+        if value not in allowed:
             raise ValueError(f"LLM_PROVIDER must be one of {allowed}")
-        return v
+        return value
 
-    @validator("JWT_SECRET_KEY")
-    def validate_jwt_secret_key(cls, v):
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret_key(cls, value: str) -> str:
         """HS256 requires at least 256 bits of key material."""
-        if len(v.encode("utf-8")) < 32:
+        if len(value.encode("utf-8")) < 32:
             raise ValueError("JWT_SECRET_KEY must be at least 32 UTF-8 bytes")
-        return v
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+        return value
 
 
 # Global settings instance
