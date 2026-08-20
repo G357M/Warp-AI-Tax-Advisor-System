@@ -41,9 +41,21 @@ Reindex all documents in the vector database.
 python scripts/reindex.py
 ```
 
-### backup.sh
-Backup database and volumes.
+### backup_database.ps1
+Create and rotate the owner-side PostgreSQL backup.
+
+Configure credentials outside the repository with `PGPASSWORD`, `PGPASSFILE`
+or the standard pgpass file. The script is non-interactive and emits a SHA-256
+sidecar for the exact final artifact.
+
+```powershell
+./scripts/backup_database.ps1
+```
+
+### test_database_restore.sh
+Plan and execute a SHA-pinned restore into an isolated disposable PostgreSQL
+container. This never targets production resources.
 
 ```bash
-./scripts/backup.sh
+./scripts/test_database_restore.sh --backup /restricted/path/infohub_ai.sql.gz
 ```

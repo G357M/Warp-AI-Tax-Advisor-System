@@ -68,6 +68,7 @@ jobs:
           tests/test_decision_fact_repair.py
           tests/test_decision_facts_quality_eval.py
           tests/test_decision_facts_review_bundle.py
+          tests/test_database_restore_drill.py
           tests/test_security_hardening.py
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
@@ -139,11 +140,27 @@ jobs:
           scripts/finalize_jwt_rotation.sh
           scripts/rotate_database_password.sh
           scripts/prune_infohub_rollbacks.sh
+          scripts/test_database_restore.sh
           run_scraper.sh
           run_quality_gates.sh
           scraper_alert.sh
           canary_alert.sh
           quality_gate_alert.sh
+
+      - name: Validate operational PowerShell scripts
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path scripts/backup_database.ps1),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
 
       - name: Build backend image
         uses: docker/build-push-action@v7

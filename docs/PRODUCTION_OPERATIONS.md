@@ -55,10 +55,45 @@ Two independent backup layers are confirmed by the owner:
 1. Hetzner snapshots/backups configured in the provider panel.
 2. A weekly full database backup copied to the owner's computer.
 
+The repository PowerShell backup helper never embeds a password. Its scheduler
+must provide credentials through standard non-interactive libpq configuration
+(`PGPASSWORD`, `PGPASSFILE` or the platform pgpass file). It writes to a
+`.partial` file first, disables interactive password prompts and owner/ACL
+statements, then atomically promotes the completed dump, optionally compresses
+it and writes a SHA-256 sidecar for the restore drill.
+
 Availability of backup files is not the same as proven recovery. At least once
 per quarter, restore the newest database backup into an isolated PostgreSQL
 instance, run basic document/chunk/fact counts and record the date and result.
 Never test a restore over the production database.
+
+The repository provides a dry-run-first isolated drill. Run the plan on the
+host that holds the newest weekly backup:
+
+```bash
+./scripts/test_database_restore.sh \
+  --backup /restricted/path/infohub_ai_YYYYMMDD.sql.gz
+```
+
+Review the reported filename, age, format and SHA-256. Execute only the exact
+file and write a new evidence artifact in an existing restricted directory:
+
+```bash
+./scripts/test_database_restore.sh \
+  --backup /restricted/path/infohub_ai_YYYYMMDD.sql.gz \
+  --execute \
+  --expected-sha256 SHA256_FROM_PLAN \
+  --evidence /restricted/evidence/restore_drill_YYYY_QN.json
+```
+
+The PostgreSQL image must already exist locally; image pulls are deliberately
+not implicit. The drill creates one unique ephemeral container with network
+mode `none`, no published ports and no mounted volumes. It validates the dump,
+restores it with fail-fast semantics, requires all current critical tables,
+checks document/chunk/fact counts, orphan references, foreign-key validation
+and the pgvector extension, records RPO/RTO, then removes the temporary
+container on every exit. It never connects to or names the production database
+container. Evidence targets are mode `0600` and are never overwritten.
 
 ## Logs
 

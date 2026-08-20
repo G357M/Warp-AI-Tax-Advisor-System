@@ -20,7 +20,7 @@
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота 5 успешных вопросов/день, Pro/Business history, источники и удаление диалогов | Нет email verification, password reset, организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; desktop и 390 px browser smoke-test пройдены | Нужен постоянный visual-regression прогон, а не только ручной smoke-test |
-| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов | Резервные копии есть, но квартальный restore drill ещё нужно формализовать |
+| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; изолированный restore-drill contract | Реальный квартальный restore ещё нужно выполнить на свежей еженедельной копии и сохранить RPO/RTO evidence |
 | Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; dry-run-first rollback retention | Глобальный BuildKit cache разделяется проектами и требует отдельной политики |
 
 ## Что концептуально реализовано
@@ -124,7 +124,7 @@ bounded.
 
 ### P2 — operational maturity
 
-1. Квартальный тест восстановления Hetzner snapshot и еженедельной копии БД с записью RPO/RTO.
+1. Выполнить уже формализованный квартальный тест на реальном Hetzner snapshot и свежей еженедельной копии БД; сохранить RPO/RTO evidence.
 2. Отдельная bounded retention для общего Docker BuildKit cache; rollback images InfoHub уже ограничены тремя проверяемыми поколениями.
 3. Самостоятельно размещённые webfonts или другой детерминированный путь сборки без зависимости от Google Fonts во время build.
 4. Постоянный visual-regression набор: desktop, 390 px, RU/KA/EN, ошибки, длинные источники и пустые состояния.
