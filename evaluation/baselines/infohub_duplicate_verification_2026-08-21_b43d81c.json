@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "baseline_type": "infohub_duplicate_technical_verification_aggregate",
+  "contract_version": "2026-08-21.2",
+  "contract_sha256": "395da6e1d7dcd3aa78e49b74e04f9ad7a0ef67ee09fc4233fa75afa6a6aa77a2",
+  "verification_commit": "b43d81cc2388b68dcc3c34aa255dd5623d267e86",
+  "generated_at_utc": "2026-08-20T22:17:02.659560+00:00",
+  "source": {
+    "bundle_sha256": "02cf5d0bcdfbed2e6a16286293d71a43fdf71a13e1a3d006b38fdf67183d6789",
+    "bundle_deployed_commit": "555749c4cad978ffd99bc7fbdd931dc902fd2d46",
+    "source_snapshot_sha256": "44445e0f737e23191a3f451a2f7c72240d74a0a3eb646cd6a4c3fdf2d66d7190",
+    "selected_group_ids_sha256": "002afcae8c801c694149bdfdc32ca838868b6681fb425fc4822846d5181b85e4"
+  },
+  "counts": {
+    "groups": 463,
+    "members": 946,
+    "official_api_requests": 946,
+    "fetch_successes": 946,
+    "fetch_failures": 0,
+    "official_content_identical": 1,
+    "official_content_high_overlap": 10,
+    "official_content_differs": 452,
+    "confirmation_queue_groups": 11
+  },
+  "confirmation_queue_candidate_classes": {
+    "ambiguous": 7,
+    "exact": 1,
+    "likely": 3
+  },
+  "high_overlap_sequence_range": {
+    "minimum": 0.959383,
+    "maximum": 0.99442
+  },
+  "artifacts": {
+    "technical_verification_sha256": "f80cb2b7c35353dab682bebe989c10911a4f0f237ae30217a36daf261d57b3e8",
+    "duplicate_technical_triage_sha256": "34f56bcad6b3d6e4aacec5812b1f8c2fc8221b86af1b1890fca5449b2162035b",
+    "duplicate_confirmation_queue_sha256": "e98aea197624bf5595f22b203542b4e39beb41bbba17f65c5afe0ef376b27a9c"
+  },
+  "legal_effect": {
+    "legal_verdicts_created": false,
+    "database_changes_created": false,
+    "automatic_exclusions_created": false,
+    "expert_confirmation_required": true
+  }
+}
