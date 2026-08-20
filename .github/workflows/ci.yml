@@ -49,6 +49,7 @@ jobs:
           api billing core models
           decision_fact_contract.py
           scripts/evaluate_decision_facts_quality.py
+          scripts/link_decision_chains.py
           scripts/repair_decision_fact_normalization.py
 
       - name: Run current API contracts
@@ -59,6 +60,7 @@ jobs:
           tests/test_nightly_maintenance.py
           tests/test_rag_v2_live_corpus_eval.py
           tests/test_answer_safety_eval.py
+          tests/test_decision_chain_reporting.py
           tests/test_decision_fact_contract.py
           tests/test_decision_fact_extractor.py
           tests/test_decision_fact_repair.py

@@ -19,8 +19,9 @@ Rebuilds from scratch: --apply DELETEs all rows and re-inserts. The default
 dry run prints the report without touching the table.
 
 Usage (inside infohub-backend):
-    python scripts/link_decision_chains.py           # dry-run report
-    python scripts/link_decision_chains.py --apply   # rebuild decision_links
+    python scripts/link_decision_chains.py --summary-only  # aggregate dry-run
+    python scripts/link_decision_chains.py                 # dry-run with samples
+    python scripts/link_decision_chains.py --apply         # rebuild decision_links
 """
 import argparse
 import re
@@ -54,9 +55,45 @@ def norm_number(value) -> str:
     return re.sub(r"[^0-9/\-]", "", s)
 
 
+def emit_report(facts, edges, skipped_ambiguous: int, *, summary_only: bool) -> None:
+    """Print aggregate link counts and, only when requested, public samples."""
+    facts_by_id = {fact["id"]: fact for fact in facts}
+    by_method = defaultdict(int)
+    by_transition = defaultdict(int)
+    for (from_id, to_id), (method, _confidence) in edges.items():
+        by_method[method] += 1
+        higher, lower = facts_by_id[from_id], facts_by_id[to_id]
+        by_transition[(lower["body"], higher["body"])] += 1
+
+    print(f"Facts considered: {len(facts)}")
+    print(f"Links found: {len(edges)} (ambiguous skips: {skipped_ambiguous})")
+    for method, count in sorted(by_method.items()):
+        print(f"  method {method}: {count}")
+    for (lower_body, higher_body), count in sorted(
+        by_transition.items(), key=lambda item: -item[1]
+    ):
+        print(f"  {lower_body} -> {higher_body}: {count}")
+
+    if summary_only:
+        return
+    print("\nSample linked pairs:")
+    for (from_id, to_id), (method, confidence) in list(edges.items())[:10]:
+        higher, lower = facts_by_id[from_id], facts_by_id[to_id]
+        print(
+            f"  [{method} {confidence}] {lower['body']} {lower['number']} "
+            f"({lower['date']}) -> {higher['body']} {higher['number']} "
+            f"({higher['date']}) | {higher['title'][:60]}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="rebuild decision_links (default: dry-run report)")
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="omit decision numbers, dates and titles from the report",
+    )
     args = parser.parse_args()
 
     Base.metadata.create_all(bind=engine, tables=[DecisionLink.__table__])
@@ -150,25 +187,12 @@ def main() -> None:
                 edges.setdefault((a["id"], b["id"]), ("case_number", 0.7))
 
         # ---- report ----------------------------------------------------------
-        facts_by_id = {f["id"]: f for f in facts}
-        by_method = defaultdict(int)
-        by_transition = defaultdict(int)
-        for (from_id, to_id), (method, _conf) in edges.items():
-            by_method[method] += 1
-            a, b = facts_by_id[from_id], facts_by_id[to_id]
-            by_transition[(b["body"], a["body"])] += 1
-
-        print(f"Facts considered: {len(facts)}")
-        print(f"Links found: {len(edges)} (ambiguous skips: {skipped_ambiguous})")
-        for method, n in sorted(by_method.items()):
-            print(f"  method {method}: {n}")
-        for (lo, hi), n in sorted(by_transition.items(), key=lambda kv: -kv[1]):
-            print(f"  {lo} -> {hi}: {n}")
-        print("\nSample linked pairs:")
-        for (from_id, to_id), (method, conf) in list(edges.items())[:10]:
-            a, b = facts_by_id[from_id], facts_by_id[to_id]
-            print(f"  [{method} {conf}] {b['body']} {b['number']} ({b['date']}) -> "
-                  f"{a['body']} {a['number']} ({a['date']}) | {a['title'][:60]}")
+        emit_report(
+            facts,
+            edges,
+            skipped_ambiguous,
+            summary_only=args.summary_only,
+        )
 
         if not args.apply:
             print("\nDry-run only. Re-run with --apply to rebuild decision_links.")

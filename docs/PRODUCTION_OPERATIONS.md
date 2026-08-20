@@ -245,3 +245,14 @@ original extraction remains auditable. A v1 extraction backlog is separate and
 requires bounded LLM calls; inspect it first with
 `extract_decision_facts.py --check-pending`, then set both `--limit N` and
 `--max-llm-calls N` to the exact reviewed count.
+
+After a bounded extraction upgrade, compare the derived appeal-link scope
+without exporting decision titles, numbers or dates:
+
+```bash
+docker exec infohub-backend python /app/scripts/link_decision_chains.py \
+  --summary-only
+```
+
+Only run the destructive `--apply` rebuild after reviewing that aggregate
+scope and the current `decision_links` count.
