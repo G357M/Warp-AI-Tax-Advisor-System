@@ -14,6 +14,8 @@ from backend.rag_v2.public_response import (
     interest_tax_rate_response,
     nonresident_withholding_tax_response,
     normalize_public_response_text,
+    out_of_domain_response,
+    out_of_jurisdiction_response,
     profit_tax_rate_response,
     rental_income_tax_rate_response,
     royalty_tax_rate_response,
@@ -23,6 +25,32 @@ from backend.rag_v2.public_response import (
 
 
 class PublicResponseShapeTests(unittest.TestCase):
+    def test_out_of_jurisdiction_response_supports_all_public_languages(self):
+        cases = (
+            ("ru", "Какая ставка налога в США?", "Грузии"),
+            ("en", "What is the tax rate in the United States?", "Georgian"),
+            ("ka", "როგორია გადასახადის განაკვეთი აშშ-ში?", "საქართველოს"),
+        )
+        for language, query, expected in cases:
+            with self.subTest(language=language):
+                trace = types.SimpleNamespace(
+                    parsed_query={"language": language, "normalized_query": query.lower()}
+                )
+                self.assertIn(expected, out_of_jurisdiction_response(trace))
+
+    def test_out_of_domain_weather_response_supports_all_public_languages(self):
+        cases = (
+            ("ru", "Какая погода завтра?", "вне тематики"),
+            ("en", "What is tomorrow's weather?", "outside the scope"),
+            ("ka", "როგორი ამინდია ხვალ?", "ფარგლებს გარეთ"),
+        )
+        for language, query, expected in cases:
+            with self.subTest(language=language):
+                trace = types.SimpleNamespace(
+                    parsed_query={"language": language, "normalized_query": query.lower()}
+                )
+                self.assertIn(expected, out_of_domain_response(trace))
+
     def test_normalize_public_response_text_removes_markdown_noise(self):
         text = "**Кратко:** см. [источник](https://example.com)\n\n\n__Важно__"
         self.assertEqual(

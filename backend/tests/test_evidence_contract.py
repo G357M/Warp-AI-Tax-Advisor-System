@@ -71,6 +71,26 @@ def test_no_evidence_and_scope_responses_are_explicit():
     assert out_of_scope["status"] == "out_of_scope"
 
 
+def test_pure_refusal_cannot_keep_unrelated_sources_or_grounded_status():
+    result = attach_evidence(
+        {
+            "response": (
+                "В предоставленных официальных источниках ответ на этот вопрос "
+                "не найден."
+            ),
+            "sources": [_source(article_ref="168")],
+            "retrieved_count": 5,
+        }
+    )
+
+    assert result["sources"] == []
+    assert result["retrieved_count"] == 0
+    assert result["_rag_v2"]["grounded_no_evidence"] is True
+    assert result["evidence"]["status"] == "insufficient"
+    assert result["evidence"]["coverage"] == "none"
+    assert result["evidence"]["source_count"] == 0
+
+
 def test_authenticated_query_never_reuses_another_conversation_response():
     route = Path(__file__).parents[1] / "api" / "routes" / "query.py"
     source = route.read_text(encoding="utf-8")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from core.config import settings
@@ -11,12 +12,14 @@ from models import Document, DocumentChunk
 from rag.pipeline import rag_pipeline
 
 from .pipeline_v2 import pipeline_v2
+from .query_classifier import classify_query
+from .query_parser import parse_query
 from .public_response import (
     authoritative_tax_fact_response,
     compress_canonical_section_text,
     compress_rollout_context_text,
     direct_tax_faq_response,
-    out_of_jurisdiction_response,
+    out_of_scope_response,
     dividend_tax_rate_response,
     finalize_rollout_response,
     import_vat_response,
@@ -928,15 +931,19 @@ def maybe_run_live_rollout(
     if _mode() != "rollout":
         return None
 
-    trace = pipeline_v2.build_trace(query, language=language)
-    question_class = trace.classification.get("question_class")
-
-    # Authoritative guards win regardless of retrieval, so a correct canonical
-    # answer is never lost when the vector search returns nothing relevant.
-    # Scope refusal (no law to cite).
-    scope = out_of_jurisdiction_response(trace)
+    # Scope checks use only the deterministic parser/classifier. Running them
+    # before candidate generation prevents obvious foreign/off-topic questions
+    # from spending a translation or answer-generation LLM call.
+    parsed = parse_query(query, language=language)
+    classification = classify_query(parsed)
+    scope_trace = SimpleNamespace(
+        parsed_query=parsed.model_dump(),
+        classification=classification.model_dump(),
+    )
+    scope = out_of_scope_response(scope_trace)
     if scope:
-        print(f"[RAG_V2_ROLLOUT] class={question_class} out_of_jurisdiction=1")
+        question_class = classification.question_class
+        print(f"[RAG_V2_ROLLOUT] class={question_class} out_of_scope=1")
         return {
             "response": scope,
             "sources": [],
@@ -944,6 +951,11 @@ def maybe_run_live_rollout(
             "_rag_v2": {"mode": "rollout_scope", "question_class": question_class},
         }
 
+    trace = pipeline_v2.build_trace(query, language=language)
+    question_class = trace.classification.get("question_class")
+
+    # Authoritative guards win regardless of retrieval, so a correct canonical
+    # answer is never lost when the vector search returns nothing relevant.
     # Authoritative answers for facts retrieval can't yet ground cross-lingually.
     # They cite the legal-basis document verified in the corpus (Tax Code for most
     # topics, the funded-pension law for pension questions).

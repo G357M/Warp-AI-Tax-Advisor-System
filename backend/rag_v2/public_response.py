@@ -289,7 +289,8 @@ def out_of_jurisdiction_response(trace: Any) -> Optional[str]:
     foreign = any(tok in q for tok in (
         "сша", "u.s.a", "usa", "америк", "росси", "украин", "германи", "франци",
         "турци", "армени", "азербайджан", "казахстан", "united states", "russia",
-        "ukraine", "germany",
+        "ukraine", "germany", "აშშ", "ამერიკ", "რუსეთ", "უკრაინ", "გერმან",
+        "საფრანგ", "თურქეთ", "სომხეთ", "აზერბაიჯან", "ყაზახ",
     ))
     georgia = any(tok in q for tok in ("груз", "georgia", "საქართველ"))
     if not foreign or georgia:
@@ -300,6 +301,37 @@ def out_of_jurisdiction_response(trace: Any) -> Optional[str]:
         "ka": "ვაკონსულტირებ მხოლოდ საქართველოს საგადასახადო კანონმდებლობაზე და სხვა ქვეყნების გადასახადებს არ ვფარავ.",
     }
     return answers.get(_response_language(trace), answers["ru"])
+
+
+def out_of_domain_response(trace: Any) -> Optional[str]:
+    """Refuse obvious non-legal requests without retrieval or generation."""
+    parsed = getattr(trace, "parsed_query", None) or {}
+    q = str(parsed.get("normalized_query") or "").lower()
+    weather = any(token in q for token in (
+        "погод", "прогноз погоды", "weather", "forecast", "ამინდ", "ამინდის პროგნოზ",
+    ))
+    if not weather:
+        return None
+    answers = {
+        "ru": (
+            "Я отвечаю на вопросы по налоговому и связанному с ним законодательству Грузии. "
+            "Прогноз погоды находится вне тематики сервиса."
+        ),
+        "en": (
+            "I answer questions about Georgian tax law and related legal matters. "
+            "Weather forecasts are outside the scope of this service."
+        ),
+        "ka": (
+            "ვპასუხობ საქართველოს საგადასახადო და მასთან დაკავშირებულ სამართლებრივ საკითხებზე. "
+            "ამინდის პროგნოზი ამ სერვისის თემატიკის ფარგლებს გარეთაა."
+        ),
+    }
+    return answers.get(_response_language(trace), answers["ru"])
+
+
+def out_of_scope_response(trace: Any) -> Optional[str]:
+    """Return a localized refusal for a clearly unsupported request."""
+    return out_of_jurisdiction_response(trace) or out_of_domain_response(trace)
 
 
 def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:

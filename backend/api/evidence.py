@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 from urllib.parse import urlparse
 
+from rag_v2.public_response import is_pure_refusal
+
 OFFICIAL_SOURCE_HOSTS = {
     "infohub.rs.ge",
     "infohubapi.rs.ge",
@@ -33,6 +35,18 @@ def _is_official_source(source: Dict[str, Any]) -> bool:
 
 def attach_evidence(result: Dict[str, Any]) -> Dict[str, Any]:
     """Attach a stable, non-LLM evidence summary to a RAG result."""
+    # A model can correctly say that the retrieved context contains no answer
+    # even though retrieval returned loosely related documents. Exposing those
+    # documents as evidence would contradict the answer and incorrectly label
+    # it ``grounded``. Normalize that case before calculating the contract so
+    # both public and authenticated routes behave identically.
+    if is_pure_refusal(str(result.get("response") or "")):
+        result["sources"] = []
+        result["retrieved_count"] = 0
+        rag_meta = dict(result.get("_rag_v2") or {})
+        rag_meta["grounded_no_evidence"] = True
+        result["_rag_v2"] = rag_meta
+
     sources = [
         source for source in (result.get("sources") or []) if isinstance(source, dict)
     ]
