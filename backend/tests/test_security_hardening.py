@@ -12,7 +12,12 @@ from starlette.responses import PlainTextResponse, Response
 from api.routes import auth as auth_routes
 from api.schemas import UserLogin
 from core.rate_limit import get_client_ip, rate_limit_middleware, rate_limiter
-from core.security import create_access_token, get_current_user
+from core.security import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 
 
 def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
@@ -32,6 +37,15 @@ def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
             "query_string": b"",
         }
     )
+
+
+def test_bcrypt_hashes_remain_compatible_without_passlib():
+    password = "safe-password-123"
+    password_hash = hash_password(password)
+
+    assert password_hash.startswith("$2b$")
+    assert verify_password(password, password_hash) is True
+    assert verify_password("wrong-password", password_hash) is False
 
 
 def test_client_ip_uses_validated_real_ip_and_ignores_forwarded_chain():

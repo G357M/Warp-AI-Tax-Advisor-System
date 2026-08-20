@@ -3,8 +3,9 @@ Security utilities for authentication and authorization.
 """
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.hash import bcrypt
+import jwt
+from jwt import PyJWTError
+import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -54,7 +55,7 @@ def verify_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
 
 
@@ -68,7 +69,10 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password
     """
-    return bcrypt.hash(password)
+    encoded = password.encode("utf-8")
+    if len(encoded) > 72:
+        raise ValueError("Password must be no more than 72 UTF-8 bytes")
+    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("ascii")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -82,7 +86,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return bcrypt.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("ascii"),
+        )
+    except (ValueError, UnicodeError):
+        return False
 
 
 def get_current_user(

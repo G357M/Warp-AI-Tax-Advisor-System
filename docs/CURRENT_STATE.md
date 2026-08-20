@@ -118,6 +118,9 @@ Main containers:
 3. **pgvector is the real vector path.** Старые упоминания Chroma относятся к раннему этапу проекта.
 4. **Historical docs exist.** Старые сводки и черновики могут описывать pre-production состояние.
 5. **Backups have two owner-confirmed layers.** Hetzner snapshots/backups и еженедельная полная копия БД на компьютер владельца; восстановление нужно проверять отдельно раз в квартал.
+6. **CI checks real contracts.** GitHub Actions запускает текущие security/quota/evidence/integration тесты, frontend lint/type-check/build, аудит production Python-зависимостей и сборку обоих Docker-образов.
+7. **Production CD is intentionally manual.** Workflow требует pinned `HETZNER_KNOWN_HOSTS` и отдельный SSH key; он вызывает тот же проверенный deploy-script и не подменяет его набором команд в YAML.
+8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а production frontend tree — `npm audit --omit=dev --audit-level=high` без известных уязвимостей на 2026-08-20. Миграция Next 16 / React 19 остаётся отдельным lifecycle-этапом и не выполняется через слепой `npm audit --force`.
 
 ---
 
@@ -127,7 +130,12 @@ Main containers:
 - normative vs dispute separation;
 - exact lookup по статье / номеру / кодексу;
 - citation precision и explainability;
-- аккуратные incremental updates корпуса без слепого дубляжа.
+- аккуратные incremental updates корпуса без слепого дубляжа;
+- непрерывный RAG-eval на эталонных вопросах и контроль актуальности источников;
+- миграция Next 14 → Next 16 / React 19 отдельным проверяемым этапом;
+- email verification / password recovery и автоматизированная оплата;
+- реальные Business organizations/seats до возврата обещаний про командный доступ;
+- квартальный тест восстановления резервной копии, а не только факт её создания.
 
 
 ## Scrapling status

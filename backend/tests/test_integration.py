@@ -1,241 +1,209 @@
-"""
-Integration tests for full API workflows.
-"""
+"""Current API integration tests using an isolated in-memory database."""
+
+from datetime import datetime, timedelta
+from types import ModuleType, SimpleNamespace
+import sys
+
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from api.main import app
+# API route imports must stay deterministic in CI: the real RAG modules load a
+# multi-gigabyte embedding model and verify pgvector at import time. Integration
+# tests replace only that external boundary and exercise the real API/database
+# behavior around it.
+rag_package = ModuleType("rag")
+rag_package.__path__ = []
+rag_pipeline_module = ModuleType("rag.pipeline")
+rag_pipeline_module.rag_pipeline = SimpleNamespace(
+    process_query=lambda **_kwargs: (_ for _ in ()).throw(
+        AssertionError("RAG must be mocked by the test")
+    )
+)
+rag_v2_package = ModuleType("rag_v2")
+rag_v2_package.__path__ = []
+shadow_module = ModuleType("rag_v2.shadow_runtime")
+shadow_module.maybe_run_shadow = lambda **_kwargs: None
+live_module = ModuleType("rag_v2.live_runtime")
+live_module.maybe_run_live_rollout = lambda **_kwargs: None
+sys.modules["rag"] = rag_package
+sys.modules["rag.pipeline"] = rag_pipeline_module
+sys.modules["rag_v2"] = rag_v2_package
+sys.modules["rag_v2.shadow_runtime"] = shadow_module
+sys.modules["rag_v2.live_runtime"] = live_module
+
+from api.routes import account, auth, billing, query as query_routes
+from core.config import settings
 from core.database import Base, get_db
-from models.user import User
-from core.security import get_password_hash
+from models import Conversation, Message, Payment, Subscription, User
 
 
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+app = FastAPI()
+app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(query_routes.router, prefix=settings.API_PREFIX)
+app.include_router(billing.router, prefix=settings.API_PREFIX)
+app.include_router(account.router, prefix=settings.API_PREFIX)
+
+
+@app.get("/")
+def root():
+    return {"status": "running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TEST_TABLES = [
+    User.__table__,
+    Conversation.__table__,
+    Message.__table__,
+    Subscription.__table__,
+    Payment.__table__,
+]
 
 
 def override_get_db():
+    db = TestingSessionLocal()
     try:
-        db = TestingSessionLocal()
         yield db
     finally:
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-
-@pytest.fixture(scope="module")
-def setup_database():
-    Base.metadata.create_all(bind=engine)
+@pytest.fixture(scope="module", autouse=True)
+def isolated_database():
+    Base.metadata.create_all(engine, tables=TEST_TABLES)
+    app.dependency_overrides[get_db] = override_get_db
     yield
-    Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(engine, tables=list(reversed(TEST_TABLES)))
 
 
-@pytest.fixture
-def test_user(setup_database):
-    db = TestingSessionLocal()
-    user = User(
-        email="test@example.com",
-        username="testuser",
-        full_name="Test User",
-        hashed_password=get_password_hash("testpassword123")
+@pytest.fixture()
+def client():
+    test_client = TestClient(app)
+    yield test_client
+    test_client.close()
+
+
+def register_and_login(client: TestClient, username: str) -> None:
+    register = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"{username}@example.com",
+            "username": username,
+            "password": "safe-password-123",
+        },
     )
-    db.add(user)
+    assert register.status_code == 201
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"username": username, "password": "safe-password-123"},
+    )
+    assert login.status_code == 200
+    assert login.json()["token_type"] == "bearer"
+    assert client.cookies.get("ta_session")
+
+
+def test_health_contract(client):
+    assert client.get("/").json()["status"] == "running"
+    assert client.get("/health").json()["status"] == "healthy"
+
+
+def test_cookie_session_authenticates_account(client):
+    register_and_login(client, "account-user")
+
+    response = client.get("/api/v1/account")
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "account-user"
+    assert response.json()["plan"] == "free"
+
+
+def test_free_account_cannot_read_conversation_history(client):
+    register_and_login(client, "free-history-user")
+
+    response = client.get("/api/v1/query/conversations")
+
+    assert response.status_code == 402
+
+
+def test_pro_query_persists_answer_sources_and_supports_deletion(client, monkeypatch):
+    username = "pro-history-user"
+    register_and_login(client, username)
+
+    db = TestingSessionLocal()
+    user = db.query(User).filter(User.username == username).one()
+    db.add(Subscription(
+        user_id=user.id,
+        plan="pro",
+        status="active",
+        period_start=datetime.utcnow(),
+        period_end=datetime.utcnow() + timedelta(days=30),
+    ))
     db.commit()
-    db.refresh(user)
-    yield user
     db.close()
 
+    monkeypatch.setattr(query_routes, "check_and_count_question", lambda *_args: None)
+    monkeypatch.setattr(
+        query_routes.rag_pipeline,
+        "process_query",
+        lambda **_kwargs: {
+            "response": "The VAT rate is grounded in Article 166.",
+            "sources": [{
+                "document_id": None,
+                "title": "Tax Code of Georgia",
+                "document_type": "law",
+                "url": "https://matsne.gov.ge/",
+                "relevance": 0.99,
+                "article_ref": "166",
+            }],
+            "retrieved_count": 1,
+        },
+    )
 
-class TestHealthEndpoints:
-    """Test health check endpoints."""
-    
-    def test_root_endpoint(self):
-        response = client.get("/")
-        assert response.status_code == 200
-        data = response.json()
-        assert "app" in data
-        assert "version" in data
-    
-    def test_health_endpoint(self):
-        response = client.get("/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert "status" in data
-        assert "version" in data
-    
-    def test_public_health_endpoint(self):
-        response = client.get("/api/v1/public/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert "status" in data
-        assert "components" in data
-        assert "stats" in data
+    answer = client.post(
+        "/api/v1/query",
+        json={"query": "What is the VAT rate?", "language": "en"},
+    )
+    assert answer.status_code == 200
+    payload = answer.json()
+    assert payload["evidence"]["status"] == "grounded"
+    assert payload["evidence"]["has_precise_citation"] is True
+    conversation_id = payload["conversation_id"]
 
+    listing = client.get("/api/v1/query/conversations?limit=20")
+    assert listing.status_code == 200
+    assert listing.json()[0]["messages_count"] == 2
 
-class TestAuthenticationFlow:
-    """Test authentication workflows."""
-    
-    def test_register_user(self):
-        response = client.post(
-            "/api/v1/auth/register",
-            json={
-                "email": "newuser@example.com",
-                "username": "newuser",
-                "password": "password123",
-                "full_name": "New User"
-            }
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert "token_type" in data
-        assert data["token_type"] == "bearer"
-    
-    def test_login_user(self, test_user):
-        response = client.post(
-            "/api/v1/auth/login",
-            data={
-                "username": "testuser",
-                "password": "testpassword123"
-            }
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
-    
-    def test_login_wrong_password(self, test_user):
-        response = client.post(
-            "/api/v1/auth/login",
-            data={
-                "username": "testuser",
-                "password": "wrongpassword"
-            }
-        )
-        assert response.status_code == 401
-    
-    def test_get_current_user(self, test_user):
-        # Login first
-        login_response = client.post(
-            "/api/v1/auth/login",
-            data={
-                "username": "testuser",
-                "password": "testpassword123"
-            }
-        )
-        token = login_response.json()["access_token"]
-        
-        # Get current user
-        response = client.get(
-            "/api/v1/auth/me",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "test@example.com"
-        assert data["username"] == "testuser"
+    detail = client.get(f"/api/v1/query/conversations/{conversation_id}")
+    assert detail.status_code == 200
+    assert len(detail.json()["messages"]) == 2
+    assert detail.json()["messages"][1]["sources"][0]["article_ref"] == "166"
+
+    deleted = client.delete(f"/api/v1/query/conversations/{conversation_id}")
+    assert deleted.status_code == 204
+    assert client.get("/api/v1/query/conversations").json() == []
 
 
-class TestPublicQueryEndpoint:
-    """Test public query endpoint."""
-    
-    def test_query_without_auth(self):
-        response = client.post(
-            "/api/v1/public/query",
-            json={
-                "query": "What is VAT rate in Georgia?",
-                "language": "en"
-            }
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "response" in data
-        assert "sources" in data
-        assert "retrieved_count" in data
-        assert "processing_time" in data
-    
-    def test_query_invalid_language(self):
-        response = client.post(
-            "/api/v1/public/query",
-            json={
-                "query": "Test query",
-                "language": "invalid"
-            }
-        )
-        assert response.status_code == 422  # Validation error
-    
-    def test_query_empty_string(self):
-        response = client.post(
-            "/api/v1/public/query",
-            json={
-                "query": "",
-                "language": "en"
-            }
-        )
-        assert response.status_code == 422  # Validation error
+def test_protected_query_rejects_missing_session(client):
+    client.cookies.clear()
 
+    response = client.post(
+        "/api/v1/query",
+        json={"query": "VAT", "language": "en"},
+    )
 
-class TestRateLimiting:
-    """Test rate limiting functionality."""
-    
-    def test_rate_limit_guest(self):
-        # Make multiple requests rapidly
-        responses = []
-        for i in range(15):  # Limit is 10/minute for guests
-            response = client.get("/api/v1/public/stats")
-            responses.append(response)
-        
-        # At least one should be rate limited
-        status_codes = [r.status_code for r in responses]
-        assert 429 in status_codes or all(code == 200 for code in status_codes)
-        
-        # Check rate limit headers
-        last_response = responses[-1]
-        if last_response.status_code == 200:
-            assert "X-RateLimit-Limit" in last_response.headers
-            assert "X-RateLimit-Remaining" in last_response.headers
-
-
-class TestScraperEndpoints:
-    """Test scraper API endpoints."""
-    
-    def test_list_scraper_tasks(self):
-        response = client.get("/api/v1/scraper/tasks")
-        assert response.status_code == 200
-        data = response.json()
-        assert "total_tasks" in data
-        assert "tasks" in data
-    
-    def test_start_scraping_invalid_url(self):
-        response = client.post(
-            "/api/v1/scraper/start",
-            json={
-                "url": "https://google.com",  # Not an allowed infohub domain
-                "max_depth": 2,
-                "max_pages": 10
-            }
-        )
-        assert response.status_code == 400
-        assert "infohub" in response.json()["detail"]
-
-
-@pytest.mark.asyncio
-class TestRAGPipeline:
-    """Test RAG pipeline integration."""
-    
-    async def test_query_processing(self):
-        # This would test the full RAG pipeline
-        # Simplified for now
-        pass
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    assert response.status_code == 401

@@ -1,0 +1,6 @@
+.env*
+.next
+node_modules
+*.tsbuildinfo
+.impeccable
+npm-debug.log*

@@ -3,7 +3,7 @@ Pydantic schemas for API requests and responses.
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from uuid import UUID
 
 
@@ -14,6 +14,13 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     full_name: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be no more than 72 UTF-8 bytes")
+        return value
 
 
 class UserLogin(BaseModel):

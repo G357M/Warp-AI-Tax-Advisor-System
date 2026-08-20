@@ -4,7 +4,7 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
-python-multipart==0.0.6
+python-multipart==0.0.32
 
 # Database
 sqlalchemy==2.0.25
@@ -26,15 +26,14 @@ sentence-transformers==2.3.1
 # Web Scraping (minimal)
 scrapy==2.11.0
 beautifulsoup4==4.12.3
-requests==2.31.0
+requests==2.34.2
 
 # Security
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-pyjwt==2.8.0
+PyJWT[crypto]==2.13.0
+bcrypt==4.1.2
 
 # Task Queue
 celery[redis]==5.3.6
 
 # Utilities
-python-dotenv==1.0.1
+python-dotenv==1.2.3
