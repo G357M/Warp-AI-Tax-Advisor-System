@@ -75,6 +75,14 @@ logrotate --debug /etc/logrotate.d/infohub
 
 The nightly runner invokes `scraper_alert.sh` through Bash, so an accidental
 loss of its executable bit cannot silently disable Telegram failure alerts.
+Post-ingest maintenance steps remain non-fatal to the primary scrape, but their
+exit codes are collected and reported in one Telegram alert instead of being
+discarded by output-truncation pipelines. The news-subtype query can be checked
+without writes or LLM calls with:
+
+```bash
+docker exec infohub-backend python /app/scripts/classify_news_subtypes.py --check-pending
+```
 
 ## Backend ML runtime
 

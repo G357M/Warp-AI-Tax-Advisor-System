@@ -85,9 +85,14 @@ classification accuracy, top-1 locator recall, source-audit accuracy или exac
 citation rate; дополнительно запускаются 107 существующих RAG v2 тестов и 104
 matrix subtests. Этот слой детерминирован и не выдаётся за проверку живого корпуса.
 
+На Hetzner после ночного скрейпера уже выполняется 10-вопросный live canary через
+реальный pipeline; прогон 2026-08-20 дал `10/10`, а падение ниже порога отправляет
+Telegram-alert. Ошибки вспомогательных post-ingest шагов теперь также агрегируются
+в alert, а не маскируются `|| true`.
+
 Остаётся:
 
-1. Scheduled live-corpus/LLM golden run с метриками retrieval recall, evidence status и корректности отказа.
+1. Расширить nightly canary до versioned multilingual live-corpus набора с метриками retrieval recall, evidence status, корректности отказа и сохраняемым JSON-артефактом.
 2. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt.
 3. Выборочная экспертная проверка новых `decision_facts`.
 

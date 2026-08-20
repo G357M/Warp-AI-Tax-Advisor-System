@@ -22,6 +22,7 @@ ZERO_NEW_THRESHOLD="${ZERO_NEW_THRESHOLD:-3}"
 
 EXIT_CODE="${1:-1}"
 NEW_DOCS="${2:-?}"
+DETAIL="${3:-}"
 HOST="$(hostname)"
 NOW="$(date -u '+%Y-%m-%d %H:%M UTC')"
 
@@ -64,9 +65,10 @@ read_streak() {
 # Failure: non-zero exit, or we couldn't parse a numeric new-doc count.
 if [ "$EXIT_CODE" != "0" ] || ! [[ "$NEW_DOCS" =~ ^[0-9]+$ ]]; then
     echo 0 > "$STREAK_FILE"
-    send_telegram "🔴 InfoHub scraper FAILED on ${HOST}
+    send_telegram "🔴 InfoHub nightly pipeline FAILED on ${HOST}
 Exit code: ${EXIT_CODE}
 New docs: ${NEW_DOCS}
+Details: ${DETAIL:-primary scraper step failed or summary was not parseable}
 ${NOW}
 Check latest /root/infohub/logs/scraper_*.log"
     exit 0

@@ -51,6 +51,7 @@ jobs:
           python -m pytest
           tests/test_config_contract.py
           tests/test_time_contract.py
+          tests/test_nightly_maintenance.py
           tests/test_security_hardening.py
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
@@ -115,6 +116,9 @@ jobs:
           scripts/rotate_jwt_secret.sh
           scripts/finalize_jwt_rotation.sh
           scripts/prune_infohub_rollbacks.sh
+          run_scraper.sh
+          scraper_alert.sh
+          canary_alert.sh
 
       - name: Build backend image
         uses: docker/build-push-action@v7

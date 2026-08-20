@@ -114,6 +114,24 @@ def rule_stage(db, apply: bool) -> None:
     print(f"\nApplied {len(updates)} rule verdicts.")
 
 
+def pending_news_rows(db, limit: int):
+    """Load pending rows without truncating multibyte text inside PostgreSQL."""
+    pending_sql = f"""
+        SELECT id, title, metadata->>'type' AS orig_type, full_text
+        FROM documents
+        WHERE subtype IS NULL AND {NEWS_SCOPE_SQL}
+        ORDER BY date_published DESC NULLS LAST
+    """
+    if limit:
+        pending_sql += f" LIMIT {int(limit)}"
+    return db.execute(sa_text(pending_sql)).all()
+
+
+def news_text_head(full_text: str | None, limit: int = 1500) -> str:
+    """Trim by Python characters after PostgreSQL has returned valid text."""
+    return (full_text or "")[:limit]
+
+
 def llm_stage(db, limit: int) -> None:
     from langchain_openai import ChatOpenAI
     from langchain_core.messages import HumanMessage, SystemMessage
@@ -126,15 +144,7 @@ def llm_stage(db, limit: int) -> None:
         model_kwargs={"response_format": {"type": "json_object"}},
     )
 
-    pending_sql = f"""
-        SELECT id, title, metadata->>'type' AS orig_type, left(full_text, 1500) AS head
-        FROM documents
-        WHERE subtype IS NULL AND {NEWS_SCOPE_SQL}
-        ORDER BY date_published DESC NULLS LAST
-    """
-    if limit:
-        pending_sql += f" LIMIT {int(limit)}"
-    rows = db.execute(sa_text(pending_sql)).all()
+    rows = pending_news_rows(db, limit)
     logger.info(f"LLM stage: {len(rows)} pending documents in news scope")
 
     done = failed = 0
@@ -145,7 +155,8 @@ def llm_stage(db, limit: int) -> None:
             reply = llm.invoke([
                 SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(content=(
-                    f"TITLE: {r.title}\nORIGINAL TYPE: {r.orig_type or '(none)'}\n\n{r.head or ''}"
+                    f"TITLE: {r.title}\nORIGINAL TYPE: {r.orig_type or '(none)'}\n\n"
+                    f"{news_text_head(r.full_text)}"
                 )),
             ])
             subtype = str(json.loads(reply.content).get("subtype") or "").strip()
@@ -176,13 +187,22 @@ def llm_stage(db, limit: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="write rule verdicts (default: dry-run report)")
-    parser.add_argument("--llm", action="store_true", help="run the LLM fallback over unclassified news-scope docs")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--llm", action="store_true", help="run the LLM fallback over unclassified news-scope docs")
     parser.add_argument("--limit", type=int, default=0, help="max documents for the LLM stage (0 = all pending)")
+    mode.add_argument(
+        "--check-pending",
+        action="store_true",
+        help="fetch one pending row to verify the query without invoking the LLM",
+    )
     args = parser.parse_args()
 
     db = SessionLocal()
     try:
-        if args.llm:
+        if args.check_pending:
+            rows = pending_news_rows(db, 1)
+            print(f"Pending news subtype query: ok (sample_rows={len(rows)})")
+        elif args.llm:
             llm_stage(db, args.limit)
         else:
             rule_stage(db, args.apply)
