@@ -48,10 +48,13 @@ jobs:
           python -m compileall -q
           api billing core models
           decision_fact_contract.py
+          scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
+          scripts/export_decision_facts_expert_review.py
           scripts/link_decision_chains.py
           scripts/repair_decision_fact_normalization.py
+          scripts/validate_decision_facts_expert_review.py
 
       - name: Run current API contracts
         run: >-
@@ -67,6 +70,7 @@ jobs:
           tests/test_decision_fact_extractor.py
           tests/test_decision_fact_repair.py
           tests/test_decision_facts_quality_eval.py
+          tests/test_decision_facts_full_review.py
           tests/test_decision_facts_review_bundle.py
           tests/test_database_restore_drill.py
           tests/test_security_hardening.py

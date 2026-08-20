@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "contract_version": "2026-08-20.1",
+  "description": "Read-only operational export of every unresolved decision-facts legal-review candidate and every duplicate-identity group. It creates review evidence, never legal conclusions or database changes.",
+  "execution_profile": {
+    "llm_calls_allowed": false,
+    "postgresql_writes_allowed": false,
+    "full_report_must_remain_operational": true
+  },
+  "simple_article_reference_pattern": "^[0-9]{1,4}([.-][0-9]{1,3})?$",
+  "review_queues": [
+    "outcome_alignment",
+    "non_simple_article_reference",
+    "unclear_outcome"
+  ],
+  "duplicate_candidate_classes": [
+    "exact",
+    "likely",
+    "ambiguous"
+  ],
+  "field_verdicts": [
+    "correct",
+    "incorrect",
+    "not_applicable",
+    "unable_to_verify"
+  ],
+  "duplicate_verdicts": [
+    "true_duplicate",
+    "distinct_decisions",
+    "mixed_group",
+    "unable_to_verify"
+  ]
+}

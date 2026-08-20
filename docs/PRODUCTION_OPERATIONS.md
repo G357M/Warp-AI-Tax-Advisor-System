@@ -329,6 +329,108 @@ only `correct`, `incorrect`, `not_applicable` or `unable_to_verify`; the bundle
 must remain operational and must not be committed to Git. Copying it to a
 reviewer is a separate owner-approved disclosure step.
 
+### Full unresolved decision-facts review
+
+The sampled handoff above is suitable for calibration, but it does not close
+the complete legal-review backlog. The full workflow exports every unique fact
+row in the outcome-alignment, non-simple article-reference and unclear-outcome
+queues, plus every member of every duplicate-number candidate group. It is
+also read-only/no-LLM. Its `exact`, `likely` and `ambiguous` labels are
+comparison signals, never legal findings and never deletion instructions.
+
+First run a connected aggregate-only plan inside the deployed backend:
+
+```bash
+cd /root/infohub
+REVIEW_COMMIT="$(git rev-parse HEAD)"
+docker exec infohub-backend python \
+  /app/scripts/export_decision_facts_expert_review.py \
+  --commit "$REVIEW_COMMIT"
+```
+
+The plan prints only the queue counts, duplicate classes/member counts and a
+source snapshot SHA-256. Materialize exactly that snapshot to a new container
+path by copying all four expected values from the plan:
+
+```bash
+REVIEW_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+CONTAINER_EXPORT="/tmp/decision_facts_full_expert_review_${REVIEW_ID}.json"
+docker exec infohub-backend python \
+  /app/scripts/export_decision_facts_expert_review.py \
+  --commit "$(git rev-parse HEAD)" \
+  --execute \
+  --output "$CONTAINER_EXPORT" \
+  --expected-review-items REVIEW_ITEMS \
+  --expected-duplicate-groups DUPLICATE_GROUPS \
+  --expected-duplicate-members DUPLICATE_MEMBERS \
+  --expected-snapshot-sha256 SNAPSHOT_SHA256
+install -d -m 0700 /root/infohub/.state
+HOST_EXPORT="/root/infohub/.state/decision_facts_full_expert_review_${REVIEW_ID}.json"
+docker cp "infohub-backend:${CONTAINER_EXPORT}" "$HOST_EXPORT"
+chmod 0600 "$HOST_EXPORT"
+```
+
+The execute step fails if the live source changed after the plan, any count is
+different or the output already exists. Build the protected worksheets with a
+second dry-run/exact-execute pair:
+
+```bash
+python3 backend/scripts/build_decision_facts_full_review_bundle.py \
+  --input "$HOST_EXPORT"
+
+python3 backend/scripts/build_decision_facts_full_review_bundle.py \
+  --input "$HOST_EXPORT" \
+  --output-dir ".state/decision-facts-full-expert-review/${REVIEW_ID}" \
+  --execute \
+  --expected-report-sha256 REPORT_SHA256_FROM_PLAN \
+  --expected-review-items REVIEW_ITEMS \
+  --expected-duplicate-groups DUPLICATE_GROUPS \
+  --expected-duplicate-members DUPLICATE_MEMBERS
+```
+
+Keep `review_bundle.json` and `duplicate_members.csv` unchanged. Make new
+working copies of the two editable worksheets, retain mode `0600`, and record
+the exact official-source locator, rationale, confidence, reviewer and UTC
+timestamp for every completed row. Corrections to `outcome`/`in_favor` and all
+duplicate exclusions require a distinct second reviewer. An inaccessible
+source must be recorded as such; it is not evidence that the extracted value
+is correct or incorrect.
+
+The validator may be run during the review without `--require-complete`. For
+the final pass, require every row and first capture its exact input hash:
+
+```bash
+REVIEW_DIR=".state/decision-facts-full-expert-review/${REVIEW_ID}"
+python3 backend/scripts/validate_decision_facts_expert_review.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --review-items "$REVIEW_DIR/review_items.completed.csv" \
+  --duplicate-groups "$REVIEW_DIR/duplicate_groups.completed.csv" \
+  --require-complete
+```
+
+Only after that passes may the proposal manifest be materialized with the
+reported `input_sha256` and completed counts:
+
+```bash
+python3 backend/scripts/validate_decision_facts_expert_review.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --review-items "$REVIEW_DIR/review_items.completed.csv" \
+  --duplicate-groups "$REVIEW_DIR/duplicate_groups.completed.csv" \
+  --require-complete \
+  --execute \
+  --output "$REVIEW_DIR/correction_proposals.json" \
+  --expected-input-sha256 INPUT_SHA256 \
+  --expected-complete-review-items REVIEW_ITEMS \
+  --expected-complete-duplicate-groups DUPLICATE_GROUPS
+```
+
+`correction_proposals.json` is deliberately non-executable:
+`postgresql_writes_allowed=false`, `apply_supported=false` and
+`proposal_only=true`. Applying any accepted legal correction remains a
+separate, reviewed change with its own backup, migration/rollback plan and
+post-change quality gate. Full exports, worksheets and proposal manifests are
+operational evidence and must never enter Git.
+
 Existing deterministic normalization defects can be inspected without writes:
 
 ```bash
