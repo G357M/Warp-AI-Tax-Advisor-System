@@ -49,16 +49,38 @@ class QueryRequest(BaseModel):
 
 
 class SourceInfo(BaseModel):
-    document_id: UUID
+    document_id: Optional[UUID] = None
     title: str
     document_type: str
     url: str
-    relevance: float
+    relevance: float = 0.0
+    snippet: Optional[str] = None
+    article_ref: Optional[str] = None
+    point_ref: Optional[str] = None
+    section_label: Optional[str] = None
+    document_number: Optional[str] = None
+    date_published: Optional[str] = None
+    date_effective: Optional[str] = None
+    document_status: Optional[str] = None
+    authority: Optional[str] = None
+    retrieval_channel: Optional[str] = None
+
+
+class EvidenceInfo(BaseModel):
+    status: str
+    basis: str
+    coverage: str
+    question_class: Optional[str] = None
+    source_count: int = 0
+    official_sources_only: bool = False
+    has_precise_citation: bool = False
+    generated_at: str
 
 
 class QueryResponse(BaseModel):
     response: str
     sources: List[SourceInfo]
+    evidence: EvidenceInfo
     conversation_id: UUID
     retrieved_count: int
     processing_time: Optional[float] = None

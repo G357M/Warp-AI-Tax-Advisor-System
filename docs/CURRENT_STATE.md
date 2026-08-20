@@ -65,11 +65,14 @@ infohub.rs.ge / infohubapi.rs.ge
 
 ---
 
-## Verified live state (2026-05-07)
+## Verified live state (2026-08-20)
 
-- `documents = 14153`
-- `document_chunks = 259603`
+- `documents = 15125`
+- `document_chunks = 275719`
+- `court_decision documents = 11415`
+- `decision_facts = 11362`
 - `GET /api/v1/public/health` → `healthy`
+- origin TLS certificate → valid through `2026-11-17`
 
 Main containers:
 - `infohub-backend`
@@ -90,14 +93,20 @@ Main containers:
 - не давать нормативным вопросам тонуть в массе dispute-документов;
 - возвращать grounded answer с источниками.
 
+Каждый public/authenticated ответ теперь содержит детерминированный `evidence`
+контракт. Он различает точную норму, документальную опору, неполную опору,
+недостаточность источников и вопрос вне юрисдикции. Статус вычисляется кодом,
+а не LLM; термин `grounded` намеренно не подменяется словом `verified`.
+
 ---
 
 ## Operational notes
 
 1. **Не путать local labs и production.** Источник истины для боевой системы — `/root/infohub`.
-2. **Backend runs from Docker image.** Изменения backend-кода требуют rebuild/restart контейнера.
+2. **Deploy only through the checked script.** Использовать `/root/infohub/scripts/deploy_production.sh` — он делает fast-forward-only, preflight и public health-check.
 3. **pgvector is the real vector path.** Старые упоминания Chroma относятся к раннему этапу проекта.
 4. **Historical docs exist.** Старые сводки и черновики могут описывать pre-production состояние.
+5. **Backups have two owner-confirmed layers.** Hetzner snapshots/backups и еженедельная полная копия БД на компьютер владельца; восстановление нужно проверять отдельно раз в квартал.
 
 ---
 

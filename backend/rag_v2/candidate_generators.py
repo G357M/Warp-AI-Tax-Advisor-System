@@ -140,6 +140,11 @@ def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDo
                     "topics": [parsed.topic] if parsed.topic else [],
                     "authority_rank": 0.8,
                     "is_current": True,
+                    "document_number": md.get("document_number"),
+                    "date_published": md.get("date_published"),
+                    "date_effective": md.get("date_effective"),
+                    "document_status": md.get("document_status"),
+                    "authority": md.get("authority"),
                     # Georgian retrieval query text, so the reranker can score each
                     # candidate's actual chunk text against the query (not just the
                     # document title, which is identical for every chunk of one doc).

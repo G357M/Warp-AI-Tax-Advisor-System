@@ -25,19 +25,46 @@ interface SourceChipProps {
   title: string;
   documentType?: string;
   url?: string;
+  articleRef?: string | null;
+  pointRef?: string | null;
+  documentNumber?: string | null;
+  datePublished?: string | null;
+  dateEffective?: string | null;
   className?: string;
 }
 
-export function SourceChip({ title, documentType, url, className }: SourceChipProps) {
+export function SourceChip({
+  title,
+  documentType,
+  url,
+  articleRef,
+  pointRef,
+  documentNumber,
+  datePublished,
+  dateEffective,
+  className,
+}: SourceChipProps) {
   const { t } = useT();
   const typeKey = TYPE_KEYS[documentType ?? ''];
   const label = typeKey ? t(typeKey) : documentType;
+  const pointNumber = pointRef?.includes('.') ? pointRef.split('.').slice(1).join('.') : pointRef;
+  const details = [
+    label,
+    articleRef ? t('doc.article', { n: articleRef }) : null,
+    pointNumber ? t('doc.point', { n: pointNumber }) : null,
+    documentNumber ? t('doc.number', { n: documentNumber }) : null,
+    dateEffective
+      ? t('doc.effective', { d: dateEffective })
+      : datePublished
+        ? t('doc.published', { d: datePublished })
+        : null,
+  ].filter(Boolean).join(' · ');
   const body = (
     <span className="flex items-start gap-2.5">
       <span aria-hidden className="mt-[5px] h-3.5 w-[3px] shrink-0 rounded-full bg-primary" />
       <span className="min-w-0">
         <span className="block truncate text-[13px] font-medium leading-5 text-white">{title}</span>
-        {label && <span className="block text-xs text-muted-foreground">{label}</span>}
+        {details && <span className="block truncate text-xs text-muted-foreground">{details}</span>}
       </span>
     </span>
   );

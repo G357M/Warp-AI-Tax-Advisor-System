@@ -8,8 +8,10 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 from rag.pipeline import rag_pipeline
+from api.evidence import attach_evidence
 from rag_v2.shadow_runtime import maybe_run_shadow
 from rag_v2.live_runtime import maybe_run_live_rollout
+from api.schemas import EvidenceInfo
 
 
 router = APIRouter(prefix="/public", tags=["Public"])
@@ -33,6 +35,7 @@ class PublicQueryResponse(BaseModel):
     """Public query response schema."""
     response: str
     sources: List[PublicSourceInfo]
+    evidence: EvidenceInfo
     retrieved_count: int
     processing_time: float
 
@@ -43,6 +46,21 @@ class HealthResponse(BaseModel):
     version: str
     components: Dict[str, bool]
     stats: Dict[str, Any]
+
+
+def _database_document_count() -> int:
+    """Return document rows, never the number of embedded chunks."""
+    from core.database import SessionLocal
+    import sqlalchemy
+
+    db = SessionLocal()
+    try:
+        return int(db.execute(sqlalchemy.text("SELECT COUNT(*) FROM documents")).scalar() or 0)
+    except Exception:
+        logger.exception("Unable to count public documents")
+        return 0
+    finally:
+        db.close()
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -62,13 +80,18 @@ async def health_check():
     
     # Check database connection
     database_healthy = False
+    document_count = 0
+    db = None
     try:
         db = SessionLocal()
         db.execute(sqlalchemy.text("SELECT 1"))
-        db.close()
+        document_count = int(db.execute(sqlalchemy.text("SELECT COUNT(*) FROM documents")).scalar() or 0)
         database_healthy = True
     except Exception as e:
         print(f"Database health check failed: {e}")
+    finally:
+        if db is not None:
+            db.close()
     
     # Check Redis connection
     redis_healthy = False
@@ -98,7 +121,8 @@ async def health_check():
             "llm": llm_client.client is not None,
         },
         "stats": {
-            "total_documents": vector_store.get_count() if vector_store.client else 0,
+            "total_documents": document_count,
+            "total_chunks": vector_store.get_count() if vector_store.client else 0,
             "embedding_dimension": settings.EMBEDDING_DIMENSION,
             "llm_model": settings.LLM_MODEL,
         }
@@ -142,6 +166,7 @@ def process_public_query(query_data: PublicQueryRequest):
             legacy_result=result,
             extra={"surface": "public"},
         )
+        result = attach_evidence(result)
 
         # Format sources for public response
         formatted_sources = []
@@ -153,6 +178,15 @@ def process_public_query(query_data: PublicQueryRequest):
                     "title": source.get("title", ""),
                     "document_type": source.get("document_type", ""),
                     "source_url": source.get("url", ""),
+                    "article_ref": source.get("article_ref"),
+                    "point_ref": source.get("point_ref"),
+                    "section_label": source.get("section_label"),
+                    "document_number": source.get("document_number"),
+                    "date_published": source.get("date_published"),
+                    "date_effective": source.get("date_effective"),
+                    "document_status": source.get("document_status"),
+                    "authority": source.get("authority"),
+                    "retrieval_channel": source.get("retrieval_channel"),
                 }
             ))
 
@@ -161,6 +195,7 @@ def process_public_query(query_data: PublicQueryRequest):
         return PublicQueryResponse(
             response=result.get("response", ""),
             sources=formatted_sources,
+            evidence=EvidenceInfo(**result["evidence"]),
             retrieved_count=len(formatted_sources),
             processing_time=processing_time
         )
@@ -186,7 +221,8 @@ def get_public_stats():
     return {
         "app_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "total_documents": vector_store.get_count() if vector_store.client else 0,
+        "total_documents": _database_document_count(),
+        "total_chunks": vector_store.get_count() if vector_store.client else 0,
         "supported_languages": ["ka", "ru", "en"],
         "features": {
             "rag": True,

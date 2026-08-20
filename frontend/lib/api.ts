@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { AIResponse } from './types'
+import { AIResponse, EvidenceInfo, SourceInfo } from './types'
 
 export type { SourceInfo } from './types'
 
@@ -22,7 +22,8 @@ export interface QueryRequest {
 
 export interface QueryResponse {
   response: string;
-  sources: any[];
+  sources: SourceInfo[];
+  evidence: EvidenceInfo;
   retrieved_count: number;
   processing_time: number;
 }

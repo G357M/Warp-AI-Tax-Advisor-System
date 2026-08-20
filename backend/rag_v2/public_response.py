@@ -53,9 +53,12 @@ def is_pure_refusal(text: str) -> bool:
     cleaned = (text or "").strip()
     if not cleaned:
         return False
+    matched_refusal = False
     for pattern in _REFUSAL_SENTENCE_PATTERNS:
-        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
-    return len(cleaned) < 8
+        cleaned, replacements = re.subn(pattern, "", cleaned, flags=re.IGNORECASE)
+        matched_refusal = matched_refusal or replacements > 0
+        cleaned = cleaned.strip()
+    return matched_refusal and len(cleaned) < 8
 
 
 def strip_contradictory_refusal(text: str) -> str:

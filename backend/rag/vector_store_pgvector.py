@@ -113,6 +113,11 @@ class PgVectorStore:
                     d.category AS document_category,
                     d.language AS document_language,
                     d.source_url AS source_url,
+                    d.document_number AS document_number,
+                    d.date_published AS date_published,
+                    d.date_effective AS date_effective,
+                    d.status AS document_status,
+                    d.authority AS authority,
                     1 - (c.{col} <=> CAST(:query_embedding AS vector)) as similarity,
                     c.{col} <=> CAST(:query_embedding AS vector) as distance
                 FROM document_chunks c
@@ -183,6 +188,7 @@ class PgVectorStore:
                     'id': f"doc_{row.document_id}_chunk_{row.id}",
                     'document': row.content,
                     'metadata': {
+                        **(row.metadata or {}),
                         'chunk_id': str(row.id),
                         'document_id': str(row.document_id),
                         'chunk_index': row.chunk_index,
@@ -191,7 +197,11 @@ class PgVectorStore:
                         'category': row.document_category or '',
                         'language': row.document_language or '',
                         'source_url': row.source_url or '',
-                        **(row.metadata or {})
+                        'document_number': row.document_number or '',
+                        'date_published': row.date_published.isoformat() if row.date_published else None,
+                        'date_effective': row.date_effective.isoformat() if row.date_effective else None,
+                        'document_status': row.document_status or '',
+                        'authority': row.authority or '',
                     },
                     'distance': float(row.distance),
                     'similarity': float(row.similarity)

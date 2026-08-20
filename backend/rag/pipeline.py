@@ -844,6 +844,15 @@ class RAGPipeline:
                 "snippet": snippet,
                 "content": snippet,
                 "relevance": chunk.get("_rerank_score", chunk.get("similarity", 0.0)),
+                "article_ref": metadata.get("article_ref"),
+                "point_ref": metadata.get("point_ref"),
+                "section_label": metadata.get("section_label"),
+                "document_number": metadata.get("document_number"),
+                "date_published": metadata.get("date_published"),
+                "date_effective": metadata.get("date_effective"),
+                "document_status": metadata.get("document_status"),
+                "authority": metadata.get("authority"),
+                "retrieval_channel": metadata.get("retrieval_channel"),
             })
 
         return sources[:5]  # Top 5 unique sources

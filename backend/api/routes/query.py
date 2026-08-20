@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.plans import get_active_plan, check_and_count_question
 from core.security import get_current_user
-from core.cache import cache_get, cache_set
 from models import User, Conversation, Message
 from api.schemas import QueryRequest, QueryResponse, SourceInfo
+from api.evidence import attach_evidence
 from rag.pipeline import rag_pipeline
 from rag_v2.shadow_runtime import maybe_run_shadow
 from rag_v2.live_runtime import maybe_run_live_rollout
@@ -40,12 +40,6 @@ def process_query(
     """
     start_time = time.time()
     
-    # Check cache
-    cache_key = f"query:{hash(query_data.query)}:{query_data.language}"
-    cached_response = cache_get(cache_key)
-    if cached_response:
-        return cached_response
-
     # Plan quota: free users get a limited number of questions per day
     plan = get_active_plan(db, current_user)
     check_and_count_question(current_user, plan)
@@ -118,6 +112,7 @@ def process_query(
         legacy_result=result,
         extra={"surface": "authenticated", "conversation_id": str(conversation.id)},
     )
+    result = attach_evidence(result)
 
     # Save assistant message
     assistant_message = Message(
@@ -135,13 +130,11 @@ def process_query(
     response_data = {
         "response": result["response"],
         "sources": [SourceInfo(**src) for src in result.get("sources", [])],
+        "evidence": result["evidence"],
         "conversation_id": conversation.id,
         "retrieved_count": result.get("retrieved_count", 0),
         "processing_time": processing_time
     }
-    
-    # Cache response
-    cache_set(cache_key, response_data, ttl=3600)  # 1 hour
     
     return response_data
 

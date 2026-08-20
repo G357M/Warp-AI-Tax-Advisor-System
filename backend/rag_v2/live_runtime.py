@@ -64,6 +64,17 @@ CURATED_LEGAL_BASIS = {
     "funded_pension": PENSION_LAW_SOURCE,
 }
 
+CURATED_ARTICLE_REFS = {
+    "vat_threshold": "165",
+    "tour_operator_vat": "172",
+    "funded_pension": "3",
+    "estonian_model": "97–98",
+}
+
+
+def _iso_date(value: Any) -> Optional[str]:
+    return value.isoformat() if value else None
+
 
 def _dispute_stats_line(trace) -> Optional[str]:
     """Deterministic practice-statistics sentence appended to dispute answers.
@@ -143,19 +154,39 @@ def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
         from .db_utils import db_available, run_query
         if db_available():
             rows = run_query(
-                "SELECT title, document_type, source_url FROM documents WHERE source_url = %s LIMIT 1",
+                """
+                SELECT id::text AS document_id, title, document_type, source_url,
+                       document_number, date_published, date_effective, status, authority
+                FROM documents WHERE source_url = %s LIMIT 1
+                """,
                 [basis["url"]],
             )
             if rows:
                 row = rows[0]
                 return {
+                    "document_id": row.get("document_id"),
                     "title": row.get("title") or basis["title"],
                     "document_type": row.get("document_type") or basis["document_type"],
                     "url": row.get("source_url") or basis["url"],
+                    "source_url": row.get("source_url") or basis["url"],
+                    "relevance": 1.0,
+                    "article_ref": CURATED_ARTICLE_REFS.get(topic or ""),
+                    "document_number": row.get("document_number"),
+                    "date_published": _iso_date(row.get("date_published")),
+                    "date_effective": _iso_date(row.get("date_effective")),
+                    "document_status": row.get("status"),
+                    "authority": row.get("authority"),
+                    "retrieval_channel": "curated_legal_basis",
                 }
     except Exception:
         pass
-    return dict(basis)
+    return {
+        **basis,
+        "source_url": basis["url"],
+        "relevance": 1.0,
+        "article_ref": CURATED_ARTICLE_REFS.get(topic or ""),
+        "retrieval_channel": "curated_legal_basis",
+    }
 
 
 def _response_language(language: Optional[str]) -> str:
@@ -300,6 +331,24 @@ def _topic_chunk_terms(topic: Optional[str]) -> List[str]:
     return []
 
 
+def _document_source_metadata(doc: Document, title: Optional[str], source_url: Optional[str]) -> Dict[str, Any]:
+    return {
+        "document_id": str(doc.id),
+        "title": doc.title or title or "",
+        "document_title": doc.title or title or "",
+        "document_type": doc.document_type or "",
+        "source_url": doc.source_url or source_url or "",
+        "url": doc.source_url or source_url or "",
+        "category": getattr(doc, "category", None),
+        "language": getattr(doc, "language", None),
+        "document_number": getattr(doc, "document_number", None),
+        "date_published": _iso_date(getattr(doc, "date_published", None)),
+        "date_effective": _iso_date(getattr(doc, "date_effective", None)),
+        "document_status": getattr(doc, "status", None),
+        "authority": getattr(doc, "authority", None),
+    }
+
+
 def _fetch_doc_chunks(
     source_url: Optional[str],
     title: Optional[str],
@@ -369,16 +418,7 @@ def _fetch_doc_chunks(
                 return [{
                     "id": f"synthetic:{doc.id}:{chunk_hint or article_ref or section_label or 'section'}",
                     "content": section_text,
-                    "metadata": {
-                        "document_id": str(doc.id),
-                        "title": doc.title or title or "",
-                        "document_title": doc.title or title or "",
-                        "document_type": doc.document_type or "",
-                        "source_url": doc.source_url or source_url or "",
-                        "url": doc.source_url or source_url or "",
-                        "category": getattr(doc, "category", None),
-                        "language": getattr(doc, "language", None),
-                    },
+                    "metadata": _document_source_metadata(doc, title, source_url),
                     "similarity": 1.0,
                 }]
 
@@ -419,16 +459,7 @@ def _fetch_doc_chunks(
                 {
                     "id": str(chunk.id),
                     "content": chunk.content or "",
-                    "metadata": {
-                        "document_id": str(doc.id),
-                        "title": doc.title or title or "",
-                        "document_title": doc.title or title or "",
-                        "document_type": doc.document_type or "",
-                        "source_url": doc.source_url or source_url or "",
-                        "url": doc.source_url or source_url or "",
-                        "category": getattr(doc, "category", None),
-                        "language": getattr(doc, "language", None),
-                    },
+                    "metadata": _document_source_metadata(doc, title, source_url),
                     "similarity": 1.0,
                 }
             )
@@ -538,6 +569,11 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
                     "document_type": doc.get("document_type") or "",
                     "source_url": source_url or "",
                     "url": source_url or "",
+                    "document_number": metadata.get("document_number"),
+                    "date_published": metadata.get("date_published"),
+                    "date_effective": metadata.get("date_effective"),
+                    "document_status": metadata.get("document_status"),
+                    "authority": metadata.get("authority"),
                 },
                 "similarity": metadata.get("similarity", 0.5),
             }]

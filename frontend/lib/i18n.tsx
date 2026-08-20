@@ -133,7 +133,32 @@ const DICT: Record<string, Entry> = {
     en: 'You’ve used today’s question limit — it resets tomorrow. The Pro plan has unlimited questions.',
   },
   'chat.err.retry_cta': { ru: 'Повторить вопрос', ka: 'კითხვის გამეორება', en: 'Ask again' },
-  'chat.sources': { ru: 'Источники', ka: 'წყაროები', en: 'Sources' },
+  'chat.sources': { ru: 'Официальные источники', ka: 'ოფიციალური წყაროები', en: 'Official sources' },
+  'chat.evidence.exact': {
+    ru: 'Основание: точная норма официального документа',
+    ka: 'საფუძველი: ოფიციალური დოკუმენტის ზუსტი ნორმა',
+    en: 'Basis: an exact provision in an official document',
+  },
+  'chat.evidence.document': {
+    ru: 'Основание: официальные документы',
+    ka: 'საფუძველი: ოფიციალური დოკუმენტები',
+    en: 'Basis: official documents',
+  },
+  'chat.evidence.partial': {
+    ru: 'Документальная опора ответа неполная',
+    ka: 'პასუხის დოკუმენტური საფუძველი არასრულია',
+    en: 'The answer has only partial documentary support',
+  },
+  'chat.evidence.insufficient': {
+    ru: 'В базе недостаточно подтверждающих источников',
+    ka: 'ბაზაში საკმარისი დამადასტურებელი წყარო არ არის',
+    en: 'The database does not contain enough supporting sources',
+  },
+  'chat.evidence.out_of_scope': {
+    ru: 'Вопрос вне охвата законодательства Грузии',
+    ka: 'კითხვა საქართველოს კანონმდებლობის ფარგლებს სცდება',
+    en: 'The question is outside the scope of Georgian law',
+  },
 
   // Document types (SourceChip)
   'doc.law': { ru: 'закон', ka: 'კანონი', en: 'law' },
@@ -142,6 +167,11 @@ const DICT: Record<string, Entry> = {
   'doc.guideline': { ru: 'разъяснение', ka: 'განმარტება', en: 'guideline' },
   'doc.news': { ru: 'новости законодательства', ka: 'საკანონმდებლო სიახლე', en: 'legislation news' },
   'doc.bill': { ru: 'законопроект', ka: 'კანონპროექტი', en: 'bill' },
+  'doc.article': { ru: 'ст. {n}', ka: 'მუხ. {n}', en: 'art. {n}' },
+  'doc.point': { ru: 'п. {n}', ka: 'პ. {n}', en: 'para. {n}' },
+  'doc.number': { ru: '№ {n}', ka: '№ {n}', en: 'No. {n}' },
+  'doc.effective': { ru: 'действует с {d}', ka: 'მოქმედებს {d}-დან', en: 'effective {d}' },
+  'doc.published': { ru: 'опубликован {d}', ka: 'გამოქვეყნდა {d}', en: 'published {d}' },
   'chat.ex1': { ru: 'Какая ставка НДС в Грузии?', ka: 'რა არის დღგ-ის განაკვეთი საქართველოში?', en: 'What is the VAT rate in Georgia?' },
   'chat.ex2': { ru: 'Может ли ООО применять налог 1%?', ka: 'შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?', en: 'Can an LLC use the 1% tax regime?' },
   'chat.ex3': { ru: 'Как обжаловать решение налоговой?', ka: 'როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?', en: 'How do I appeal a tax decision?' },

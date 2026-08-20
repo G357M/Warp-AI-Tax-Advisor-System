@@ -97,22 +97,45 @@ export function ChatPanel() {
             </div>
           )}
           {!loading && data && (
-            <div className="liquid-glass rounded-2xl p-6">
+            <div className="liquid-glass rounded-2xl p-6" aria-live="polite">
               <p className="whitespace-pre-wrap text-[15px] font-light leading-7 text-white/90">
                 {data.response}
               </p>
+              <div className="mt-4 flex min-w-0 items-start gap-2.5 text-xs leading-5 text-white/60" role="status">
+                {data.evidence.status === 'grounded' && (
+                  <span aria-hidden className="mt-[3px] h-3.5 w-[3px] shrink-0 rounded-full bg-primary" />
+                )}
+                <span className="min-w-0">
+                  {t(
+                    data.evidence.status === 'grounded'
+                      ? data.evidence.has_precise_citation
+                        ? 'chat.evidence.exact'
+                        : 'chat.evidence.document'
+                      : data.evidence.status === 'partial'
+                        ? 'chat.evidence.partial'
+                        : data.evidence.status === 'out_of_scope'
+                          ? 'chat.evidence.out_of_scope'
+                          : 'chat.evidence.insufficient',
+                  )}
+                </span>
+              </div>
               {data.sources?.length > 0 && (
                 <div className="mt-4 border-t border-white/10 pt-4">
                   <div className="mb-2 text-xs font-medium uppercase tracking-wide text-white/50">
                     {t('chat.sources')}
                   </div>
                   <div className="flex flex-col gap-2">
-                    {data.sources.slice(0, 5).map((s: any, i: number) => (
+                    {data.sources.slice(0, 5).map((s, i) => (
                       <SourceChip
                         key={i}
                         title={s.metadata?.title || s.text}
                         documentType={s.metadata?.document_type}
                         url={s.metadata?.source_url}
+                        articleRef={s.metadata?.article_ref}
+                        pointRef={s.metadata?.point_ref}
+                        documentNumber={s.metadata?.document_number}
+                        datePublished={s.metadata?.date_published}
+                        dateEffective={s.metadata?.date_effective}
                       />
                     ))}
                   </div>
