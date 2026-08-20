@@ -127,6 +127,7 @@ Main containers:
 11. **Rollback retention is bounded and dry-run-first.** Для backend/frontend сохраняются три новейших main-branch rollback-тега; неизвестные теги, active `:latest`, volumes и общий BuildKit cache не затрагиваются.
 12. **Backend configuration uses native Pydantic 2 contracts.** Environment names are explicit model fields, CORS accepts both production JSON and documented comma-separated values, and Celery defaults to the configured Docker `REDIS_URL`; ORM schemas and the declarative base use current Pydantic/SQLAlchemy APIs.
 13. **UTC timestamps have an explicit compatibility contract.** Runtime code no longer calls deprecated `datetime.utcnow()`; a shared helper constructs time from aware UTC and returns naive UTC for the existing `timestamp without time zone` database columns. Backend contract tests treat all deprecation warnings as errors.
+14. **Deterministic RAG regressions are CI-blocking.** A versioned RU/EN/KA fixture reports classification accuracy, top-1 locator recall, source-audit accuracy and exact-citation rate without LLM or database access; the existing 107 RAG v2 tests and 104 matrix subtests now run on every change. Live-corpus/LLM evaluation remains a separate operational layer.
 
 ---
 
@@ -137,7 +138,7 @@ Main containers:
 - exact lookup по статье / номеру / кодексу;
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
-- непрерывный RAG-eval на эталонных вопросах и контроль актуальности источников;
+- scheduled live-corpus/LLM RAG-eval на эталонных вопросах и контроль актуальности источников;
 - отдельная безопасная политика для глобального BuildKit cache, общего для всех проектов хоста;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;

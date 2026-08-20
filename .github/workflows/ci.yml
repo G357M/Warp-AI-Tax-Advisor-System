@@ -58,6 +58,16 @@ jobs:
           -q -p no:cacheprovider
           -W error::DeprecationWarning
 
+      - name: Run deterministic multilingual RAG quality gate
+        working-directory: ${{ github.workspace }}
+        run: |
+          python evaluation/rag_v2_contract_gate.py
+          python -m pytest \
+            backend/rag_v2/test_rag_v2_pipeline.py \
+            backend/rag_v2/test_rag_v2_public_response.py \
+            -q -p no:cacheprovider \
+            -W error::DeprecationWarning
+
       - name: Audit production dependency resolution
         run: |
           python -m pip install pip-audit

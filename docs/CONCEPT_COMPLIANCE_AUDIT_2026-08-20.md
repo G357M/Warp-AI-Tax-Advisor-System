@@ -79,10 +79,17 @@ Production JWT переведён на новый 256-bit ключ через о
 
 ### P1 — измерять юридическое качество постоянно
 
-1. Версионируемый multilingual golden set по нормативным и dispute-вопросам.
-2. Метрики exact citation, retrieval recall, evidence status и корректности отказа.
-3. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt.
-4. Выборочная экспертная проверка новых `decision_facts`.
+В CI уже добавлен версионируемый offline golden set по RU/EN/KA нормативным,
+локальным и dispute-маршрутам. Он блокирует изменение при деградации
+classification accuracy, top-1 locator recall, source-audit accuracy или exact
+citation rate; дополнительно запускаются 107 существующих RAG v2 тестов и 104
+matrix subtests. Этот слой детерминирован и не выдаётся за проверку живого корпуса.
+
+Остаётся:
+
+1. Scheduled live-corpus/LLM golden run с метриками retrieval recall, evidence status и корректности отказа.
+2. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt.
+3. Выборочная экспертная проверка новых `decision_facts`.
 
 ### P2 — operational maturity
 

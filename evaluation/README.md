@@ -1,5 +1,11 @@
 # Оценка проекта InfoHub / tax-advisor.ge
 
+> Актуальный CI-контур: `rag_v2_golden_set.json` содержит независимый
+> multilingual fixture, а `rag_v2_contract_gate.py` детерминированно измеряет
+> classification accuracy, top-1 locator recall, source-audit accuracy и exact
+> citation rate. Gate не использует LLM или production-БД и дополняет, но не
+> заменяет live-corpus harness ниже.
+
 Папка с материалами проверки RAG-системы: как работает и насколько корректно
 отвечает на вопросы по налоговому праву Грузии.
 
@@ -12,6 +18,8 @@
 | `findings.md` | **Главный отчёт**: оценки, сильные стороны, дефекты, корневая гипотеза, рекомендации |
 | `run_eval.py` | Прогонщик батча вопросов (воспроизводимо) |
 | `results_raw.json` | Сырые ответы системы на все 26 вопросов + источники |
+| `rag_v2_golden_set.json` | Версионируемые RU/EN/KA routing/citation ожидания для offline CI |
+| `rag_v2_contract_gate.py` | Машинный quality gate без сети, LLM и production-БД |
 
 ## TL;DR
 Система **живая, быстрая (~1.5 с), мультиязычная (ka/ru/en)** и хорошо отвечает на
