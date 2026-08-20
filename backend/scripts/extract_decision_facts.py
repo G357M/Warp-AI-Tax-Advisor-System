@@ -25,7 +25,6 @@ import json
 import logging
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -36,22 +35,17 @@ from sqlalchemy import text as sa_text
 
 from core.config import settings
 from core.database import SessionLocal, Base, engine
+from decision_fact_contract import EXTRACTION_VERSION, normalize
 from models.document import Document, DecisionFacts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logger = logging.getLogger("decision_facts")
 
-EXTRACTION_VERSION = 2
 # References to the appealed lower-instance decision sit in the narrative
 # header, so v2 reads a longer head than v1 did.
 HEAD_CHARS = 4000
 TAIL_CHARS = 5000
-
-AUTHORITY_BODIES = {"revenue_service_council", "mof_dispute_council", "city_court", "appeals_court", "supreme_court", "other"}
-DISPUTE_TYPES = {"tax", "customs", "both", "other"}
-OUTCOMES = {"satisfied", "partially_satisfied", "rejected", "unclear"}
-IN_FAVOR = {"taxpayer", "authority", "partial", "unclear"}
 
 SYSTEM_PROMPT = """You extract structured facts from Georgian tax/customs dispute decisions \
 (Revenue Service dispute council, Ministry of Finance dispute council, courts). \
@@ -92,63 +86,6 @@ def build_excerpt(doc: Document) -> str:
     return f"TITLE: {doc.title}\n\n{body}"
 
 
-def parse_date(value):
-    if not value:
-        return None
-    try:
-        return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return None
-
-
-def normalize(payload: dict) -> dict:
-    def pick(value, allowed, default="unclear"):
-        value = str(value or "").strip()
-        return value if value in allowed else default
-
-    articles = payload.get("contested_articles")
-    if not isinstance(articles, list):
-        articles = []
-    articles = [str(a).strip() for a in articles if str(a).strip()][:20]
-
-    amount = payload.get("amount_gel")
-    try:
-        amount = float(amount) if amount is not None else None
-    except (TypeError, ValueError):
-        amount = None
-
-    prior_refs = []
-    raw_priors = payload.get("prior_decisions")
-    if isinstance(raw_priors, list):
-        for ref in raw_priors[:10]:
-            if not isinstance(ref, dict):
-                continue
-            number = str(ref.get("number") or "").strip()
-            if not number:
-                continue
-            ref_body = str(ref.get("body") or "").strip()
-            ref_date = parse_date(ref.get("date"))
-            prior_refs.append({
-                "number": number,
-                "body": ref_body if ref_body in AUTHORITY_BODIES else None,
-                "date": ref_date.isoformat() if ref_date else None,
-            })
-
-    return {
-        "case_number": (str(payload.get("case_number") or "").strip() or None),
-        "prior_refs": prior_refs,
-        "prior_body": prior_refs[0]["body"] if prior_refs else None,
-        "authority_body": pick(payload.get("authority_body"), AUTHORITY_BODIES, "other"),
-        "decision_number": (str(payload.get("decision_number") or "").strip() or None),
-        "decision_date": parse_date(payload.get("decision_date")),
-        "dispute_type": pick(payload.get("dispute_type"), DISPUTE_TYPES, "other"),
-        "contested_articles": articles,
-        "amount_gel": amount,
-        "outcome": pick(payload.get("outcome"), OUTCOMES),
-        "in_favor": pick(payload.get("in_favor"), IN_FAVOR),
-    }
-
-
 def extract_one(llm: ChatOpenAI, doc: Document) -> dict:
     reply = llm.invoke([
         SystemMessage(content=SYSTEM_PROMPT),
@@ -158,48 +95,94 @@ def extract_one(llm: ChatOpenAI, doc: Document) -> dict:
     return payload
 
 
+def pending_document_ids(db, *, new_only: bool, limit: int) -> list:
+    if new_only:
+        facts_condition = "f.id IS NULL"
+    else:
+        facts_condition = (
+            f"(f.id IS NULL OR f.extraction_version < {int(EXTRACTION_VERSION)})"
+        )
+    pending_sql = f"""
+        SELECT d.id FROM documents d
+        LEFT JOIN decision_facts f ON f.document_id = d.id
+        WHERE d.document_type = 'court_decision' AND {facts_condition}
+          AND (d.metadata->>'kind') IS DISTINCT FROM 'digest'
+        ORDER BY d.date_published DESC NULLS LAST
+    """
+    if limit:
+        pending_sql += f" LIMIT {int(limit)}"
+    return [row[0] for row in db.execute(sa_text(pending_sql))]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=0, help="max documents to process (0 = all pending)")
     parser.add_argument("--new-only", action="store_true",
                         help="only documents without a facts row (nightly cron; skips the v1->v2 upgrade backlog)")
-    args = parser.parse_args()
-
-    Base.metadata.create_all(bind=engine, tables=[DecisionFacts.__table__])
-
-    llm = ChatOpenAI(
-        model=settings.LLM_MODEL,
-        temperature=0,
-        max_tokens=800,
-        openai_api_key=settings.OPENAI_API_KEY,
-        model_kwargs={"response_format": {"type": "json_object"}},
+    parser.add_argument(
+        "--check-pending",
+        action="store_true",
+        help="report pending count without table creation, LLM initialization or writes",
     )
+    parser.add_argument(
+        "--max-llm-calls",
+        type=int,
+        default=0,
+        help="optional hard ceiling for this run (0 keeps the existing nightly behavior)",
+    )
+    args = parser.parse_args()
+    if args.limit < 0 or args.max_llm_calls < 0:
+        parser.error("--limit and --max-llm-calls cannot be negative")
+    if not args.check_pending:
+        Base.metadata.create_all(bind=engine, tables=[DecisionFacts.__table__])
 
     db = SessionLocal()
     try:
-        if args.new_only:
-            facts_condition = "f.id IS NULL"
-        else:
-            facts_condition = f"(f.id IS NULL OR f.extraction_version < {int(EXTRACTION_VERSION)})"
-        pending_sql = f"""
-            SELECT d.id FROM documents d
-            LEFT JOIN decision_facts f ON f.document_id = d.id
-            WHERE d.document_type = 'court_decision' AND {facts_condition}
-              AND (d.metadata->>'kind') IS DISTINCT FROM 'digest'
-            ORDER BY d.date_published DESC NULLS LAST
-        """
-        if args.limit:
-            pending_sql += f" LIMIT {int(args.limit)}"
-        pending_ids = [row[0] for row in db.execute(sa_text(pending_sql))]
+        pending_ids = pending_document_ids(
+            db, new_only=args.new_only, limit=args.limit
+        )
         logger.info(f"Pending decisions: {len(pending_ids)}")
+        if args.check_pending:
+            print(
+                "DECISION_FACTS_PENDING="
+                + json.dumps(
+                    {
+                        "pending": len(pending_ids),
+                        "new_only": args.new_only,
+                        "limit": args.limit,
+                        "llm_calls": 0,
+                        "writes": False,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return
+        if args.max_llm_calls and len(pending_ids) > args.max_llm_calls:
+            raise RuntimeError(
+                f"pending scope {len(pending_ids)} exceeds --max-llm-calls "
+                f"{args.max_llm_calls}"
+            )
+        if not pending_ids:
+            return
 
-        done = failed = 0
+        llm = ChatOpenAI(
+            model=settings.LLM_MODEL,
+            temperature=0,
+            max_tokens=800,
+            openai_api_key=settings.OPENAI_API_KEY,
+            model_kwargs={"response_format": {"type": "json_object"}},
+        )
+
+        done = failed = llm_calls = 0
         started = time.time()
         for doc_id in pending_ids:
             doc = db.get(Document, doc_id)
             if doc is None or not (doc.full_text or "").strip():
                 continue
             try:
+                if args.max_llm_calls and llm_calls >= args.max_llm_calls:
+                    raise RuntimeError("LLM call ceiling reached before extraction")
+                llm_calls += 1
                 payload = extract_one(llm, doc)
                 fields = normalize(payload)
                 existing = db.query(DecisionFacts).filter_by(document_id=doc.id).one_or_none()
@@ -233,7 +216,10 @@ def main() -> None:
                 rate = (done + failed) / max(time.time() - started, 1)
                 logger.info(f"Progress: done={done} failed={failed} rate={rate:.2f}/s")
 
-        logger.info(f"Finished. done={done} failed={failed} of {len(pending_ids)} pending")
+        logger.info(
+            f"Finished. done={done} failed={failed} llm_calls={llm_calls} "
+            f"of {len(pending_ids)} pending"
+        )
     finally:
         db.close()
 
