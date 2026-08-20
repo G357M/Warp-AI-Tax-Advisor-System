@@ -100,11 +100,18 @@ classification, top-1 contract, source audit и минимальный язык�
 `1.0`; в Git сохраняется только агрегированный allowlist без запросов и строк
 по отдельным документам.
 
+Поверх retrieval-слоя добавлен отдельный bounded answer-safety набор из 12
+сценариев, поровну на RU/EN/KA: grounded VAT, другая юрисдикция, несуществующая
+статья и очевидный off-topic. Он проверяет текстовый контракт, evidence status,
+язык ответа, отсутствие опасной уверенности и минимальный результат по языкам.
+Production baseline на `e52ecac` прошёл `12/12`, все метрики равны `1.0`; из
+жёсткого потолка 12 потребовалось 6 фактических provider-вызовов. Полный отчёт
+остаётся operational-only, в Git попадает только агрегированный allowlist.
+
 Остаётся:
 
-1. Добавить к versioned live retrieval набору evidence status, корректность отказа и контролируемую оценку сгенерированного ответа.
-2. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt; deterministic JSON baseline уже формирует машинную основу.
-3. Выборочная экспертная проверка новых `decision_facts`.
+1. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt; deterministic JSON baseline уже формирует машинную основу, а LLM-набор остаётся ручным и bounded.
+2. Выборочная экспертная проверка новых `decision_facts`.
 
 ### P2 — operational maturity
 

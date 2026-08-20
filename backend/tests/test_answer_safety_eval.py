@@ -1,5 +1,6 @@
 """Contracts for the bounded multilingual production answer-safety evaluator."""
 
+import hashlib
 import json
 
 import pytest
@@ -24,6 +25,37 @@ def test_default_answer_safety_suite_is_balanced_and_bounded():
     assert suite["execution_profile"]["max_llm_calls"] == 12
     assert suite["execution_profile"]["postgresql_writes_allowed"] is False
     assert suite["execution_profile"]["full_report_must_remain_operational"] is True
+
+
+def test_committed_answer_safety_baseline_matches_suite_and_is_aggregate_only():
+    suite = safety_eval.load_suite()
+    suite_bytes = json.dumps(
+        suite, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        safety_eval.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "answer_safety_live_2026-08-20_e52ecac.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    def nested_keys(value):
+        if isinstance(value, dict):
+            return set(value) | set().union(
+                *(nested_keys(item) for item in value.values()), set()
+            )
+        if isinstance(value, list):
+            return set().union(*(nested_keys(item) for item in value), set())
+        return set()
+
+    assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
+    assert baseline["suite_version"] == suite["suite_version"]
+    assert baseline["passed_cases"] == baseline["cases"] == 12
+    assert baseline["llm_calls"]["actual"] <= baseline["llm_calls"]["limit"]
+    assert all(value == 1.0 for value in baseline["metrics"].values())
+    assert "results" not in baseline
+    assert {"query", "response", "sources"}.isdisjoint(nested_keys(baseline))
 
 
 def test_pure_refusal_with_retrieval_noise_passes_only_after_evidence_cleanup():
