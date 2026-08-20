@@ -138,6 +138,7 @@ jobs:
           scripts/rotate_database_password.sh
           scripts/prune_infohub_rollbacks.sh
           run_scraper.sh
+          run_quality_gates.sh
           scraper_alert.sh
           canary_alert.sh
           quality_gate_alert.sh

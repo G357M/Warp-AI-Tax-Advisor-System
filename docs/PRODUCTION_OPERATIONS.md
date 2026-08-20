@@ -185,6 +185,18 @@ generations remain mode `0600`.
 The bounded answer-safety suite remains manual because it invokes the provider;
 it is deliberately not part of the nightly quality gates.
 
+Run the exact shared no-LLM gate path manually without starting the scraper or
+any provider-backed maintenance step:
+
+```bash
+cd /root/infohub
+./run_quality_gates.sh
+```
+
+This command exits non-zero when either gate or its artifact handling fails.
+The nightly wrapper records the same failure and alerts, but preserves the
+primary scraper exit code.
+
 ## Bounded live answer-safety evaluation
 
 Inspect the versioned execution plan first; this does not connect to the corpus
