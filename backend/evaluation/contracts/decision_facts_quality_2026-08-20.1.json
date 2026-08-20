@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_version": "2026-08-20.2",
+  "contract_version": "2026-08-20.1",
   "description": "Read-only structural quality contract for dispute decision_facts and appeal links. It measures extraction hygiene and creates an expert-review manifest; it does not claim that an LLM extraction is legally verified.",
   "execution_profile": {
     "llm_calls_allowed": false,
@@ -9,9 +9,8 @@
   },
   "expected_extraction_version": 2,
   "simple_article_reference_pattern": "^[0-9]{1,4}([.-][0-9]{1,3})?$",
-  "review_seed": "decision-facts-2026-08-20.2",
+  "review_seed": "decision-facts-2026-08-20.1",
   "review_sample_per_stratum": 1,
-  "review_sample_per_anomaly": 3,
   "max_anomaly_review_items": 30,
   "thresholds": {
     "fact_coverage_rate": 1.0,

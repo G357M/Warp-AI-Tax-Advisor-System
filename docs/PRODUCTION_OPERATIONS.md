@@ -263,6 +263,37 @@ Only the aggregate `--baseline-output` allowlist is suitable for versioning.
 Passing structural metrics do not mean that the extracted legal outcome was
 verified by a lawyer; the manifest exists specifically for that human review.
 
+The anomaly manifest uses a deterministic per-category quota. This prevents a
+large duplicate or unclear-outcome queue from hiding smaller categories such
+as missing dates, missing decision numbers, outcome alignment or non-simple
+article references. Build the legal-expert handoff from the current restricted
+report in two steps. First capture the exact item count and report hash:
+
+```bash
+cd /root/infohub
+python3 backend/scripts/build_decision_facts_review_bundle.py \
+  --input .state/decision_facts_quality_report.json
+```
+
+Then materialize only that reviewed scope into a new directory:
+
+```bash
+python3 backend/scripts/build_decision_facts_review_bundle.py \
+  --input .state/decision_facts_quality_report.json \
+  --output-dir .state/decision-facts-expert-review/REVIEW_ID \
+  --execute \
+  --expected-items N \
+  --expected-report-sha256 SHA256_FROM_PLAN
+```
+
+The command refuses symlink or group/world-readable input, refuses to overwrite
+an existing output directory and writes JSON, UTF-8 CSV, instructions and
+checksums with mode `0600` under a mode-`0700` directory. Spreadsheet formula
+prefixes in source text are neutralized in CSV. The blank review columns use
+only `correct`, `incorrect`, `not_applicable` or `unable_to_verify`; the bundle
+must remain operational and must not be committed to Git. Copying it to a
+reviewer is a separate owner-approved disclosure step.
+
 Existing deterministic normalization defects can be inspected without writes:
 
 ```bash

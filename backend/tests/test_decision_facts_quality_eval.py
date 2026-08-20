@@ -49,11 +49,18 @@ def test_default_contract_is_read_only_and_matches_extraction_version():
     assert contract["expected_extraction_version"] == facts_eval.EXTRACTION_VERSION
     assert contract["execution_profile"]["llm_calls_allowed"] is False
     assert contract["execution_profile"]["postgresql_writes_allowed"] is False
+    assert contract["review_sample_per_anomaly"] > 0
     assert set(contract["thresholds"]) == set(facts_eval.METRIC_NAMES)
 
 
 def test_committed_production_baseline_matches_contract_and_is_aggregate_only():
-    contract = facts_eval.load_contract()
+    contract_path = (
+        facts_eval.BACKEND_ROOT
+        / "evaluation"
+        / "contracts"
+        / "decision_facts_quality_2026-08-20.1.json"
+    )
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
     contract_bytes = json.dumps(
         contract, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
@@ -142,3 +149,13 @@ def test_evaluator_uses_only_select_queries_and_baseline_excludes_review_manifes
 
     assert set(baseline) == set(facts_eval.BASELINE_FIELDS)
     assert "review_manifest" not in baseline
+
+
+def test_anomaly_manifest_samples_each_operational_queue():
+    sql = facts_eval.ANOMALY_REVIEW_SQL
+
+    assert "PARTITION BY anomaly_category" in sql
+    assert "duplicate_decision_identity" in sql
+    assert "missing_decision_number" in sql
+    assert "missing_decision_date" in sql
+    assert "unclear_outcome" in sql

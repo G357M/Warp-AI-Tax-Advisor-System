@@ -48,6 +48,7 @@ jobs:
           python -m compileall -q
           api billing core models
           decision_fact_contract.py
+          scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
           scripts/link_decision_chains.py
           scripts/repair_decision_fact_normalization.py
@@ -66,6 +67,7 @@ jobs:
           tests/test_decision_fact_extractor.py
           tests/test_decision_fact_repair.py
           tests/test_decision_facts_quality_eval.py
+          tests/test_decision_facts_review_bundle.py
           tests/test_security_hardening.py
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py

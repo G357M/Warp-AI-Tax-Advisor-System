@@ -52,6 +52,7 @@ BASELINE_FIELDS = (
     "metrics",
     "failed_metrics",
     "review_queue_counts",
+    "review_sample_counts",
     "distributions",
 )
 
@@ -204,43 +205,77 @@ ORDER BY authority_body, outcome, sample_rank
 """
 
 ANOMALY_REVIEW_SQL = r"""
-WITH flagged AS (
-    SELECT f.document_id::text, d.title, d.source_url,
-           f.authority_body, f.dispute_type, f.outcome, f.in_favor,
-           f.decision_number, f.decision_date,
+WITH base AS (
+    SELECT f.*, d.title, d.source_url,
+           regexp_replace(coalesce(f.decision_number, ''),
+                          '[^0-9/-]', '', 'g') AS normalized_number
+    FROM decision_facts f
+    JOIN documents d ON d.id = f.document_id
+), duplicate_keys AS (
+    SELECT authority_body, normalized_number
+    FROM base
+    WHERE normalized_number <> ''
+    GROUP BY authority_body, normalized_number
+    HAVING count(*) > 1
+), flagged AS (
+    SELECT b.document_id::text, b.title, b.source_url,
+           b.authority_body, b.dispute_type, b.outcome, b.in_favor,
+           b.decision_number, b.decision_date, b.contested_articles,
+           (b.amount_gel IS NOT NULL) AS has_amount,
            array_remove(ARRAY[
-               CASE WHEN f.extraction_version < %s THEN 'outdated_extraction' END,
-               CASE WHEN f.amount_gel IS NOT NULL AND f.amount_gel <= 0
+               CASE WHEN b.extraction_version < %s THEN 'outdated_extraction' END,
+               CASE WHEN b.amount_gel IS NOT NULL AND b.amount_gel <= 0
                     THEN 'nonpositive_amount' END,
-               CASE WHEN (f.outcome = 'satisfied' AND f.in_favor <> 'taxpayer')
-                          OR (f.outcome = 'rejected' AND f.in_favor <> 'authority')
-                          OR (f.outcome = 'partially_satisfied' AND f.in_favor = 'authority')
+               CASE WHEN (b.outcome = 'satisfied' AND b.in_favor <> 'taxpayer')
+                          OR (b.outcome = 'rejected' AND b.in_favor <> 'authority')
+                          OR (b.outcome = 'partially_satisfied' AND b.in_favor = 'authority')
                     THEN 'outcome_alignment' END,
                CASE WHEN EXISTS (
                    SELECT 1 FROM jsonb_array_elements(
-                       CASE WHEN jsonb_typeof(f.prior_refs::jsonb) = 'array'
-                            THEN f.prior_refs::jsonb ELSE '[]'::jsonb END
+                       CASE WHEN jsonb_typeof(b.prior_refs::jsonb) = 'array'
+                            THEN b.prior_refs::jsonb ELSE '[]'::jsonb END
                    ) ref(value)
                    WHERE regexp_replace(coalesce(ref.value->>'number', ''),
                                         '[^0-9/-]', '', 'g') <> ''
                      AND regexp_replace(coalesce(ref.value->>'number', ''),
                                         '[^0-9/-]', '', 'g') =
-                         regexp_replace(coalesce(f.decision_number, ''),
+                         regexp_replace(coalesce(b.decision_number, ''),
                                         '[^0-9/-]', '', 'g')
                ) THEN 'self_prior_reference' END,
                CASE WHEN EXISTS (
                    SELECT 1 FROM jsonb_array_elements_text(
-                       CASE WHEN jsonb_typeof(f.contested_articles::jsonb) = 'array'
-                            THEN f.contested_articles::jsonb ELSE '[]'::jsonb END
+                       CASE WHEN jsonb_typeof(b.contested_articles::jsonb) = 'array'
+                            THEN b.contested_articles::jsonb ELSE '[]'::jsonb END
                    ) a(value) WHERE a.value !~ %s
-               ) THEN 'non_simple_article_reference' END
+               ) THEN 'non_simple_article_reference' END,
+               CASE WHEN b.outcome = 'unclear' THEN 'unclear_outcome' END,
+               CASE WHEN b.decision_number IS NULL OR btrim(b.decision_number) = ''
+                    THEN 'missing_decision_number' END,
+               CASE WHEN b.decision_date IS NULL THEN 'missing_decision_date' END,
+               CASE WHEN dk.normalized_number IS NOT NULL
+                    THEN 'duplicate_decision_identity' END
            ], NULL) AS anomaly_flags
-    FROM decision_facts f
-    JOIN documents d ON d.id = f.document_id
+    FROM base b
+    LEFT JOIN duplicate_keys dk
+      ON dk.authority_body IS NOT DISTINCT FROM b.authority_body
+     AND dk.normalized_number = b.normalized_number
+), expanded AS (
+    SELECT flagged.*, anomaly_category,
+           row_number() OVER (
+               PARTITION BY anomaly_category
+               ORDER BY md5(document_id || %s || anomaly_category), document_id
+           ) AS sample_rank
+    FROM flagged
+    CROSS JOIN LATERAL unnest(flagged.anomaly_flags)
+        AS anomaly(anomaly_category)
 )
-SELECT * FROM flagged
-WHERE cardinality(anomaly_flags) > 0
-ORDER BY md5(document_id || %s)
+SELECT document_id, title, source_url, authority_body, dispute_type,
+       outcome, in_favor, decision_number, decision_date,
+       contested_articles, has_amount, ARRAY[anomaly_category] AS anomaly_flags,
+       sample_rank
+FROM expanded
+WHERE sample_rank <= %s
+ORDER BY anomaly_category, sample_rank, document_id
 LIMIT %s
 """
 
@@ -266,6 +301,8 @@ def load_contract(path: Path = DEFAULT_CONTRACT_PATH) -> dict[str, Any]:
     re.compile(pattern)
     if int(payload.get("review_sample_per_stratum") or 0) <= 0:
         raise ValueError("review_sample_per_stratum must be positive")
+    if int(payload.get("review_sample_per_anomaly") or 0) <= 0:
+        raise ValueError("review_sample_per_anomaly must be positive")
     if int(payload.get("max_anomaly_review_items") or 0) <= 0:
         raise ValueError("max_anomaly_review_items must be positive")
     return payload
@@ -354,6 +391,7 @@ def evaluate(
             version,
             pattern,
             contract["review_seed"],
+            contract["review_sample_per_anomaly"],
             contract["max_anomaly_review_items"],
         ],
     )
@@ -371,6 +409,21 @@ def evaluate(
         "duplicate_identity_groups": int(quality["duplicate_identity_groups"]),
         "missing_decision_number": int(quality["missing_decision_number_rows"]),
         "missing_decision_date": int(quality["missing_decision_date_rows"]),
+    }
+    anomaly_sample_counts: dict[str, int] = {}
+    for row in anomaly_review:
+        for flag in row.get("anomaly_flags") or []:
+            anomaly_sample_counts[flag] = anomaly_sample_counts.get(flag, 0) + 1
+    review_sample_counts = {
+        "stratified_records": len(stratified_review),
+        "anomaly_records": len(anomaly_review),
+        "unique_documents": len(
+            {
+                row["document_id"]
+                for row in [*stratified_review, *anomaly_review]
+            }
+        ),
+        "anomaly_categories": dict(sorted(anomaly_sample_counts.items())),
     }
     return {
         "schema_version": 1,
@@ -393,6 +446,7 @@ def evaluate(
         "metrics": metrics,
         "failed_metrics": failed_metrics,
         "review_queue_counts": review_queue_counts,
+        "review_sample_counts": review_sample_counts,
         "distributions": distributions,
         "review_manifest": {
             "stratified": stratified_review,
@@ -456,6 +510,7 @@ def main() -> int:
                 "metrics": report["metrics"],
                 "failed_metrics": report["failed_metrics"],
                 "review_queue_counts": report["review_queue_counts"],
+                "review_sample_counts": report["review_sample_counts"],
             },
             sort_keys=True,
         )
