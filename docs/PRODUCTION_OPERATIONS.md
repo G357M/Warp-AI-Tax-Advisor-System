@@ -474,13 +474,19 @@ Use `duplicate_technical_triage.csv` for prioritization:
 - `official_content_identical` means all current official normalized bodies
   and core identity fields match; it is eligible for efficient expert batch
   confirmation after source sampling;
+- `official_content_high_overlap` requires matching identity fields, matching
+  structured decision content, at least 100 body tokens and at least 0.95
+  ordered-token similarity; it is placed in the shorter
+  `duplicate_confirmation_queue.csv` for priority expert confirmation;
 - `official_content_near_identical` and `same_content_identity_mismatch`
   require manual comparison;
 - `official_content_differs` is not a duplicate conclusion, only evidence that
   the official bodies differ;
 - `verification_incomplete` must be retried or checked manually.
 
-The technical canonical/exclusion columns are deterministic candidates only.
+Only normalized-body-equivalent `official_content_identical` groups receive deterministic
+technical canonical/exclusion candidates. A high-overlap group does not,
+because the expert must decide which non-identical publication is canonical.
 The verifier cannot edit the expert worksheet, produce a legal verdict, create
 a correction manifest or write/delete database rows. To verify every class,
 omit both `--candidate-class` arguments and repeat the dry-run/exact-execute

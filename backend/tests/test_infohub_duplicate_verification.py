@@ -71,7 +71,13 @@ def _bundle():
     }
 
 
-def _live(source_url, body, *, receipt_date="2026-05-27T00:00:00"):
+def _live(
+    source_url,
+    body,
+    *,
+    receipt_date="2026-05-27T00:00:00",
+    decision_content="same structured decision",
+):
     key = source_url.rsplit("/", 1)[-1]
     return {
         "ok": True,
@@ -98,7 +104,9 @@ def _live(source_url, body, *, receipt_date="2026-05-27T00:00:00"):
         "normalized_body_sha256": verifier._hash_text(body),
         "normalized_canonical_length": len(body),
         "normalized_canonical_sha256": verifier._hash_text(body),
-        "decision_content_sha256": None,
+        "decision_content_sha256": (
+            verifier._hash_text(decision_content) if decision_content else None
+        ),
         "_normalized_body": body,
     }
 
@@ -166,6 +174,30 @@ def test_identical_official_content_becomes_batch_confirmation_candidate():
     assert result["technical_exclusion_candidates"] == ["doc-b"]
     assert result["metadata_differences"] == ["receiptDate"]
     assert result["minimum_live_similarity"] == 1.0
+    assert result["minimum_token_sequence_similarity"] == 1.0
+    assert result["same_live_decision_content"] is True
+
+
+def test_high_ordered_overlap_becomes_priority_confirmation_without_exclusions():
+    group = _group()
+    first_url = group["members"][0]["source_url"]
+    second_url = group["members"][1]["source_url"]
+    base_tokens = [f"legal-token-{index}" for index in range(140)]
+    changed_tokens = list(base_tokens)
+    changed_tokens[40:45] = [f"changed-token-{index}" for index in range(5)]
+    fetched = {
+        first_url: _live(first_url, " ".join(base_tokens)),
+        second_url: _live(second_url, " ".join(changed_tokens)),
+    }
+
+    result = verifier.compare_group(group, fetched, verifier.load_contract())
+
+    assert result["technical_assessment"] == "official_content_high_overlap"
+    assert result["expert_action"] == "expert_priority_confirmation"
+    assert result["minimum_token_sequence_similarity"] >= 0.95
+    assert result["same_live_decision_content"] is True
+    assert result["technical_canonical_document_id"] is None
+    assert result["technical_exclusion_candidates"] == []
 
 
 def test_different_content_remains_manual_review():
@@ -225,6 +257,7 @@ def test_verify_groups_deduplicates_requests_and_reports_aggregates():
         "fetch_successes": 2,
         "fetch_failures": 0,
         "assessment_counts": {"official_content_identical": 1},
+        "confirmation_queue_groups": 1,
     }
 
 
@@ -250,13 +283,18 @@ def test_report_and_csv_contain_hashes_but_not_legal_text():
             "fetch_successes": 2,
             "fetch_failures": 0,
             "assessment_counts": {"official_content_identical": 1},
+            "confirmation_queue_groups": 1,
         },
     )
     serialized = json.dumps(report, ensure_ascii=False)
     csv_text = verifier.render_triage_csv(report).decode("utf-8-sig")
+    queue_text = verifier.render_triage_csv(
+        report, confirmation_queue=True
+    ).decode("utf-8-sig")
 
     assert "secret body" not in serialized
     assert "secret body" not in csv_text
+    assert "secret body" not in queue_text
     assert "normalized_body_sha256" in serialized
     assert (
         list(csv.DictReader(io.StringIO(csv_text, newline="")))[0][
@@ -294,6 +332,7 @@ def test_materialization_is_restricted_and_exclusive(tmp_path):
             "fetch_successes": 2,
             "fetch_failures": 0,
             "assessment_counts": {"official_content_identical": 1},
+            "confirmation_queue_groups": 1,
         },
     )
     output = tmp_path / "technical-verification"
@@ -302,6 +341,7 @@ def test_materialization_is_restricted_and_exclusive(tmp_path):
 
     assert set(hashes) == {
         "README.md",
+        "duplicate_confirmation_queue.csv",
         "duplicate_technical_triage.csv",
         "technical_verification.json",
     }

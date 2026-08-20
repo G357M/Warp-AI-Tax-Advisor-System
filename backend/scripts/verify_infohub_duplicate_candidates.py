@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import hashlib
 import html
 import io
@@ -50,7 +51,10 @@ TRIAGE_FIELDS = (
     "fetch_success_count",
     "same_live_normalized_body",
     "same_live_identity",
+    "same_live_decision_content",
     "minimum_live_similarity",
+    "minimum_token_sequence_similarity",
+    "minimum_body_tokens",
     "same_stored_file_hash",
     "same_stored_content",
     "same_stored_normalized_content",
@@ -125,6 +129,15 @@ def load_contract(path: Path = DEFAULT_CONTRACT_PATH) -> dict[str, Any]:
     threshold = float(contract.get("near_identity_threshold") or 0)
     if not 0.9 <= threshold < 1:
         raise ValueError("near-identity threshold is unsafe")
+    sequence_threshold = float(contract.get("high_overlap_sequence_threshold") or 0)
+    if not 0.9 <= sequence_threshold < 1:
+        raise ValueError("high-overlap sequence threshold is unsafe")
+    minimum_tokens = int(contract.get("high_overlap_minimum_tokens") or 0)
+    maximum_tokens = int(contract.get("maximum_sequence_tokens_per_document") or 0)
+    if not 50 <= minimum_tokens <= 1000:
+        raise ValueError("high-overlap minimum token count is unsafe")
+    if not minimum_tokens <= maximum_tokens <= 100000:
+        raise ValueError("maximum sequence token count is unsafe")
     return contract
 
 
@@ -417,6 +430,33 @@ def text_similarity(left: str, right: str) -> float:
     )
 
 
+def _bounded_sequence_tokens(value: str, maximum_tokens: int) -> list[str]:
+    tokens = value.split()
+    if len(tokens) <= maximum_tokens:
+        return tokens
+    head_size = maximum_tokens // 2
+    return tokens[:head_size] + tokens[-(maximum_tokens - head_size) :]
+
+
+def token_sequence_similarity(left: str, right: str, maximum_tokens: int) -> float:
+    """Compare ordered legal text while bounding worst-case memory and CPU work."""
+    left_tokens = _bounded_sequence_tokens(left, maximum_tokens)
+    right_tokens = _bounded_sequence_tokens(right, maximum_tokens)
+    if left_tokens == right_tokens:
+        return 1.0
+    if not left_tokens or not right_tokens:
+        return 0.0
+    # Auto-junk protects long, repetitive official documents from quadratic
+    # matching while retaining exact matching for ordinary-sized decisions.
+    autojunk = max(len(left_tokens), len(right_tokens)) > 5000
+    return round(
+        difflib.SequenceMatcher(
+            None, left_tokens, right_tokens, autojunk=autojunk
+        ).ratio(),
+        6,
+    )
+
+
 def _different_metadata_fields(results: list[dict[str, Any]]) -> list[str]:
     different = []
     for field in COMPARISON_METADATA_FIELDS:
@@ -455,6 +495,24 @@ def compare_group(
     minimum_similarity = (
         min(similarities) if similarities else (1.0 if all_fetched else 0.0)
     )
+    maximum_sequence_tokens = int(contract["maximum_sequence_tokens_per_document"])
+    sequence_similarities = [
+        token_sequence_similarity(
+            left["_normalized_body"],
+            right["_normalized_body"],
+            maximum_sequence_tokens,
+        )
+        for left, right in combinations(successful, 2)
+    ]
+    minimum_sequence_similarity = (
+        min(sequence_similarities)
+        if sequence_similarities
+        else (1.0 if all_fetched else 0.0)
+    )
+    body_token_counts = [
+        len(result["_normalized_body"].split()) for result in successful
+    ]
+    minimum_body_tokens = min(body_token_counts) if body_token_counts else 0
     metadata_differences = _different_metadata_fields(successful) if all_fetched else []
     stored_file_hashes = [member.get("file_hash") for member in members]
     stored_content_hashes = [member.get("content_md5") for member in members]
@@ -464,7 +522,15 @@ def compare_group(
     same_stored_file_hash = _all_same_nonempty(stored_file_hashes)
     same_stored_content = _all_same_nonempty(stored_content_hashes)
     same_stored_normalized = _all_same_nonempty(stored_normalized_hashes)
+    decision_content_hashes = [
+        result.get("decision_content_sha256") for result in successful
+    ]
+    same_live_decision_content = all_fetched and _all_same_nonempty(
+        decision_content_hashes
+    )
     near_threshold = float(contract["near_identity_threshold"])
+    high_overlap_threshold = float(contract["high_overlap_sequence_threshold"])
+    high_overlap_minimum_tokens = int(contract["high_overlap_minimum_tokens"])
 
     if not all_fetched:
         assessment = "verification_incomplete"
@@ -478,6 +544,15 @@ def compare_group(
         assessment = "same_content_identity_mismatch"
         confidence = "medium"
         expert_action = "manual_review"
+    elif (
+        same_live_identity
+        and same_live_decision_content
+        and minimum_sequence_similarity >= high_overlap_threshold
+        and minimum_body_tokens >= high_overlap_minimum_tokens
+    ):
+        assessment = "official_content_high_overlap"
+        confidence = "medium"
+        expert_action = "expert_priority_confirmation"
     elif minimum_similarity >= near_threshold and same_live_identity:
         assessment = "official_content_near_identical"
         confidence = "medium"
@@ -498,7 +573,8 @@ def compare_group(
         evidence_summary = (
             f"Official API returned {len(successful)}/{len(members)} records; "
             f"assessment={assessment}; minimum normalized-body similarity="
-            f"{minimum_similarity:.6f}; identity fields "
+            f"{minimum_similarity:.6f}; minimum token-sequence similarity="
+            f"{minimum_sequence_similarity:.6f}; identity fields "
             f"{'match' if same_live_identity else 'differ'}; metadata differences="
             f"{','.join(metadata_differences) if metadata_differences else 'none'}. "
             "No legal verdict or exclusion was applied."
@@ -540,7 +616,10 @@ def compare_group(
         "fetch_success_count": len(successful),
         "same_live_normalized_body": same_live_body,
         "same_live_identity": same_live_identity,
+        "same_live_decision_content": same_live_decision_content,
         "minimum_live_similarity": minimum_similarity,
+        "minimum_token_sequence_similarity": minimum_sequence_similarity,
+        "minimum_body_tokens": minimum_body_tokens,
         "same_stored_file_hash": same_stored_file_hash,
         "same_stored_content": same_stored_content,
         "same_stored_normalized_content": same_stored_normalized,
@@ -609,6 +688,11 @@ def verify_groups(
         "fetch_successes": fetch_successes,
         "fetch_failures": len(source_urls) - fetch_successes,
         "assessment_counts": dict(sorted(assessment_counts.items())),
+        "confirmation_queue_groups": sum(
+            comparison["technical_assessment"]
+            in {"official_content_identical", "official_content_high_overlap"}
+            for comparison in comparisons
+        ),
     }
     return comparisons, summary
 
@@ -662,11 +746,27 @@ def _csv_safe(value: Any) -> str:
     return text
 
 
-def render_triage_csv(report: dict[str, Any]) -> bytes:
+def render_triage_csv(report: dict[str, Any], *, confirmation_queue: bool = False) -> bytes:
     stream = io.StringIO(newline="")
     writer = csv.DictWriter(stream, fieldnames=TRIAGE_FIELDS, extrasaction="raise")
     writer.writeheader()
-    for group in report["groups"]:
+    groups = report["groups"]
+    if confirmation_queue:
+        groups = [
+            group
+            for group in groups
+            if group["technical_assessment"]
+            in {"official_content_identical", "official_content_high_overlap"}
+        ]
+        groups = sorted(
+            groups,
+            key=lambda group: (
+                group["technical_assessment"] != "official_content_identical",
+                -float(group["minimum_token_sequence_similarity"]),
+                group["group_id"],
+            ),
+        )
+    for group in groups:
         row = {
             **{field: group.get(field) for field in TRIAGE_FIELDS},
             "technical_exclusion_candidates_json": group.get(
@@ -691,6 +791,12 @@ Official API fetches: {summary['fetch_successes']} succeeded and
 normalized visible bodies and identity fields. It is strong technical evidence,
 not a legal verdict. Review metadata differences and sample the official URLs
 before recording `true_duplicate` in the separate expert worksheet.
+
+`official_content_high_overlap` means identity fields and structured decision
+content match while ordered legal text is at least the contract threshold. It
+is placed in `duplicate_confirmation_queue.csv` for priority expert review,
+but it does not receive an automatic canonical/exclusion proposal because its
+texts are not identical.
 
 `official_content_near_identical`, `same_content_identity_mismatch`,
 `official_content_differs` and `verification_incomplete` always require manual
@@ -720,6 +826,9 @@ def materialize(output_dir: Path, report: dict[str, Any]) -> dict[str, str]:
         ).encode("utf-8")
         + b"\n",
         "duplicate_technical_triage.csv": render_triage_csv(report),
+        "duplicate_confirmation_queue.csv": render_triage_csv(
+            report, confirmation_queue=True
+        ),
         "README.md": render_instructions(report),
     }
     hashes = {}

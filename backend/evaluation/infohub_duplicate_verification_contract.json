@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_version": "2026-08-21.1",
+  "contract_version": "2026-08-21.2",
   "description": "Read-only verification of duplicate-decision candidates against the official InfoHub public API. Technical content equality is evidence for expert triage, never a legal duplicate verdict or a database change.",
   "execution_profile": {
     "llm_calls_allowed": false,
@@ -14,6 +14,9 @@
   "official_api_base": "https://infohubapi.rs.ge/api",
   "allowed_languages": ["ka", "ru", "en"],
   "near_identity_threshold": 0.995,
+  "high_overlap_sequence_threshold": 0.95,
+  "high_overlap_minimum_tokens": 100,
+  "maximum_sequence_tokens_per_document": 20000,
   "default_max_workers": 4,
   "maximum_max_workers": 8,
   "default_request_interval_seconds": 0.25,
