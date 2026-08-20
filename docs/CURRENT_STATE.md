@@ -124,7 +124,7 @@ Main containers:
 8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а полный frontend tree — `npm audit` без известных уязвимостей на 2026-08-20. После контролируемой миграции на Next 16 / React 19 high/critical findings в production frontend являются жёстким CI-блокером.
 9. **Frontend runtime is current and checked.** Next 16 использует стандартный Turbopack, route types генерируются перед отдельным `tsc`, а React 19 hooks rules проходят без исключений. Desktop и 390 px smoke-test production-сборки подтверждает навигацию и мобильное меню.
 10. **ML runtime is CPU-only by contract.** PyTorch устанавливается из официального CPU index; Docker build и production preflight отклоняют CUDA-сборку до замены работающего backend.
-11. **Docker storage needs bounded retention.** На сервере достаточно места для безопасной поставки, но накоплены rollback images и build cache. Их нельзя удалять вслепую: следующий operations-этап должен закрепить число сохраняемых откатов и возраст cache pruning.
+11. **Rollback retention is bounded and dry-run-first.** Для backend/frontend сохраняются три новейших main-branch rollback-тега; неизвестные теги, active `:latest`, volumes и общий BuildKit cache не затрагиваются.
 
 ---
 
@@ -136,7 +136,7 @@ Main containers:
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
 - непрерывный RAG-eval на эталонных вопросах и контроль актуальности источников;
-- ограниченная retention-политика для Docker rollback images и build cache;
+- отдельная безопасная политика для глобального BuildKit cache, общего для всех проектов хоста;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
 - квартальный тест восстановления резервной копии, а не только факт её создания.

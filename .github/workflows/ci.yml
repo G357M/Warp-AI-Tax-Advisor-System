@@ -95,6 +95,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
 
+      - name: Validate operational shell scripts
+        run: >-
+          bash -n
+          scripts/deploy_production.sh
+          scripts/rotate_jwt_secret.sh
+          scripts/finalize_jwt_rotation.sh
+          scripts/prune_infohub_rollbacks.sh
+
       - name: Build backend image
         uses: docker/build-push-action@v7
         with:

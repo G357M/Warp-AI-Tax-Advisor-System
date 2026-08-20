@@ -21,7 +21,7 @@
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; desktop и 390 px browser smoke-test пройдены | Нужен постоянный visual-regression прогон, а не только ручной smoke-test |
 | Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов | Резервные копии есть, но квартальный restore drill ещё нужно формализовать |
-| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime | Нужна ограниченная retention-политика для rollback images и build cache |
+| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; dry-run-first rollback retention | Глобальный BuildKit cache разделяется проектами и требует отдельной политики |
 
 ## Что концептуально реализовано
 
@@ -87,7 +87,7 @@ Production JWT переведён на новый 256-bit ключ через о
 ### P2 — operational maturity
 
 1. Квартальный тест восстановления Hetzner snapshot и еженедельной копии БД с записью RPO/RTO.
-2. Bounded retention для Docker build cache и rollback images с сохранением минимум одного проверенного отката.
+2. Отдельная bounded retention для общего Docker BuildKit cache; rollback images InfoHub уже ограничены тремя проверяемыми поколениями.
 3. Самостоятельно размещённые webfonts или другой детерминированный путь сборки без зависимости от Google Fonts во время build.
 4. Постоянный visual-regression набор: desktop, 390 px, RU/KA/EN, ошибки, длинные источники и пустые состояния.
 

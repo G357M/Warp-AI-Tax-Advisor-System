@@ -88,3 +88,25 @@ Both the Docker build and production deploy preflight fail unless the installed
 PyTorch version has the `+cpu` suffix, reports no CUDA runtime and reports CUDA
 as unavailable. This prevents a dependency refresh from silently restoring the
 multi-gigabyte NVIDIA runtime on the CPU-only Hetzner host.
+
+## Rollback image retention
+
+Every deployment preserves the previous backend and frontend image under a
+commit-addressed rollback tag. Review the bounded retention plan with:
+
+```bash
+./scripts/prune_infohub_rollbacks.sh
+```
+
+The default keeps the three newest main-branch rollback tags for each InfoHub
+application image. It refuses to run if the active containers do not match the
+current `:latest` images, protects unrecognized or non-main commits and never
+touches volumes, current images or global Docker build cache. Apply only the
+printed policy with:
+
+```bash
+./scripts/prune_infohub_rollbacks.sh --apply
+```
+
+BuildKit cache is shared by every project on the host and therefore remains
+outside this automated policy. Review it separately before any global prune.
