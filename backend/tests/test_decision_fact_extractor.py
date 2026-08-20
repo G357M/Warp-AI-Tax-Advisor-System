@@ -1,26 +1,31 @@
 """Regression contracts for bounded decision-fact extraction."""
 
-from scripts import extract_decision_facts as extractor
+from decision_fact_contract import (
+    MAX_ARTICLE_REFS,
+    MAX_OUTPUT_TOKENS,
+    MAX_PRIOR_REFS,
+    clean_article_refs,
+    clean_prior_refs,
+    llm_options,
+)
 
 
-def test_llm_output_budget_fits_v2_schema(monkeypatch):
-    captured = {}
-    sentinel = object()
+def test_llm_output_budget_fits_v2_schema():
+    options = llm_options(model="test-model", api_key="test-key")
 
-    def fake_chat_openai(**kwargs):
-        captured.update(kwargs)
-        return sentinel
-
-    monkeypatch.setattr(extractor, "ChatOpenAI", fake_chat_openai)
-
-    assert extractor.build_llm() is sentinel
-    assert captured["max_tokens"] == extractor.MAX_OUTPUT_TOKENS == 1600
-    assert captured["temperature"] == 0
-    assert captured["model_kwargs"] == {
+    assert options["max_tokens"] == MAX_OUTPUT_TOKENS == 1600
+    assert options["temperature"] == 0
+    assert options["model_kwargs"] == {
         "response_format": {"type": "json_object"}
     }
 
 
-def test_prompt_bounds_reference_arrays():
-    assert "at most 20 Georgian Tax Code article numbers" in extractor.SYSTEM_PROMPT
-    assert "array of at most 10" in extractor.SYSTEM_PROMPT
+def test_reference_normalization_enforces_prompt_bounds():
+    articles = [str(index) for index in range(MAX_ARTICLE_REFS + 5)]
+    prior_refs = [
+        {"number": str(index), "body": "other", "date": None}
+        for index in range(MAX_PRIOR_REFS + 5)
+    ]
+
+    assert len(clean_article_refs(articles)) == MAX_ARTICLE_REFS == 20
+    assert len(clean_prior_refs(prior_refs)) == MAX_PRIOR_REFS == 10

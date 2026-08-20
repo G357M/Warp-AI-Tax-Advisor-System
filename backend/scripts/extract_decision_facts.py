@@ -35,7 +35,7 @@ from sqlalchemy import text as sa_text
 
 from core.config import settings
 from core.database import SessionLocal, Base, engine
-from decision_fact_contract import EXTRACTION_VERSION, normalize
+from decision_fact_contract import EXTRACTION_VERSION, llm_options, normalize
 from models.document import Document, DecisionFacts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -46,11 +46,6 @@ logger = logging.getLogger("decision_facts")
 # header, so v2 reads a longer head than v1 did.
 HEAD_CHARS = 4000
 TAIL_CHARS = 5000
-# The v2 schema can legitimately contain several article and prior-decision
-# references. 800 tokens truncated real production JSON before it could be
-# parsed, so keep an explicit, tested ceiling with enough room for the bounded
-# arrays below.
-MAX_OUTPUT_TOKENS = 1600
 
 SYSTEM_PROMPT = """You extract structured facts from Georgian tax/customs dispute decisions \
 (Revenue Service dispute council, Ministry of Finance dispute council, courts). \
@@ -102,11 +97,10 @@ def extract_one(llm: ChatOpenAI, doc: Document) -> dict:
 
 def build_llm() -> ChatOpenAI:
     return ChatOpenAI(
-        model=settings.LLM_MODEL,
-        temperature=0,
-        max_tokens=MAX_OUTPUT_TOKENS,
-        openai_api_key=settings.OPENAI_API_KEY,
-        model_kwargs={"response_format": {"type": "json_object"}},
+        **llm_options(
+            model=settings.LLM_MODEL,
+            api_key=settings.OPENAI_API_KEY,
+        )
     )
 
 

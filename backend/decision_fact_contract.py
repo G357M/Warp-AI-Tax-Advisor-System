@@ -14,6 +14,9 @@ from typing import Any
 
 
 EXTRACTION_VERSION = 2
+MAX_ARTICLE_REFS = 20
+MAX_PRIOR_REFS = 10
+MAX_OUTPUT_TOKENS = 1600
 
 AUTHORITY_BODIES = {
     "revenue_service_council",
@@ -26,6 +29,17 @@ AUTHORITY_BODIES = {
 DISPUTE_TYPES = {"tax", "customs", "both", "other"}
 OUTCOMES = {"satisfied", "partially_satisfied", "rejected", "unclear"}
 IN_FAVOR = {"taxpayer", "authority", "partial", "unclear"}
+
+
+def llm_options(*, model: str, api_key: str) -> dict[str, Any]:
+    """Dependency-free ChatOpenAI options shared by runtime and CI."""
+    return {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        "openai_api_key": api_key,
+        "model_kwargs": {"response_format": {"type": "json_object"}},
+    }
 
 
 def parse_date(value: Any):
@@ -55,7 +69,7 @@ def clean_amount(value: Any):
     return amount
 
 
-def clean_article_refs(value: Any, *, limit: int = 20) -> list[str]:
+def clean_article_refs(value: Any, *, limit: int = MAX_ARTICLE_REFS) -> list[str]:
     """Trim and deduplicate references without rewriting legal numbering.
 
     Georgian legislation contains inserted/superscript articles (for example
@@ -81,7 +95,7 @@ def clean_prior_refs(
     value: Any,
     *,
     own_decision_number: Any = None,
-    limit: int = 10,
+    limit: int = MAX_PRIOR_REFS,
 ) -> list[dict[str, Any]]:
     """Normalize lower-instance references and reject self-references."""
     if not isinstance(value, list):
