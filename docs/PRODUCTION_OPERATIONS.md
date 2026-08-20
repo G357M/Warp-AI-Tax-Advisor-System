@@ -70,3 +70,16 @@ logrotate --debug /etc/logrotate.d/infohub
 
 The nightly runner invokes `scraper_alert.sh` through Bash, so an accidental
 loss of its executable bit cannot silently disable Telegram failure alerts.
+
+## Backend ML runtime
+
+Production is CPU-only. The backend build installs the pinned PyTorch wheel
+from the official `https://download.pytorch.org/whl/cpu` index before resolving
+the rest of `requirements-production.txt`. The final image contains only the
+virtual environment and runtime libraries; compiler and Git packages remain in
+the discarded builder stage.
+
+Both the Docker build and production deploy preflight fail unless the installed
+PyTorch version has the `+cpu` suffix, reports no CUDA runtime and reports CUDA
+as unavailable. This prevents a dependency refresh from silently restoring the
+multi-gigabyte NVIDIA runtime on the CPU-only Hetzner host.

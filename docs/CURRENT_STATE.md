@@ -49,7 +49,8 @@ infohub.rs.ge / infohubapi.rs.ge
 - PostgreSQL
 - pgvector
 - Redis
-- sentence-transformers
+- sentence-transformers 6.0.0
+- PyTorch 2.13.0 CPU-only runtime
 - OpenAI / Anthropic integration
 
 ### Frontend
@@ -122,6 +123,7 @@ Main containers:
 7. **Production CD is intentionally manual.** Workflow требует pinned `HETZNER_KNOWN_HOSTS` и отдельный SSH key; он вызывает тот же проверенный deploy-script и не подменяет его набором команд в YAML.
 8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а полный frontend tree — `npm audit` без известных уязвимостей на 2026-08-20. После контролируемой миграции на Next 16 / React 19 high/critical findings в production frontend являются жёстким CI-блокером.
 9. **Frontend runtime is current and checked.** Next 16 использует стандартный Turbopack, route types генерируются перед отдельным `tsc`, а React 19 hooks rules проходят без исключений. Desktop и 390 px smoke-test production-сборки подтверждает навигацию и мобильное меню.
+10. **ML runtime is CPU-only by contract.** PyTorch устанавливается из официального CPU index; Docker build и production preflight отклоняют CUDA-сборку до замены работающего backend.
 
 ---
 

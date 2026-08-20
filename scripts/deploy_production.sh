@@ -54,7 +54,7 @@ docker compose build backend frontend
 # Validate the new backend image against production configuration and DB before
 # it is allowed to replace the running container.
 docker compose run --rm --no-deps backend python -c \
-    "from sqlalchemy import text; from api.main import app; from core.config import settings; from core.database import SessionLocal; assert settings.ENVIRONMENT == 'production' and settings.DEBUG is False and app.docs_url is None and settings.OPENAI_API_KEY; db = SessionLocal(); db.execute(text('SELECT 1')); db.close(); print('backend preflight: ok')"
+    "import torch; from sqlalchemy import text; from api.main import app; from core.config import settings; from core.database import SessionLocal; assert settings.ENVIRONMENT == 'production' and settings.DEBUG is False and app.docs_url is None and settings.OPENAI_API_KEY; assert torch.__version__.endswith('+cpu') and torch.version.cuda is None and not torch.cuda.is_available(); db = SessionLocal(); db.execute(text('SELECT 1')); db.close(); print(f'backend preflight: ok (torch {torch.__version__})')"
 
 # Test the exact Nginx config and mounted certificate before touching ingress.
 docker compose run --rm --no-deps nginx nginx -t
