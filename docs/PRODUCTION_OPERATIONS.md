@@ -159,3 +159,33 @@ per-language metrics and individual failures. Copy accepted reports into
 `evaluation/baselines/` only from `--baseline-output`: that allowlist excludes
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
+
+## Bounded live answer-safety evaluation
+
+Inspect the versioned execution plan first; this does not connect to the corpus
+or invoke an LLM:
+
+```bash
+cd /root/infohub
+docker exec infohub-backend python /app/scripts/evaluate_answer_safety_live.py
+```
+
+Run the accepted 12-case RU/EN/KA suite only with its exact reviewed ceiling:
+
+```bash
+docker exec infohub-backend python /app/scripts/evaluate_answer_safety_live.py \
+  --execute \
+  --max-llm-calls 12 \
+  --commit "$(git rev-parse HEAD)" \
+  --output /tmp/answer_safety_live_report.json \
+  --baseline-output /tmp/answer_safety_live_baseline.json
+```
+
+The evaluator counts actual provider invocations across both translation and
+answer generation and blocks the first invocation above the ceiling. It uses
+the normal read-only retrieval paths and performs no PostgreSQL writes; the
+normal Redis translation cache may be updated. The full report contains the
+queries, answers and sources and must remain an operational artifact. Only the
+aggregate `--baseline-output` allowlist is suitable for Git. This suite is not
+scheduled automatically: changing its questions, thresholds or LLM ceiling
+requires a reviewed commit first.

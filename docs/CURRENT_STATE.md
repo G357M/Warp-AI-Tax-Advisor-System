@@ -131,6 +131,7 @@ Main containers:
 15. **Nightly live-corpus maintenance is observable.** The 03:00 UTC scraper runs the real 10-question canary and Telegram alerting; non-fatal fact/subtype/link/amendment steps now preserve their exit codes and emit one aggregated alert. News-subtype prompt text is truncated in Python after valid UTF-8 retrieval, avoiding PostgreSQL multibyte boundary failures.
 16. **Live retrieval has a versioned multilingual contract.** A balanced 21-case RU/EN/KA suite runs against the connected corpus, records corpus and commit fingerprints plus per-language metrics, and disables semantic translation so the measurement makes no LLM calls or database writes. The accepted `ea53af6` production baseline passed 21/21 with every metric at 1.0; only an aggregate allowlist is stored in Git. Answer generation remains covered separately by the real nightly canary.
 17. **Database credentials are environment-only.** The legacy embedded connection fallback was removed, production uses an isolated Docker network with no published PostgreSQL port, and the application role password is rotated through a rollback-capable health-gated script.
+18. **Answer safety has a bounded multilingual evaluation contract.** A versioned 12-case RU/EN/KA suite covers grounded VAT answers, foreign jurisdictions, nonexistent provisions and obvious off-topic requests. Execution is dry-run by default and requires the reviewed 12-call LLM ceiling; PostgreSQL writes are prohibited and only an aggregate allowlist may enter Git. Pure model refusals now discard unrelated retrieval sources and become `insufficient`, while obvious scope refusals bypass retrieval and generation.
 
 ---
 
@@ -141,7 +142,7 @@ Main containers:
 - exact lookup по статье / номеру / кодексу;
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
-- расширение live-corpus метрик от deterministic retrieval к evidence/refusal и отдельному контролируемому LLM-набору;
+- принятие production baseline для нового bounded evidence/refusal/answer-safety набора и последующая автоматизация alert без автоматического LLM-прогона;
 - отдельная безопасная политика для глобального BuildKit cache, общего для всех проектов хоста;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
