@@ -160,6 +160,31 @@ per-language metrics and individual failures. Copy accepted reports into
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
 
+The nightly runner executes this live-corpus check and the decision-facts
+quality contract after post-ingest maintenance. Both are read-only and prohibit
+LLM calls. Their latest full and aggregate reports are stored under
+`/root/infohub/.state/` with mode `0600`; only the evaluators' aggregate
+machine-summary line can reach Telegram. A healthy run sends no message. A
+non-zero evaluator exit, missing summary or incomplete protected artifact sends
+a quality-gate alert but does not replace the primary scraper exit code.
+
+The four rolling operational files are:
+
+```text
+/root/infohub/.state/rag_v2_live_corpus_nightly_report.json
+/root/infohub/.state/rag_v2_live_corpus_nightly_baseline.json
+/root/infohub/.state/decision_facts_quality_nightly_report.json
+/root/infohub/.state/decision_facts_quality_nightly_baseline.json
+```
+
+Before each run, the prior files move to the same names with a `.previous`
+suffix. This keeps one recoverable generation while preventing an old report
+from remaining at the current path when an evaluator or copy fails. Both
+generations remain mode `0600`.
+
+The bounded answer-safety suite remains manual because it invokes the provider;
+it is deliberately not part of the nightly quality gates.
+
 ## Bounded live answer-safety evaluation
 
 Inspect the versioned execution plan first; this does not connect to the corpus

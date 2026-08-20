@@ -58,6 +58,7 @@ jobs:
           tests/test_config_contract.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
+          tests/test_nightly_quality_gates.py
           tests/test_rag_v2_live_corpus_eval.py
           tests/test_answer_safety_eval.py
           tests/test_decision_chain_reporting.py
@@ -139,6 +140,7 @@ jobs:
           run_scraper.sh
           scraper_alert.sh
           canary_alert.sh
+          quality_gate_alert.sh
 
       - name: Build backend image
         uses: docker/build-push-action@v7

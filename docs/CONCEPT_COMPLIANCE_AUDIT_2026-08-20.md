@@ -82,7 +82,7 @@ Production JWT переведён на новый 256-bit ключ через о
 В CI уже добавлен версионируемый offline golden set по RU/EN/KA нормативным,
 локальным и dispute-маршрутам. Он блокирует изменение при деградации
 classification accuracy, top-1 locator recall, source-audit accuracy или exact
-citation rate; дополнительно запускаются 107 существующих RAG v2 тестов и 104
+citation rate; дополнительно запускаются 111 существующих RAG v2 тестов и 110
 matrix subtests. Этот слой детерминирован и не выдаётся за проверку живого корпуса.
 
 На Hetzner после ночного скрейпера уже выполняется 10-вопросный live canary через
@@ -108,10 +108,17 @@ Production baseline на `e52ecac` прошёл `12/12`, все метрики �
 жёсткого потолка 12 потребовалось 6 фактических provider-вызовов. Полный отчёт
 остаётся operational-only, в Git попадает только агрегированный allowlist.
 
-Остаётся:
+После post-ingest maintenance nightly runner автоматически запускает два
+read-only/no-LLM gate: 21-case live-corpus locator contract и decision-facts
+quality contract. При non-zero exit, отсутствии агрегированной строки или
+неполном mode-600 operational artifact отправляется Telegram-alert; успешный
+прогон сообщений не создаёт. Provider-backed answer-safety остаётся ручным и
+bounded.
 
-1. Алерт при деградации после изменения корпуса, embeddings, reranker или prompt; deterministic JSON baseline уже формирует машинную основу, а LLM-набор остаётся ручным и bounded.
-2. Передать профильному эксперту детерминированную review-выборку из принятого на `c2407c9` production baseline. Структурный контракт прошёл все пороги на 11 363 решениях, но намеренно не выдаёт это за юридическую верификацию выводов.
+Остаётся передать профильному эксперту детерминированную review-выборку из
+принятого на `c2407c9` production baseline. Структурный контракт прошёл все
+пороги на 11 363 решениях, но намеренно не выдаёт это за юридическую
+верификацию выводов.
 
 ### P2 — operational maturity
 
