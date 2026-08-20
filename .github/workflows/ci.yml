@@ -55,6 +55,7 @@ jobs:
           scripts/link_decision_chains.py
           scripts/repair_decision_fact_normalization.py
           scripts/validate_decision_facts_expert_review.py
+          scripts/verify_infohub_duplicate_candidates.py
 
       - name: Run current API contracts
         run: >-
@@ -77,6 +78,7 @@ jobs:
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
           tests/test_integration.py
+          tests/test_infohub_duplicate_verification.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
 

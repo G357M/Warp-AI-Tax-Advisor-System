@@ -431,6 +431,61 @@ separate, reviewed change with its own backup, migration/rollback plan and
 post-change quality gate. Full exports, worksheets and proposal manifests are
 operational evidence and must never enter Git.
 
+#### Automated official-API duplicate triage
+
+Manual opening of every candidate is not required. The stdlib-only verifier
+can compare the current official InfoHub API records without connecting to
+PostgreSQL or an LLM. Dry-run makes no network calls. Start with the exact and
+likely classes and capture the exact protected-bundle hash and counts:
+
+```bash
+cd /root/infohub
+REVIEW_DIR=".state/decision-facts-full-expert-review/REVIEW_ID"
+python3 backend/scripts/verify_infohub_duplicate_candidates.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --candidate-class exact \
+  --candidate-class likely
+```
+
+Execute only that pinned scope into a new operational directory:
+
+```bash
+VERIFY_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+python3 backend/scripts/verify_infohub_duplicate_candidates.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --candidate-class exact \
+  --candidate-class likely \
+  --execute \
+  --output-dir ".state/infohub-duplicate-verification/${VERIFY_ID}" \
+  --expected-input-sha256 INPUT_SHA256_FROM_PLAN \
+  --expected-groups GROUPS_FROM_PLAN \
+  --expected-members MEMBERS_FROM_PLAN
+```
+
+The verifier accepts only fixed HTTPS `infohub.rs.ge/{language}/workspace/
+document/{uuid}` URLs and constructs requests against the fixed official
+`infohubapi.rs.ge/api` base. Request concurrency, rate, timeout, response size
+and retries are bounded by a versioned contract. The mode-600 report stores
+metadata, lengths, SHA-256 fingerprints and similarity values, never the legal
+body text.
+
+Use `duplicate_technical_triage.csv` for prioritization:
+
+- `official_content_identical` means all current official normalized bodies
+  and core identity fields match; it is eligible for efficient expert batch
+  confirmation after source sampling;
+- `official_content_near_identical` and `same_content_identity_mismatch`
+  require manual comparison;
+- `official_content_differs` is not a duplicate conclusion, only evidence that
+  the official bodies differ;
+- `verification_incomplete` must be retried or checked manually.
+
+The technical canonical/exclusion columns are deterministic candidates only.
+The verifier cannot edit the expert worksheet, produce a legal verdict, create
+a correction manifest or write/delete database rows. To verify every class,
+omit both `--candidate-class` arguments and repeat the dry-run/exact-execute
+pair into a different output directory.
+
 Existing deterministic normalization defects can be inspected without writes:
 
 ```bash
