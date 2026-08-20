@@ -1,0 +1,55 @@
+{
+  "backend": {
+    "connectable": true,
+    "driver": "psycopg",
+    "mode": "db"
+  },
+  "cases": 21,
+  "corpus": {
+    "court_decisions": 11416,
+    "decision_facts": 11363,
+    "latest_document_update": "2026-08-20T03:00:17.322258",
+    "total_chunks": 275821,
+    "total_documents": 15126
+  },
+  "deployed_commit": "ea53af6b290b0137f970260554b13db89fe192a3",
+  "failed_cases": [],
+  "failed_metrics": {},
+  "generated_at_utc": "2026-08-20T14:46:53.046298+00:00",
+  "language_metrics": {
+    "en": {
+      "cases": 7,
+      "classification_accuracy": 1.0,
+      "source_audit_rate": 1.0,
+      "top1_contract_recall": 1.0
+    },
+    "ka": {
+      "cases": 7,
+      "classification_accuracy": 1.0,
+      "source_audit_rate": 1.0,
+      "top1_contract_recall": 1.0
+    },
+    "ru": {
+      "cases": 7,
+      "classification_accuracy": 1.0,
+      "source_audit_rate": 1.0,
+      "top1_contract_recall": 1.0
+    }
+  },
+  "metrics": {
+    "classification_accuracy": 1.0,
+    "min_language_contract_recall": 1.0,
+    "source_audit_rate": 1.0,
+    "top1_contract_recall": 1.0
+  },
+  "passed_cases": 21,
+  "retrieval_profile": {
+    "disabled_channels": [
+      "semantic_search"
+    ],
+    "llm_calls_allowed": false
+  },
+  "schema_version": 1,
+  "suite_sha256": "1dffcac2dea9cea41ad841b9a873f5ef9f2cec1b1f7dcdcdf6d9cddc979845e7",
+  "suite_version": "2026-08-20.1"
+}

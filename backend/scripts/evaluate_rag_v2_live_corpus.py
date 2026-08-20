@@ -32,6 +32,23 @@ METRIC_NAMES = (
     "min_language_contract_recall",
 )
 
+BASELINE_FIELDS = (
+    "schema_version",
+    "suite_version",
+    "suite_sha256",
+    "generated_at_utc",
+    "deployed_commit",
+    "backend",
+    "retrieval_profile",
+    "corpus",
+    "cases",
+    "passed_cases",
+    "failed_cases",
+    "metrics",
+    "language_metrics",
+    "failed_metrics",
+)
+
 CORPUS_SNAPSHOT_SQL = """
 SELECT
   (SELECT count(*) FROM documents) AS total_documents,
@@ -251,11 +268,17 @@ def evaluate(
     }
 
 
+def baseline_summary(report: dict[str, Any]) -> dict[str, Any]:
+    """Return the secret-safe aggregate artifact suitable for Git history."""
+    return {key: report[key] for key in BASELINE_FIELDS}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", type=Path, default=DEFAULT_SUITE_PATH)
     parser.add_argument("--commit", default="unknown")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--baseline-output", type=Path)
     args = parser.parse_args()
 
     suite = load_suite(args.suite)
@@ -267,6 +290,13 @@ def main() -> int:
             encoding="utf-8",
         )
         print(f"Saved live-corpus report: {args.output}")
+    if args.baseline_output:
+        args.baseline_output.parent.mkdir(parents=True, exist_ok=True)
+        args.baseline_output.write_text(
+            json.dumps(baseline_summary(report), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"Saved aggregate baseline: {args.baseline_output}")
 
     summary = {
         "suite_version": report["suite_version"],

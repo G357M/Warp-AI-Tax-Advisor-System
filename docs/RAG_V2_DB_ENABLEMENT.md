@@ -84,7 +84,8 @@ on the host:
 cd /root/infohub
 docker exec infohub-backend python /app/scripts/evaluate_rag_v2_live_corpus.py \
   --commit "$(git rev-parse HEAD)" \
-  --output /tmp/rag_v2_live_corpus_report.json
+  --output /tmp/rag_v2_live_corpus_report.json \
+  --baseline-output /tmp/rag_v2_live_corpus_baseline.json
 ```
 
 ## Reports
@@ -92,6 +93,9 @@ docker exec infohub-backend python /app/scripts/evaluate_rag_v2_live_corpus.py \
 - local helper: `reports/rag_v2_live_corpus_latest.json`
 - production container: `/tmp/rag_v2_live_corpus_report.json`
 - accepted historical baselines: `evaluation/baselines/`
+
+Only the aggregate file produced by `--baseline-output` belongs in Git. It is an
+explicit allowlist that omits queries and document-level result rows.
 
 The older `scripts/run_rag_v2_shadow_eval.py` remains a fixture-oriented
 diagnostic. It is not the versioned production baseline and is not used by this

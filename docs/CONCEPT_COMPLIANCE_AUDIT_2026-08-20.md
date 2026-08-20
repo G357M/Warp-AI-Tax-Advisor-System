@@ -95,7 +95,10 @@ Telegram-alert. Ошибки вспомогательных post-ingest шаго
 source audit непосредственно через production PostgreSQL. Отчёт включает hash
 набора, commit, fingerprint корпуса и метрики по каждому языку. Semantic/LLM
 канал в этом прогоне запрещён, поэтому измерение воспроизводимо и не создаёт
-скрытых API-расходов.
+скрытых API-расходов. Первый production baseline на `ea53af6` прошёл `21/21`:
+classification, top-1 contract, source audit и минимальный языковой recall равны
+`1.0`; в Git сохраняется только агрегированный allowlist без запросов и строк
+по отдельным документам.
 
 Остаётся:
 

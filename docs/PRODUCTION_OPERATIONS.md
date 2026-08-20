@@ -148,11 +148,14 @@ Run the balanced RU/EN/KA locator suite inside the configured backend:
 cd /root/infohub
 docker exec infohub-backend python /app/scripts/evaluate_rag_v2_live_corpus.py \
   --commit "$(git rev-parse HEAD)" \
-  --output /tmp/rag_v2_live_corpus_report.json
+  --output /tmp/rag_v2_live_corpus_report.json \
+  --baseline-output /tmp/rag_v2_live_corpus_baseline.json
 ```
 
 This is a read-only retrieval check: `semantic_search` is explicitly disabled,
 so the run does not invoke translation or answer-generation LLMs. The report
 records corpus counts, suite hash, deployed commit, overall metrics,
 per-language metrics and individual failures. Copy accepted reports into
-`evaluation/baselines/`; do not silently replace a failed baseline.
+`evaluation/baselines/` only from `--baseline-output`: that allowlist excludes
+queries and document-level results. Keep the full report as an operational
+artifact and do not silently replace a failed baseline.

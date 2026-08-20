@@ -1,5 +1,7 @@
 """Contracts for the deterministic live-corpus RAG evaluator."""
 
+import hashlib
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -71,6 +73,26 @@ def test_default_live_suite_is_balanced_and_prohibits_llm_calls():
     assert "semantic_search" in suite["retrieval_profile"]["disabled_channels"]
 
 
+def test_committed_baseline_matches_the_versioned_suite_and_is_aggregate_only():
+    suite = live_eval.load_suite()
+    suite_bytes = json.dumps(
+        suite, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        live_eval.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "rag_v2_live_corpus_2026-08-20_ea53af6.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
+    assert baseline["suite_version"] == suite["suite_version"]
+    assert baseline["passed_cases"] == baseline["cases"] == 21
+    assert "results" not in baseline
+    assert "query" not in json.dumps(baseline)
+
+
 def test_live_evaluator_uses_db_and_disables_semantic_channel(monkeypatch):
     fake_pipeline = _FakePipeline()
     monkeypatch.setattr(
@@ -103,6 +125,11 @@ def test_live_evaluator_uses_db_and_disables_semantic_channel(monkeypatch):
     assert all(value == 1.0 for value in report["metrics"].values())
     assert report["corpus"]["latest_document_update"] == "2026-08-20T00:00:00+00:00"
     assert all(call[2] == {"semantic_search"} for call in fake_pipeline.calls)
+
+    baseline = live_eval.baseline_summary(report)
+    assert "results" not in baseline
+    assert baseline["metrics"] == report["metrics"]
+    assert set(baseline) == set(live_eval.BASELINE_FIELDS)
 
 
 def test_live_evaluator_refuses_fixture_or_disconnected_mode(monkeypatch):

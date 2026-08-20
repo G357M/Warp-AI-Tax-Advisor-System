@@ -27,7 +27,7 @@
 | `rag_v2_contract_gate.py` | Машинный quality gate без сети, LLM и production-БД |
 | `../backend/evaluation/rag_v2_live_corpus_set.json` | 21 RU/EN/KA ожидание для подключённого боевого корпуса |
 | `../backend/scripts/evaluate_rag_v2_live_corpus.py` | Read-only live evaluator с corpus fingerprint и историческим JSON-отчётом |
-| `baselines/` | Принятые снимки метрик, привязанные к production commit и состоянию корпуса |
+| `baselines/` | Безопасные агрегированные снимки метрик, привязанные к production commit и состоянию корпуса; query/document rows не сохраняются в Git |
 
 ## TL;DR
 Система **живая, быстрая (~1.5 с), мультиязычная (ka/ru/en)** и хорошо отвечает на
