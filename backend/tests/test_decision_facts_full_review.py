@@ -178,6 +178,56 @@ def test_connected_export_summary_is_pinned_and_aggregate(monkeypatch):
     assert "title" not in summary and "source_url" not in summary
 
 
+def test_production_full_review_baseline_matches_current_contract():
+    contract = exporter.load_contract()
+    contract_sha256 = hashlib.sha256(
+        json.dumps(
+            contract,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    baseline_path = (
+        exporter.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "decision_facts_full_expert_review_2026-08-20_555749c.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    assert baseline["contract_sha256"] == contract_sha256
+    assert baseline["contract_version"] == contract["contract_version"]
+    assert baseline["deployed_commit"].startswith("555749c")
+    assert baseline["review_items"] == 192
+    assert baseline["review_queue_counts"] == {
+        "non_simple_article_reference": 39,
+        "outcome_alignment": 22,
+        "unclear_outcome": 131,
+    }
+    assert baseline["duplicate_groups"] == 463
+    assert baseline["duplicate_members"] == 946
+    assert baseline["duplicate_class_counts"] == {
+        "ambiguous": 457,
+        "exact": 1,
+        "likely": 5,
+    }
+    assert set(baseline) == {
+        "baseline_type",
+        "contract_sha256",
+        "contract_version",
+        "deployed_commit",
+        "duplicate_class_counts",
+        "duplicate_groups",
+        "duplicate_members",
+        "report_sha256",
+        "review_items",
+        "review_queue_counts",
+        "schema_version",
+        "source_snapshot_sha256",
+    }
+
+
 def test_full_bundle_contains_evidence_and_second_review_fields():
     bundle = _bundle()
     review_csv = bundle_builder.render_review_items(bundle).decode("utf-8-sig")
