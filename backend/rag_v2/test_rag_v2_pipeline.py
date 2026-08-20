@@ -57,6 +57,25 @@ class PipelineV2RegressionTests(unittest.TestCase):
         self.assertEqual(top["document_type"], "court_decision")
         self.assertTrue(trace.source_audit["passed"])
 
+    def test_english_dispute_query_is_not_downgraded_to_named_document(self):
+        trace = pipeline_v2.build_trace(
+            "What was the decision in dispute №19068/2/2023?", language="en"
+        )
+        top = trace.reranking["top_ranked_documents"][0]
+        self.assertEqual(trace.classification["question_class"], "dispute_practice")
+        self.assertEqual(top["document_type"], "court_decision")
+        self.assertTrue(trace.source_audit["passed"])
+
+    def test_explicit_channel_disable_is_recorded_and_enforced(self):
+        trace = pipeline_v2.build_trace(
+            "What does Article 168 of the Tax Code say?",
+            language="en",
+            disabled_channels={"semantic_search"},
+        )
+        self.assertIn("semantic_search", trace.routing["disabled_channels"])
+        self.assertNotIn("semantic_search", trace.routing["enabled_channels"])
+        self.assertNotIn("semantic_search", trace.candidate_generation["channels_used"])
+
     def test_dispute_query_rejects_neighboring_dispute_reference(self):
         trace, top = self._top("Какое решение по спору №19068/3/2023?")
         self.assertEqual(trace.classification["question_class"], "dispute_practice")

@@ -1,12 +1,14 @@
 # RAG v2 DB enablement
 
-This is the minimal path to switch the local `backend/rag_v2` shadow-eval from fixtures to DB-backed mode.
+This is the minimal path to run the deterministic RAG v2 locator evaluation
+against a connected database.
 
 ## What was prepared
 
 - `requirements-rag_v2_db.txt` — minimal DB dependency
 - `scripts/prepare_rag_v2_db_mode.sh` — bootstrap/probe/eval helper
-- `scripts/run_rag_v2_shadow_eval.py` — live-aware shadow eval
+- `backend/evaluation/rag_v2_live_corpus_set.json` — balanced RU/EN/KA live suite
+- `backend/scripts/evaluate_rag_v2_live_corpus.py` — read-only evaluator
 
 ## Default behavior
 
@@ -56,7 +58,7 @@ Expected success shape:
 }
 ```
 
-## Step 3. Run live-aware shadow eval
+## Step 3. Run live-corpus eval
 
 ```bash
 cd /root/infohub
@@ -67,20 +69,30 @@ export INFOHUB_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 This will:
 
 1. probe DB backend status,
-2. run fixture shadow-eval,
-3. include live cases automatically when DB is truly connectable.
+2. require a genuinely connectable DB backend,
+3. run 21 balanced RU/EN/KA locator contracts,
+4. save corpus counts, the deployed commit, per-language metrics and failures.
+
+The evaluator disables `semantic_search`, so it does not translate through an
+LLM, generate answers or write to the database. Answer-generation quality stays
+covered by the separate nightly canary.
+
+On production, use the already configured container instead of exporting a URL
+on the host:
+
+```bash
+cd /root/infohub
+docker exec infohub-backend python /app/scripts/evaluate_rag_v2_live_corpus.py \
+  --commit "$(git rev-parse HEAD)" \
+  --output /tmp/rag_v2_live_corpus_report.json
+```
 
 ## Reports
 
-- `reports/rag_v2_shadow_eval_report.json`
-- `reports/rag_v2_shadow_eval_summary.md`
+- local helper: `reports/rag_v2_live_corpus_latest.json`
+- production container: `/tmp/rag_v2_live_corpus_report.json`
+- accepted historical baselines: `evaluation/baselines/`
 
-## Current blocker in this environment
-
-At preparation time, the script worked but reported:
-
-- db mode enabled,
-- database URL present,
-- DB driver missing (`psycopg or psycopg2 is required for db mode`).
-
-So the next real execution step is simply dependency installation, then rerun the helper.
+The older `scripts/run_rag_v2_shadow_eval.py` remains a fixture-oriented
+diagnostic. It is not the versioned production baseline and is not used by this
+helper.

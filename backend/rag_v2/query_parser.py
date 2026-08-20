@@ -148,7 +148,11 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     elif (not article_ref and not point_ref) and any(token in q for token in ["что в документе", "что в документ", "document", "документ", "handbook", "что сказано", "რა წერია დოკუმენტ", "რა არის დოკუმენტ"]):
         goal = "document_summary"
         signals.append("named_document")
-    elif any(token in q for token in ["решение", "спор", "жалоб", "დავა", "გადაწყვეტილებ"]):
+    elif any(token in q for token in [
+        "решение", "спор", "жалоб",
+        "dispute", "decision", "appeal",
+        "დავა", "გადაწყვეტილებ",
+    ]):
         goal = "dispute_outcome"
         signals.append("dispute")
     elif any(token in q for token in ["изменил", "изменени", "редакц", "amendment", "amendments", "change to", "changes to", "changed", "поправк", "ცვლილებ"]):

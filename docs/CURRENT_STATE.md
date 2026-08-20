@@ -129,6 +129,8 @@ Main containers:
 13. **UTC timestamps have an explicit compatibility contract.** Runtime code no longer calls deprecated `datetime.utcnow()`; a shared helper constructs time from aware UTC and returns naive UTC for the existing `timestamp without time zone` database columns. Backend contract tests treat all deprecation warnings as errors.
 14. **Deterministic RAG regressions are CI-blocking.** A versioned RU/EN/KA fixture reports classification accuracy, top-1 locator recall, source-audit accuracy and exact-citation rate without LLM or database access; the existing 107 RAG v2 tests and 104 matrix subtests now run on every change. Live-corpus/LLM evaluation remains a separate operational layer.
 15. **Nightly live-corpus maintenance is observable.** The 03:00 UTC scraper runs the real 10-question canary and Telegram alerting; non-fatal fact/subtype/link/amendment steps now preserve their exit codes and emit one aggregated alert. News-subtype prompt text is truncated in Python after valid UTF-8 retrieval, avoiding PostgreSQL multibyte boundary failures.
+16. **Live retrieval has a versioned multilingual contract.** A balanced 21-case RU/EN/KA suite runs against the connected corpus, records corpus and commit fingerprints plus per-language metrics, and disables semantic translation so the measurement makes no LLM calls or database writes. Answer generation remains covered separately by the real nightly canary.
+17. **Database credentials are environment-only.** The legacy embedded connection fallback was removed, production uses an isolated Docker network with no published PostgreSQL port, and the application role password is rotated through a rollback-capable health-gated script.
 
 ---
 
@@ -139,7 +141,7 @@ Main containers:
 - exact lookup по статье / номеру / кодексу;
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
-- scheduled live-corpus/LLM RAG-eval на эталонных вопросах и контроль актуальности источников;
+- расширение live-corpus метрик от deterministic retrieval к evidence/refusal и отдельному контролируемому LLM-набору;
 - отдельная безопасная политика для глобального BuildKit cache, общего для всех проектов хоста;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;

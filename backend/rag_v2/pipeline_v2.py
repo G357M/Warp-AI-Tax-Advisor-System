@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from .query_parser import parse_query
 from .query_classifier import classify_query
 from .candidate_generators import generate_candidates
@@ -12,10 +14,30 @@ from .models import ExplainabilityTrace
 
 
 class PipelineV2:
-    def build_trace(self, query: str, language: str = "ru") -> ExplainabilityTrace:
+    def build_trace(
+        self,
+        query: str,
+        language: str = "ru",
+        disabled_channels: Iterable[str] | None = None,
+    ) -> ExplainabilityTrace:
         parsed = parse_query(query, language=language)
         classification = classify_query(parsed)
         routing_profile = self._routing_profile(parsed, classification.question_class)
+        requested_disabled = set(disabled_channels or ())
+        known_channels = set(routing_profile["enabled_channels"]) | set(
+            routing_profile["disabled_channels"]
+        )
+        unknown_channels = requested_disabled - known_channels
+        if unknown_channels:
+            raise ValueError(
+                "unknown RAG v2 channels: " + ", ".join(sorted(unknown_channels))
+            )
+        routing_profile["disabled_channels"] = sorted(
+            set(routing_profile["disabled_channels"]) | requested_disabled
+        )
+        routing_profile["enabled_channels"] = sorted(
+            known_channels - set(routing_profile["disabled_channels"])
+        )
         routing = {
             "question_class": classification.question_class,
             "retrieval_mode": self._routing_mode(classification.question_class),

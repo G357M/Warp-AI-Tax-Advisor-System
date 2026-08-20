@@ -52,6 +52,7 @@ jobs:
           tests/test_config_contract.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
+          tests/test_rag_v2_live_corpus_eval.py
           tests/test_security_hardening.py
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py

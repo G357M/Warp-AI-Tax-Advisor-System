@@ -139,3 +139,20 @@ the public health endpoint. A failed verification restores the previous role
 password and environment automatically. After a successful rotation, verify the
 independent weekly off-host backup job because it may use its own stored copy of
 the database credential.
+
+## Deterministic live-corpus RAG evaluation
+
+Run the balanced RU/EN/KA locator suite inside the configured backend:
+
+```bash
+cd /root/infohub
+docker exec infohub-backend python /app/scripts/evaluate_rag_v2_live_corpus.py \
+  --commit "$(git rev-parse HEAD)" \
+  --output /tmp/rag_v2_live_corpus_report.json
+```
+
+This is a read-only retrieval check: `semantic_search` is explicitly disabled,
+so the run does not invoke translation or answer-generation LLMs. The report
+records corpus counts, suite hash, deployed commit, overall metrics,
+per-language metrics and individual failures. Copy accepted reports into
+`evaluation/baselines/`; do not silently replace a failed baseline.

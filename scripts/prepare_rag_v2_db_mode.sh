@@ -54,6 +54,8 @@ print(json.dumps(db_status(), ensure_ascii=False, indent=2))
 PY
 
 if [[ "$RUN_EVAL" == "1" ]]; then
-  echo "[rag-v2] running live-aware shadow eval"
-  "$PYTHON_BIN" scripts/run_rag_v2_shadow_eval.py
+  echo "[rag-v2] running deterministic live-corpus eval"
+  "$PYTHON_BIN" backend/scripts/evaluate_rag_v2_live_corpus.py \
+    --commit "$(git rev-parse HEAD)" \
+    --output reports/rag_v2_live_corpus_latest.json
 fi
