@@ -46,6 +46,11 @@ logger = logging.getLogger("decision_facts")
 # header, so v2 reads a longer head than v1 did.
 HEAD_CHARS = 4000
 TAIL_CHARS = 5000
+# The v2 schema can legitimately contain several article and prior-decision
+# references. 800 tokens truncated real production JSON before it could be
+# parsed, so keep an explicit, tested ceiling with enough room for the bounded
+# arrays below.
+MAX_OUTPUT_TOKENS = 1600
 
 SYSTEM_PROMPT = """You extract structured facts from Georgian tax/customs dispute decisions \
 (Revenue Service dispute council, Ministry of Finance dispute council, courts). \
@@ -57,7 +62,7 @@ The decision text is in Georgian. Respond with ONLY a JSON object, no prose, wit
 - decision_number: the decision number as printed (e.g. "26773/2/2026"), or null
 - decision_date: ISO date "YYYY-MM-DD" of the decision, or null
 - dispute_type: "tax", "customs", "both" or "other"
-- contested_articles: array of Georgian Tax Code article numbers explicitly at issue \
+- contested_articles: array of at most 20 Georgian Tax Code article numbers explicitly at issue \
 (as strings, e.g. ["275", "286"]); [] if none stated. Procedural citations that merely \
 authorize the ruling (e.g. article 304 as the legal basis of the resolution) do NOT count.
 - amount_gel: the disputed amount in GEL as a number, or null if not stated
@@ -69,7 +74,7 @@ Note: complaints are filed by taxpayers, so rejected complaint => authority prev
 
 - case_number: the internal case/complaint number if printed and distinct from decision_number \
 (e.g. the საჩივარი registration number), or null
-- prior_decisions: array of {"number": "...", "body": <same enum as authority_body or null>, \
+- prior_decisions: array of at most 10 {"number": "...", "body": <same enum as authority_body or null>, \
 "date": "YYYY-MM-DD" or null} — ONLY decisions/orders of a LOWER instance that THIS decision \
 reviews (the contested Revenue Service order, the council decision being appealed). Include only \
 explicit numbered references; [] if none. Never include this decision's own number.
@@ -93,6 +98,16 @@ def extract_one(llm: ChatOpenAI, doc: Document) -> dict:
     ])
     payload = json.loads(reply.content)
     return payload
+
+
+def build_llm() -> ChatOpenAI:
+    return ChatOpenAI(
+        model=settings.LLM_MODEL,
+        temperature=0,
+        max_tokens=MAX_OUTPUT_TOKENS,
+        openai_api_key=settings.OPENAI_API_KEY,
+        model_kwargs={"response_format": {"type": "json_object"}},
+    )
 
 
 def pending_document_ids(db, *, new_only: bool, limit: int) -> list:
@@ -165,13 +180,7 @@ def main() -> None:
         if not pending_ids:
             return
 
-        llm = ChatOpenAI(
-            model=settings.LLM_MODEL,
-            temperature=0,
-            max_tokens=800,
-            openai_api_key=settings.OPENAI_API_KEY,
-            model_kwargs={"response_format": {"type": "json_object"}},
-        )
+        llm = build_llm()
 
         done = failed = llm_calls = 0
         started = time.time()

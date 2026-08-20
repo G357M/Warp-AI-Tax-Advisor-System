@@ -60,6 +60,7 @@ jobs:
           tests/test_rag_v2_live_corpus_eval.py
           tests/test_answer_safety_eval.py
           tests/test_decision_fact_contract.py
+          tests/test_decision_fact_extractor.py
           tests/test_decision_fact_repair.py
           tests/test_decision_facts_quality_eval.py
           tests/test_security_hardening.py
