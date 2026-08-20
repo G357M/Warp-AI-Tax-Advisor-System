@@ -68,10 +68,10 @@ infohub.rs.ge / infohubapi.rs.ge
 
 ## Verified live state (2026-08-20)
 
-- `documents = 15125`
-- `document_chunks = 275719`
-- `court_decision documents = 11415`
-- `decision_facts = 11362`
+- `documents = 15126`
+- `document_chunks = 275821`
+- `court_decision documents = 11416`
+- `decision_facts = 11363`
 - `GET /api/v1/public/health` → `healthy`
 - origin TLS certificate → valid through `2026-11-17`
 
@@ -124,6 +124,7 @@ Main containers:
 8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а полный frontend tree — `npm audit` без известных уязвимостей на 2026-08-20. После контролируемой миграции на Next 16 / React 19 high/critical findings в production frontend являются жёстким CI-блокером.
 9. **Frontend runtime is current and checked.** Next 16 использует стандартный Turbopack, route types генерируются перед отдельным `tsc`, а React 19 hooks rules проходят без исключений. Desktop и 390 px smoke-test production-сборки подтверждает навигацию и мобильное меню.
 10. **ML runtime is CPU-only by contract.** PyTorch устанавливается из официального CPU index; Docker build и production preflight отклоняют CUDA-сборку до замены работающего backend.
+11. **Docker storage needs bounded retention.** На сервере достаточно места для безопасной поставки, но накоплены rollback images и build cache. Их нельзя удалять вслепую: следующий operations-этап должен закрепить число сохраняемых откатов и возраст cache pruning.
 
 ---
 
@@ -135,8 +136,7 @@ Main containers:
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
 - непрерывный RAG-eval на эталонных вопросах и контроль актуальности источников;
-- контролируемая ротация production JWT secret с явным окном завершения старых сессий;
-- перевод ML-зависимостей production-образа на CPU-only сборки без изменения retrieval quality;
+- ограниченная retention-политика для Docker rollback images и build cache;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
 - квартальный тест восстановления резервной копии, а не только факт её создания.

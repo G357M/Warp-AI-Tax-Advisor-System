@@ -16,6 +16,11 @@ application images, performs an isolated backend/DB preflight, validates Nginx,
 recreates the required containers and checks the public health endpoint.
 Untracked server-only diagnostic artifacts are preserved.
 
+If a fast-forward changes the deploy script itself, the running old copy
+re-executes the newly checked-out script before builds or container changes.
+This ensures a new preflight or rollback guard applies on the deployment that
+introduces it, rather than only on the following release.
+
 ## Origin TLS renewal
 
 Nginx serves the ACME HTTP-01 path from `/root/infohub/certbot/www`, so Certbot

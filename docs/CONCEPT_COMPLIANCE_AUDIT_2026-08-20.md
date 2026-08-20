@@ -14,14 +14,14 @@
 
 | Ось | Вердикт | Подтверждение | Оставшийся разрыв |
 |---|---|---|---|
-| Правовой корпус Грузии | **Сильное соответствие** | 15 125 документов, 275 719 чанков, 11 415 решений; PostgreSQL + pgvector | Нужны регулярные проверки свежести и полноты, особенно вне InfoHub |
+| Правовой корпус Грузии | **Сильное соответствие** | 15 126 документов, 275 821 чанк, 11 416 решений; PostgreSQL + pgvector | Нужны регулярные проверки свежести и полноты, особенно вне InfoHub |
 | Ответы по источникам | **Сильное соответствие** | `evidence` вычисляется кодом; источники несут статью, пункт, документ и URL; вне юрисдикции — отдельный статус | `grounded` означает документальную опору, но не юридическую верификацию вывода человеком |
 | Аналитика споров | **Соответствует** | 11 362 строки `decision_facts`, публичные агрегаты, суммы, статьи, цепочки и drill-down UI | Нужна выборочная экспертная валидация extraction и мониторинг качества новых данных |
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота 5 успешных вопросов/день, Pro/Business history, источники и удаление диалогов | Нет email verification, password reset, организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; desktop и 390 px browser smoke-test пройдены | Нужен постоянный visual-regression прогон, а не только ручной smoke-test |
 | Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов | Резервные копии есть, но квартальный restore drill ещё нужно формализовать |
-| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, ESLint 9 flat config, route typegen/type-check/build, dependency audit и Docker builds в CI; ручной CD с pinned host key | Следующий runtime-риск — размер backend-образа из-за GPU-вариантов ML-зависимостей |
+| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime | Нужна ограниченная retention-политика для rollback images и build cache |
 
 ## Что концептуально реализовано
 
@@ -53,6 +53,7 @@
 - Убран уязвимый стек `python-jose`/`ecdsa`; JWT переведён на `PyJWT[crypto]`.
 - Пароли проверяются напрямую совместимым bcrypt-форматом `$2b$`, а предел 72 UTF-8 bytes валидируется на API boundary.
 - Frontend Docker image собирается детерминированно через `npm ci`, использует standalone Next output и непривилегированного пользователя.
+- Backend использует `torch 2.13.0+cpu`; активный image по Docker inspect уменьшен с 3,163 ГБ до 492 МБ. Контрольный embedding и top-5 retrieval до и после перехода совпали побайтово.
 - GitHub CI проверяет актуальные контракты, а не удалённые или несуществующие тестовые команды.
 - Production CD оставлен ручным и использует pinned SSH host key; публичный health-check завершает поставку.
 
@@ -62,9 +63,13 @@
 
 Next 14 / React 18 переведены на Next 16.3.1 / React 19.2.8 без `npm audit --force`. Удалён устаревший `next lint`, включены ESLint 9 flat config и `next typegen`; новые React hooks checks устранены через корректное управление состоянием и отмену устаревших запросов. Полный frontend dependency tree проходит `npm audit` без известных уязвимостей.
 
-### P0 — следующий security/operations этап
+### Выполнено — JWT rotation и CPU-only ML runtime
 
-Контролируемо ротировать production JWT secret (с заранее объявленным завершением старых сессий) и затем перевести backend ML-зависимости на CPU-only wheels, проверив неизменность retrieval/evidence контрактов и rollback.
+Production JWT переведён на новый 256-bit ключ через ограниченное grace window:
+новые сессии подписываются только текущим ключом, а старый принимается лишь до
+явного UTC cutoff и затем удаляется финализатором с проверкой HTTP 401. Backend
+переведён на официальный CPU-only PyTorch wheel без изменения модели,
+размерности embedding или результатов контрольного retrieval.
 
 ### P1 — завершить коммерческий продукт
 
@@ -82,8 +87,9 @@ Next 14 / React 18 переведены на Next 16.3.1 / React 19.2.8 без `
 ### P2 — operational maturity
 
 1. Квартальный тест восстановления Hetzner snapshot и еженедельной копии БД с записью RPO/RTO.
-2. Самостоятельно размещённые webfonts или другой детерминированный путь сборки без зависимости от Google Fonts во время build.
-3. Постоянный visual-regression набор: desktop, 390 px, RU/KA/EN, ошибки, длинные источники и пустые состояния.
+2. Bounded retention для Docker build cache и rollback images с сохранением минимум одного проверенного отката.
+3. Самостоятельно размещённые webfonts или другой детерминированный путь сборки без зависимости от Google Fonts во время build.
+4. Постоянный visual-regression набор: desktop, 390 px, RU/KA/EN, ошибки, длинные источники и пустые состояния.
 
 ## Граница обещания продукта
 

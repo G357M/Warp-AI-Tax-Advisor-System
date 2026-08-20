@@ -26,10 +26,23 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     exit 1
 fi
 
-OLD_COMMIT="$(git rev-parse --short=12 HEAD)"
+RUNNING_COMMIT="$(git rev-parse --short=12 HEAD)"
+OLD_COMMIT="${INFOHUB_DEPLOY_FROM_COMMIT:-$RUNNING_COMMIT}"
 git fetch origin main
 git merge --ff-only origin/main
 NEW_COMMIT="$(git rev-parse --short=12 HEAD)"
+
+# A deploy can update this script while Bash is already reading the previous
+# file. Re-exec the checked-out version before any build or runtime mutation so
+# newly added safety gates take effect in the same deployment. Preserve the
+# original commit for rollback tags and the final deployment report.
+if [[ "${INFOHUB_DEPLOY_REEXECED:-0}" != "1" ]] && \
+    [[ "$RUNNING_COMMIT" != "$NEW_COMMIT" ]] && \
+    ! git diff --quiet "$RUNNING_COMMIT" "$NEW_COMMIT" -- scripts/deploy_production.sh; then
+    export INFOHUB_DEPLOY_REEXECED=1
+    export INFOHUB_DEPLOY_FROM_COMMIT="$OLD_COMMIT"
+    exec "$REPO_DIR/scripts/deploy_production.sh"
+fi
 
 chmod 600 .env
 install -d -m 0755 certbot/www
