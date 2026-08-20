@@ -120,7 +120,7 @@ Main containers:
 5. **Backups have two owner-confirmed layers.** Hetzner snapshots/backups и еженедельная полная копия БД на компьютер владельца; восстановление нужно проверять отдельно раз в квартал.
 6. **CI checks real contracts.** GitHub Actions запускает текущие security/quota/evidence/integration тесты, frontend lint/type-check/build, аудит production Python-зависимостей и сборку обоих Docker-образов.
 7. **Production CD is intentionally manual.** Workflow требует pinned `HETZNER_KNOWN_HOSTS` и отдельный SSH key; он вызывает тот же проверенный deploy-script и не подменяет его набором команд в YAML.
-8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а production frontend tree — `npm audit --omit=dev --audit-level=high` без известных уязвимостей на 2026-08-20. Миграция Next 16 / React 19 остаётся отдельным lifecycle-этапом и не выполняется через слепой `npm audit --force`.
+8. **Dependency baseline.** Production Python resolution проходит `pip-audit` без известных уязвимостей на 2026-08-20. GitHub advisory-база показывает 3 high в production frontend tree (`next`, вложенный `postcss`, `picomatch`); их исправление требует Next 16 / React 19 и выполняется отдельным regression-этапом, не через слепой `npm audit --force`. Critical findings уже являются жёстким CI-блокером.
 
 ---
 

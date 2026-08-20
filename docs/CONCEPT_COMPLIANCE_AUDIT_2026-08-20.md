@@ -60,7 +60,7 @@
 
 ### P0 — управляемая миграция frontend runtime
 
-Перевести Next 14 / React 18 на Next 16 / React 19 в отдельной ветке с визуальным и функциональным regression. Текущий production dependency tree проходит `npm audit --omit=dev --audit-level=high`; переход нужен для актуального lifecycle и новой платформы, а не как слепой `npm audit --force`, скрывающий крупное изменение API.
+Перевести Next 14 / React 18 на Next 16 / React 19 в отдельной ветке с визуальным и функциональным regression. GitHub advisory-база показывает три high в production dependency tree; автоматический `npm audit --force` неприемлем, потому что скрывает крупный переход API.
 
 ### P1 — завершить коммерческий продукт
 
