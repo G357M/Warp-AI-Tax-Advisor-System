@@ -277,7 +277,7 @@
 - **AI/ML**: LangChain, OpenAI/Anthropic
 
 ### 4.2 Frontend
-- **Framework**: Next.js 14+
+- **Framework**: Next.js 16
 - **Language**: TypeScript
 - **Styling**: TailwindCSS
 - **UI Components**: shadcn/ui

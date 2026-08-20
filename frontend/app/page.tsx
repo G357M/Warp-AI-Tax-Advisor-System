@@ -68,7 +68,6 @@ export default function Home() {
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
-    setStatsState('loading');
     fetch('/api/v1/analytics/decisions', { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: DecisionStats | null) => {
@@ -228,7 +227,13 @@ export default function Home() {
                 <p className="max-w-xl font-body text-sm font-light leading-relaxed text-white/60">
                   {t('stats.unavailable')}
                 </p>
-                <Button variant="glass" onClick={() => setStatsAttempt((n) => n + 1)}>
+                <Button
+                  variant="glass"
+                  onClick={() => {
+                    setStatsState('loading');
+                    setStatsAttempt((n) => n + 1);
+                  }}
+                >
                   {t('stats.retry')}
                 </Button>
               </div>

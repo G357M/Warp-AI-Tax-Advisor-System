@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authFetch } from '@/lib/auth';
 
 interface AdminDoc {
@@ -43,28 +43,28 @@ export default function AdminDocuments() {
   const [search, setSearch] = useState('');
   const [docType, setDocType] = useState('');
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    setLoading(true);
+  useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams({
       limit: String(PAGE_SIZE),
       offset: String(page * PAGE_SIZE),
     });
     if (search.trim()) params.set('search', search.trim());
     if (docType) params.set('doc_type', docType);
-    authFetch(`/api/v1/admin/documents?${params}`)
+    authFetch(`/api/v1/admin/documents?${params}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => {
         setItems(d.items);
         setTotal(d.total);
       })
       .catch(() => null)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, [search, docType, page]);
-
-  useEffect(load, [load]);
-  useEffect(() => setPage(0), [search, docType]);
 
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
@@ -79,9 +79,21 @@ export default function AdminDocuments() {
           style={{ ...input, width: '320px' }}
           placeholder="Поиск по названию или номеру…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setLoading(true);
+            setPage(0);
+            setSearch(e.target.value);
+          }}
         />
-        <select style={input} value={docType} onChange={(e) => setDocType(e.target.value)}>
+        <select
+          style={input}
+          value={docType}
+          onChange={(e) => {
+            setLoading(true);
+            setPage(0);
+            setDocType(e.target.value);
+          }}
+        >
           {TYPES.map((t) => (
             <option key={t} value={t} style={option}>{t || 'все типы'}</option>
           ))}
@@ -135,7 +147,10 @@ export default function AdminDocuments() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
         <button
-          onClick={() => setPage((p) => Math.max(p - 1, 0))}
+          onClick={() => {
+            setLoading(true);
+            setPage((p) => Math.max(p - 1, 0));
+          }}
           disabled={page === 0}
           style={{ ...input, cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}
         >
@@ -145,7 +160,10 @@ export default function AdminDocuments() {
           страница {page + 1} из {pages.toLocaleString('ru-RU')}
         </span>
         <button
-          onClick={() => setPage((p) => Math.min(p + 1, pages - 1))}
+          onClick={() => {
+            setLoading(true);
+            setPage((p) => Math.min(p + 1, pages - 1));
+          }}
           disabled={page >= pages - 1}
           style={{ ...input, cursor: page >= pages - 1 ? 'not-allowed' : 'pointer', opacity: page >= pages - 1 ? 0.4 : 1 }}
         >

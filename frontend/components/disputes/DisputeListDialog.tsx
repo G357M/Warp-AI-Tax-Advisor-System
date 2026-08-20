@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GlassDialog } from '@/components/ui/Dialog';
 import { DATE_LOCALES, useT } from '@/lib/i18n';
 import { DisputeFilter, OUTCOME_META, gel } from './shared';
@@ -46,34 +46,49 @@ export function DisputeListDialog({
   filter: DisputeFilter | null;
   onClose: () => void;
 }) {
+  if (!filter) return null;
+
+  return (
+    <DisputeListDialogContent
+      key={JSON.stringify(filter)}
+      filter={filter}
+      onClose={onClose}
+    />
+  );
+}
+
+function DisputeListDialogContent({
+  filter,
+  onClose,
+}: {
+  filter: DisputeFilter;
+  onClose: () => void;
+}) {
   const { t, lang } = useT();
   const locale = DATE_LOCALES[lang];
   const [data, setData] = useState<ListResponse | null>(null);
   const [items, setItems] = useState<DisputeItem[]>([]);
   const [error, setError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const requestSeq = useRef(0);
 
   useEffect(() => {
-    if (!filter) return;
-    const seq = ++requestSeq.current;
-    setData(null);
-    setItems([]);
-    setError(false);
-    fetch(`/api/v1/analytics/decisions/list?${filterParams(filter, 0)}`)
+    const controller = new AbortController();
+    fetch(`/api/v1/analytics/decisions/list?${filterParams(filter, 0)}`, {
+      signal: controller.signal,
+    })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((payload: ListResponse) => {
-        if (seq !== requestSeq.current) return;
         setData(payload);
         setItems(payload.items);
       })
       .catch(() => {
-        if (seq === requestSeq.current) setError(true);
+        if (!controller.signal.aborted) setError(true);
       });
+    return () => controller.abort();
   }, [filter]);
 
   const loadMore = () => {
-    if (!filter) return;
+    setError(false);
     setLoadingMore(true);
     fetch(`/api/v1/analytics/decisions/list?${filterParams(filter, items.length)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -83,15 +98,15 @@ export function DisputeListDialog({
   };
 
   const filterChips: string[] = [];
-  if (filter?.article) filterChips.push(t('stats.art', { n: filter.article }));
-  if (filter?.body) filterChips.push(t(`disputes.body.${filter.body}`));
-  if (filter?.outcome) filterChips.push(t(`disputes.outcome.${filter.outcome}`));
-  if (filter?.year) filterChips.push(String(filter.year));
-  if (filter?.has_amount) filterChips.push(t('disputes.with_amount'));
+  if (filter.article) filterChips.push(t('stats.art', { n: filter.article }));
+  if (filter.body) filterChips.push(t(`disputes.body.${filter.body}`));
+  if (filter.outcome) filterChips.push(t(`disputes.outcome.${filter.outcome}`));
+  if (filter.year) filterChips.push(String(filter.year));
+  if (filter.has_amount) filterChips.push(t('disputes.with_amount'));
 
   return (
     <GlassDialog
-      open={filter !== null}
+      open
       onOpenChange={(open) => !open && onClose()}
       closeLabel={t('disputes.dialog.close')}
       title={

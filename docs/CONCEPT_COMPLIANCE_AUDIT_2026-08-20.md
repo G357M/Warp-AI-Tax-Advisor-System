@@ -19,9 +19,9 @@
 | Аналитика споров | **Соответствует** | 11 362 строки `decision_facts`, публичные агрегаты, суммы, статьи, цепочки и drill-down UI | Нужна выборочная экспертная валидация extraction и мониторинг качества новых данных |
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота 5 успешных вопросов/день, Pro/Business history, источники и удаление диалогов | Нет email verification, password reset, организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
-| Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN | Нужен постоянный visual-regression прогон на 390 px и desktop; в этой проверке browser runtime был недоступен |
+| Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; desktop и 390 px browser smoke-test пройдены | Нужен постоянный visual-regression прогон, а не только ручной smoke-test |
 | Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов | Резервные копии есть, но квартальный restore drill ещё нужно формализовать |
-| Проверяемая поставка | **Сильное соответствие после модернизации** | Реальные backend contracts, lint/type-check/build, dependency audit и Docker builds в CI; ручной CD с pinned host key | Миграция Next 16 / React 19 остаётся отдельным контролируемым проектом |
+| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, ESLint 9 flat config, route typegen/type-check/build, dependency audit и Docker builds в CI; ручной CD с pinned host key | Следующий runtime-риск — размер backend-образа из-за GPU-вариантов ML-зависимостей |
 
 ## Что концептуально реализовано
 
@@ -45,7 +45,7 @@
 
 Код следует `DESIGN.md`: чистый чёрный фон, liquid-glass как основной материал, сигнальный красный для источников и действий, цитатная планка, serif-курсив в display-ролях, sans в тексте и общий футер продуктов Modern. RU/KA/EN используют одну компонентную систему, а анимации учитывают `prefers-reduced-motion`.
 
-Автоматическая проверка интерфейсных анти-паттернов прошла без замечаний, frontend lint/type-check/build успешны. Полноценный браузерный visual regression в этой сессии не выполнен из-за сбоя runtime установленного browser-плагина; это ограничение проверки, а не доказательство визуального дефекта.
+Автоматическая проверка интерфейсных анти-паттернов прошла без замечаний, frontend lint/type-check/build успешны. Production-сборка проверена в реальном браузере на desktop и 390 px: семантическая структура сохранена, мобильное меню открывается и закрывается при навигации.
 
 ## Безопасность и поставка
 
@@ -58,9 +58,13 @@
 
 ## Следующие этапы
 
-### P0 — управляемая миграция frontend runtime
+### Выполнено — управляемая миграция frontend runtime
 
-Перевести Next 14 / React 18 на Next 16 / React 19 в отдельной ветке с визуальным и функциональным regression. GitHub advisory-база показывает три high в production dependency tree; автоматический `npm audit --force` неприемлем, потому что скрывает крупный переход API.
+Next 14 / React 18 переведены на Next 16.3.1 / React 19.2.8 без `npm audit --force`. Удалён устаревший `next lint`, включены ESLint 9 flat config и `next typegen`; новые React hooks checks устранены через корректное управление состоянием и отмену устаревших запросов. Полный frontend dependency tree проходит `npm audit` без известных уязвимостей.
+
+### P0 — следующий security/operations этап
+
+Контролируемо ротировать production JWT secret (с заранее объявленным завершением старых сессий) и затем перевести backend ML-зависимости на CPU-only wheels, проверив неизменность retrieval/evidence контрактов и rollback.
 
 ### P1 — завершить коммерческий продукт
 

@@ -53,8 +53,8 @@ infohub.rs.ge / infohubapi.rs.ge
 - OpenAI / Anthropic integration
 
 ### Frontend
-- Next.js 14
-- React 18
+- Next.js 16.3.1
+- React 19.2.8
 - TypeScript
 - TailwindCSS
 
@@ -120,7 +120,8 @@ Main containers:
 5. **Backups have two owner-confirmed layers.** Hetzner snapshots/backups и еженедельная полная копия БД на компьютер владельца; восстановление нужно проверять отдельно раз в квартал.
 6. **CI checks real contracts.** GitHub Actions запускает текущие security/quota/evidence/integration тесты, frontend lint/type-check/build, аудит production Python-зависимостей и сборку обоих Docker-образов.
 7. **Production CD is intentionally manual.** Workflow требует pinned `HETZNER_KNOWN_HOSTS` и отдельный SSH key; он вызывает тот же проверенный deploy-script и не подменяет его набором команд в YAML.
-8. **Dependency baseline.** Production Python resolution проходит `pip-audit` без известных уязвимостей на 2026-08-20. GitHub advisory-база показывает 3 high в production frontend tree (`next`, вложенный `postcss`, `picomatch`); их исправление требует Next 16 / React 19 и выполняется отдельным regression-этапом, не через слепой `npm audit --force`. Critical findings уже являются жёстким CI-блокером.
+8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а полный frontend tree — `npm audit` без известных уязвимостей на 2026-08-20. После контролируемой миграции на Next 16 / React 19 high/critical findings в production frontend являются жёстким CI-блокером.
+9. **Frontend runtime is current and checked.** Next 16 использует стандартный Turbopack, route types генерируются перед отдельным `tsc`, а React 19 hooks rules проходят без исключений. Desktop и 390 px smoke-test production-сборки подтверждает навигацию и мобильное меню.
 
 ---
 
@@ -132,7 +133,8 @@ Main containers:
 - citation precision и explainability;
 - аккуратные incremental updates корпуса без слепого дубляжа;
 - непрерывный RAG-eval на эталонных вопросах и контроль актуальности источников;
-- миграция Next 14 → Next 16 / React 19 отдельным проверяемым этапом;
+- контролируемая ротация production JWT secret с явным окном завершения старых сессий;
+- перевод ML-зависимостей production-образа на CPU-only сборки без изменения retrieval quality;
 - email verification / password recovery и автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
 - квартальный тест восстановления резервной копии, а не только факт её создания.

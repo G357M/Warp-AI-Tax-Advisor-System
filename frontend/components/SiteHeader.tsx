@@ -37,7 +37,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { lang, t } = useT();
   const [authed, setAuthed] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = openPath === pathname;
 
   useEffect(() => {
     const sync = () => setAuthed(isLoggedIn());
@@ -49,8 +50,6 @@ export function SiteHeader() {
       window.removeEventListener('storage', sync);
     };
   }, []);
-
-  useEffect(() => setOpen(false), [pathname]);
 
   if (pathname?.startsWith('/admin')) return null;
 
@@ -75,7 +74,7 @@ export function SiteHeader() {
   return (
     <header className="fixed inset-x-0 top-4 z-50 px-4">
       <div className="mx-auto flex max-w-page items-center justify-between gap-3">
-        <Link href="/" className="flex shrink-0 items-baseline gap-1.5" onClick={() => setOpen(false)}>
+        <Link href="/" className="flex shrink-0 items-baseline gap-1.5" onClick={() => setOpenPath(null)}>
           <span className="font-heading text-2xl italic leading-none text-white">Tax</span>
           <span className="font-heading text-2xl italic leading-none text-primary">Advisor</span>
         </Link>
@@ -106,7 +105,7 @@ export function SiteHeader() {
         {/* Mobile: burger */}
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpenPath(open ? null : pathname)}
           aria-expanded={open}
           aria-label={t('nav.menu')}
           className="liquid-glass -mr-1 flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-[5px] rounded-full lg:hidden"
@@ -135,7 +134,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setOpen(false)}
+              onClick={() => setOpenPath(null)}
               className="block border-b border-white/10 py-3.5 font-heading text-xl italic text-white last:border-0"
             >
               {item.name}
@@ -145,7 +144,7 @@ export function SiteHeader() {
             <LangSwitch lang={lang} />
             <Link
               href={accountHref}
-              onClick={() => setOpen(false)}
+              onClick={() => setOpenPath(null)}
               className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full bg-primary px-5 text-sm font-medium text-white transition-all duration-300 hover:bg-[#B91C1C]"
             >
               {accountLabel}

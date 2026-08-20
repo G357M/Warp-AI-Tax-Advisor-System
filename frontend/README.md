@@ -1,12 +1,12 @@
 # InfoHub AI Tax Advisor - Frontend
 
-Next.js 14 frontend application for InfoHub AI Tax Advisor.
+Next.js 16 frontend application for InfoHub AI Tax Advisor.
 
 ## Features
 
 - 🎨 Modern UI with TailwindCSS
 - 💬 Real-time chat interface
-- 🔐 JWT-based authentication
+- 🔐 HttpOnly cookie sessions with legacy Bearer compatibility
 - 📱 Responsive design
 - 🌐 TypeScript for type safety
 
@@ -14,7 +14,7 @@ Next.js 14 frontend application for InfoHub AI Tax Advisor.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - npm or yarn
 
 ### Installation
@@ -57,6 +57,7 @@ frontend/
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run type-check` - Generate Next route types and run TypeScript
 
 ## Deployment
 
@@ -76,7 +77,8 @@ The easiest way to deploy is using the [Vercel Platform](https://vercel.com).
 
 ## Technologies
 
-- **Next.js 14** - React framework
+- **Next.js 16** - React framework
+- **React 19** - UI runtime
 - **TypeScript** - Type safety
 - **TailwindCSS** - Utility-first CSS
 - **Axios** - HTTP client

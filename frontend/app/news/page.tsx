@@ -52,7 +52,6 @@ export default function NewsPage() {
 
   useEffect(() => {
     const seq = ++requestSeq.current;
-    setError(false);
     const params = new URLSearchParams({ limit: String(PAGE) });
     if (subtype) params.set('subtype', subtype);
     if (query) params.set('search', query);
@@ -69,6 +68,7 @@ export default function NewsPage() {
   }, [subtype, query]);
 
   const loadMore = () => {
+    setError(false);
     setLoadingMore(true);
     const params = new URLSearchParams({ limit: String(PAGE), offset: String(items.length) });
     if (subtype) params.set('subtype', subtype);
@@ -104,7 +104,10 @@ export default function NewsPage() {
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setError(false);
+            setSearch(e.target.value);
+          }}
           placeholder={t('news.search')}
           aria-label={t('news.search')}
           className="h-11 w-full max-w-md rounded-full border border-white/15 bg-white/5 px-5 text-[14px] text-white placeholder:text-white/50"
@@ -113,7 +116,10 @@ export default function NewsPage() {
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         <button
-          onClick={() => setSubtype(null)}
+          onClick={() => {
+            setError(false);
+            setSubtype(null);
+          }}
           className={`rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
             subtype === null
               ? 'border-primary bg-primary text-white'
@@ -129,7 +135,10 @@ export default function NewsPage() {
           return (
             <button
               key={s}
-              onClick={() => setSubtype(s === subtype ? null : s)}
+              onClick={() => {
+                setError(false);
+                setSubtype(s === subtype ? null : s);
+              }}
               className={`rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
                 subtype === s
                   ? 'border-primary bg-primary text-white'

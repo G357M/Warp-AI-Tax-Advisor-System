@@ -82,9 +82,8 @@ jobs:
       - run: npm run type-check
       - run: npm run build
 
-      # Three known high advisories currently require the separate breaking
-      # Next 16/React 19 migration. Critical findings remain a hard gate now.
-      - run: npm audit --omit=dev --audit-level=critical
+      # Production dependencies must remain free of high/critical advisories.
+      - run: npm audit --omit=dev --audit-level=high
 
   containers:
     name: Production image builds

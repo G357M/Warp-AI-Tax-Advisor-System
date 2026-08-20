@@ -128,7 +128,7 @@ Backend ищет релевантные chunks, затем собирает ко
 
 #### 5. API и frontend
 - **FastAPI** обслуживает public и internal endpoints;
-- **Next.js 14** — пользовательский фронтенд сайта `tax-advisor.ge`.
+- **Next.js 16** — пользовательский фронтенд сайта `tax-advisor.ge`.
 
 ---
 
@@ -144,8 +144,8 @@ Backend ищет релевантные chunks, затем собирает ко
 - OpenAI / Anthropic integration
 
 ### Frontend
-- Next.js 14
-- React 18
+- Next.js 16
+- React 19
 - TypeScript
 - TailwindCSS
 

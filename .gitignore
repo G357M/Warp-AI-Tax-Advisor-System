@@ -73,6 +73,11 @@ lerna-debug.log*
 .next/
 out/
 .vercel
+*.tsbuildinfo
+
+# Local browser/design audit artifacts
+.playwright-cli/
+.impeccable/
 
 # React
 build/
