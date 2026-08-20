@@ -1,7 +1,7 @@
 """
 Security utilities for authentication and authorization.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 from jwt import PyJWTError
@@ -20,6 +20,30 @@ security = HTTPBearer(auto_error=False)
 SESSION_COOKIE_NAME = "ta_session"
 
 
+def _jwt_verification_keys() -> list[str]:
+    """Return the active signing key plus unexpired rotation fallback keys."""
+    keys = [settings.JWT_SECRET_KEY]
+    previous = settings.JWT_PREVIOUS_SECRET_KEYS
+    accept_until_raw = settings.JWT_PREVIOUS_SECRET_ACCEPT_UNTIL
+
+    if not previous or not accept_until_raw:
+        return keys
+
+    try:
+        accept_until = datetime.fromisoformat(accept_until_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return keys
+    if accept_until.tzinfo is None:
+        accept_until = accept_until.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) >= accept_until:
+        return keys
+
+    for key in (candidate.strip() for candidate in previous.split(",")):
+        if key and key not in keys:
+            keys.append(key)
+    return keys
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create JWT access token.
@@ -33,9 +57,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -52,11 +76,12 @@ def verify_token(token: str) -> Optional[dict]:
     Returns:
         Token payload or None if invalid
     """
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload
-    except PyJWTError:
-        return None
+    for key in _jwt_verification_keys():
+        try:
+            return jwt.decode(token, key, algorithms=[settings.ALGORITHM])
+        except PyJWTError:
+            continue
+    return None
 
 
 def hash_password(password: str) -> str:

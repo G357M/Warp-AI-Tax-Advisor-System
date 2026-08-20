@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = Field(..., env="SECRET_KEY")
     JWT_SECRET_KEY: str = Field(..., env="JWT_SECRET_KEY")
+    JWT_PREVIOUS_SECRET_KEYS: str = Field(default="", env="JWT_PREVIOUS_SECRET_KEYS")
+    JWT_PREVIOUS_SECRET_ACCEPT_UNTIL: str = Field(
+        default="",
+        env="JWT_PREVIOUS_SECRET_ACCEPT_UNTIL",
+    )
     ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")

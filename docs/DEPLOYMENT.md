@@ -297,6 +297,24 @@ OPENAI_API_KEY=your_production_key
 DOMAIN=yourdomain.com
 ```
 
+### Безостановочная ротация JWT
+
+Сначала разверните версию backend с поддержкой
+`JWT_PREVIOUS_SECRET_ACCEPT_UNTIL`. Затем из корня production-репозитория
+выполните:
+
+```bash
+./scripts/rotate_jwt_secret.sh 35
+```
+
+Окно должно быть минимум на пять минут длиннее
+`ACCESS_TOKEN_EXPIRE_MINUTES`. Скрипт создаёт новый 256-bit ключ, атомарно
+обновляет `.env`, пересоздаёт только backend и проверяет через API как старый,
+так и новый токен. Предыдущий ключ принимается кодом только до UTC cutoff,
+поэтому он не остаётся бессрочным fallback. При любой ошибке скрипт
+восстанавливает `.env` из закрытой копии в `.state/jwt-rotation/` и возвращает
+backend на прежнюю конфигурацию.
+
 ### 4. SSL сертификаты
 
 ```bash

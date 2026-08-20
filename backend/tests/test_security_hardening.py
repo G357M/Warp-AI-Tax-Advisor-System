@@ -3,9 +3,11 @@
 import asyncio
 import json
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import jwt
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 
@@ -16,8 +18,10 @@ from core.security import (
     create_access_token,
     get_current_user,
     hash_password,
+    verify_token,
     verify_password,
 )
+from core.config import settings
 
 
 def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
@@ -138,6 +142,57 @@ def test_http_only_session_cookie_authenticates_without_bearer_header():
     request = _request(headers={"Cookie": f"ta_session={token}"})
 
     assert get_current_user(request=request, credentials=None, db=FakeDb()) is user
+
+
+def test_previous_jwt_key_is_accepted_only_during_rotation_window(monkeypatch):
+    current_key = "current-test-key-with-at-least-32-characters"
+    previous_key = "previous-test-key-with-at-least-32-characters"
+    token = jwt.encode(
+        {
+            "sub": "legacy-session",
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+        },
+        previous_key,
+        algorithm="HS256",
+    )
+
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", current_key)
+    monkeypatch.setattr(settings, "JWT_PREVIOUS_SECRET_KEYS", previous_key)
+    monkeypatch.setattr(
+        settings,
+        "JWT_PREVIOUS_SECRET_ACCEPT_UNTIL",
+        (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+    )
+    assert verify_token(token)["sub"] == "legacy-session"
+
+    monkeypatch.setattr(
+        settings,
+        "JWT_PREVIOUS_SECRET_ACCEPT_UNTIL",
+        (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+    )
+    assert verify_token(token) is None
+
+
+def test_new_tokens_are_signed_only_with_current_jwt_key(monkeypatch):
+    current_key = "current-test-key-with-at-least-32-characters"
+    previous_key = "previous-test-key-with-at-least-32-characters"
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", current_key)
+    monkeypatch.setattr(settings, "JWT_PREVIOUS_SECRET_KEYS", previous_key)
+    monkeypatch.setattr(
+        settings,
+        "JWT_PREVIOUS_SECRET_ACCEPT_UNTIL",
+        (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+    )
+
+    token = create_access_token({"sub": "new-session"})
+
+    assert jwt.decode(token, current_key, algorithms=["HS256"])["sub"] == "new-session"
+    try:
+        jwt.decode(token, previous_key, algorithms=["HS256"])
+    except jwt.InvalidSignatureError:
+        pass
+    else:
+        raise AssertionError("new token unexpectedly used the previous JWT key")
 
 
 def test_login_sets_http_only_same_site_session_cookie(monkeypatch):
