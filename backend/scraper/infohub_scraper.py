@@ -6,7 +6,6 @@ import logging
 import re
 import hashlib
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime
 from urllib.parse import urlparse, urljoin
 import aiohttp
 from sqlalchemy.orm import Session
@@ -17,6 +16,7 @@ from models.document import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
 from rag.vector_store_pgvector import vector_store
 from core.config import settings
+from core.time_utils import utc_now
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class InfoHubScraper(BaseScraper):
         metadata = {
             'url': url,
             'source': 'infohub.rs.ge',
-            'scraped_at': datetime.utcnow().isoformat(),
+            'scraped_at': utc_now().isoformat(),
         }
         title_tag = soup.find('h1') or soup.find('title')
         if title_tag:

@@ -1,7 +1,6 @@
 """
 SQLAlchemy models for users and authentication.
 """
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, String, DateTime, Boolean
@@ -9,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from core.time_utils import utc_now
 
 
 class User(Base):
@@ -22,7 +22,7 @@ class User(Base):
     role = Column(String(20), nullable=False, default="user")  # guest | user | admin
     is_active = Column(Boolean, default=True, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     last_login = Column(DateTime, nullable=True)
 
     conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")

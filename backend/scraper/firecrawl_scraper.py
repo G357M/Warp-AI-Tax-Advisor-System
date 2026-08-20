@@ -5,7 +5,6 @@ import asyncio
 import logging
 import hashlib
 from typing import List, Dict, Optional
-from datetime import datetime
 import requests
 from sqlalchemy.orm import Session
 
@@ -14,6 +13,7 @@ from models.document import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
 from rag.vector_store import vector_store
 from core.config import settings
+from core.time_utils import utc_now
 
 
 logger = logging.getLogger(__name__)
@@ -153,7 +153,7 @@ class FirecrawlScraper:
             # Create document metadata
             doc_metadata = {
                 'source': 'infohub.rs.ge',
-                'scraped_at': datetime.utcnow().isoformat(),
+                'scraped_at': utc_now().isoformat(),
                 'species': metadata.get('species'),
                 'page': metadata.get('page'),
                 'firecrawl': True,

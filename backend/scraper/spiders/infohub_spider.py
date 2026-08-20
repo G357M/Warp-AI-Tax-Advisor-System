@@ -2,8 +2,9 @@
 Scrapy spider skeleton for infohub.rs.ge.
 """
 import scrapy
-from datetime import datetime
 from typing import Iterator
+
+from core.time_utils import utc_now
 
 
 class InfoHubSpider(scrapy.Spider):
@@ -35,7 +36,7 @@ class InfoHubSpider(scrapy.Spider):
         yield {
             "type": "discovery",
             "url": response.url,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "status": "skeleton_implementation",
         }
 
@@ -69,7 +70,7 @@ class InfoHubSpider(scrapy.Spider):
             "date_published": None,
             "language": "ka",
             "content": None,  # response.css('div.content::text').getall(),
-            "scraped_at": datetime.utcnow().isoformat(),
+            "scraped_at": utc_now().isoformat(),
         }
 
         yield document_data

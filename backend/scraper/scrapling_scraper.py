@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import aiohttp
 
 from scraper.base_scraper import BaseScraper
+from core.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class ScraplingScraper(BaseScraper):
             "url": url,
             "title": self.clean_text(title),
             "extraction_mode": extraction_mode,
-            "scraped_at": datetime.utcnow().isoformat(),
+            "scraped_at": utc_now().isoformat(),
             "content_length": len(main_text),
             "html": main_html,
             "text": main_text,

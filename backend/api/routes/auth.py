@@ -1,7 +1,7 @@
 """
 Authentication API routes.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from core.security import (
     SESSION_COOKIE_NAME,
 )
 from core.config import settings
+from core.time_utils import utc_now
 from models import User
 from api.schemas import UserRegister, UserLogin, Token, UserResponse
 
@@ -79,7 +80,7 @@ def login(credentials: UserLogin, response: Response, db: Session = Depends(get_
         )
     
     # Update last login
-    user.last_login = datetime.utcnow()
+    user.last_login = utc_now()
     db.commit()
     
     # Create access token

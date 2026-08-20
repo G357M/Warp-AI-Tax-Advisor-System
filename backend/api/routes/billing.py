@@ -1,7 +1,7 @@
 """
 Billing: subscription state, checkout, and manual activation by an admin.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +12,7 @@ from billing.gateway import get_gateway, PLAN_PRICES_GEL
 from core.database import get_db
 from core.plans import get_active_plan
 from core.security import get_current_user, require_admin
+from core.time_utils import utc_now
 from models import User, Subscription, Payment
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -68,7 +69,7 @@ def activate_subscription(
     if not user:
         raise HTTPException(status_code=404, detail="User with this email not found")
 
-    now = datetime.utcnow()
+    now = utc_now()
     sub = db.query(Subscription).filter_by(user_id=user.id).first()
     base = now
     if sub and sub.period_end and sub.period_end > now and sub.plan == body.plan:

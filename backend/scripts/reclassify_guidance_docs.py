@@ -13,7 +13,6 @@ Usage (inside infohub-backend):
 """
 import argparse
 import sys
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import or_
 
 from core.database import SessionLocal
+from core.time_utils import utc_now
 from models.document import Document
 
 
@@ -46,7 +46,7 @@ def main() -> None:
             print(f"news -> guideline | {doc.id} | {doc.title[:90]}")
             if args.apply:
                 doc.document_type = "guideline"
-                doc.updated_at = datetime.utcnow()
+                doc.updated_at = utc_now()
         if args.apply:
             db.commit()
             print(f"Updated {len(rows)} documents.")

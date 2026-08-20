@@ -3,7 +3,6 @@ Query processing API routes.
 """
 import logging
 import time
-from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.plans import get_active_plan, check_and_count_question, refund_question, require_plan
 from core.security import get_current_user
+from core.time_utils import utc_now
 from models import User, Conversation, Message
 from api.schemas import ConversationResponse, QueryRequest, QueryResponse, SourceInfo
 from api.evidence import attach_evidence
@@ -114,7 +114,7 @@ def process_query(
             content=result["response"],
             sources=result.get("sources", []),
         ))
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = utc_now()
         db.commit()
     except Exception:
         db.rollback()

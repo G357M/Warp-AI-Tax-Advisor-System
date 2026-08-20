@@ -1,6 +1,6 @@
 """Current API integration tests using an isolated in-memory database."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from types import ModuleType, SimpleNamespace
 import sys
 
@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+from core.time_utils import utc_now
 
 # API route imports must stay deterministic in CI: the real RAG modules load a
 # multi-gigabyte embedding model and verify pgvector at import time. Integration
@@ -150,8 +152,8 @@ def test_pro_query_persists_answer_sources_and_supports_deletion(client, monkeyp
         user_id=user.id,
         plan="pro",
         status="active",
-        period_start=datetime.utcnow(),
-        period_end=datetime.utcnow() + timedelta(days=30),
+        period_start=utc_now(),
+        period_end=utc_now() + timedelta(days=30),
     ))
     db.commit()
     db.close()

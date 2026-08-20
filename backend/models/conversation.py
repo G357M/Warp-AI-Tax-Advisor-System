@@ -1,7 +1,6 @@
 """
 SQLAlchemy models for conversations and messages.
 """
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, String, DateTime, Text, JSON, ForeignKey
@@ -9,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from core.time_utils import utc_now
 
 
 class Conversation(Base):
@@ -18,8 +18,8 @@ class Conversation(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     user = relationship("User", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")
@@ -34,6 +34,6 @@ class Message(Base):
     content = Column(Text, nullable=False)
     sources = Column(JSON, nullable=True)  # Links to documents
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     conversation = relationship("Conversation", back_populates="messages")

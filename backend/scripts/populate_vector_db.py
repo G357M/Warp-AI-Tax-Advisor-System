@@ -19,7 +19,6 @@ import asyncio
 import logging
 import argparse
 from pathlib import Path
-from datetime import datetime
 from typing import Dict, Set
 
 # Add backend to path
@@ -28,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from scraper.infohub_scraper import InfoHubScraper
 from rag.vector_store import vector_store
 from core.config import settings
+from core.time_utils import utc_now
 
 
 # State file location
@@ -96,7 +96,7 @@ class ScraperState:
     def record_run(self, documents_scraped: int, pages_visited: int):
         """Record scraping run statistics."""
         run_info = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': utc_now().isoformat(),
             'documents_scraped': documents_scraped,
             'pages_visited': pages_visited,
         }
@@ -130,7 +130,7 @@ async def run_incremental_scrape(
         initial_run: If True, ignore previous state
     """
     logger.info("=" * 80)
-    logger.info(f"Starting incremental scrape at {datetime.utcnow().isoformat()}")
+    logger.info(f"Starting incremental scrape at {utc_now().isoformat()}")
     logger.info(f"Start URL: {start_url}")
     logger.info(f"Max pages: {max_pages}, Max depth: {max_depth}")
     logger.info("=" * 80)

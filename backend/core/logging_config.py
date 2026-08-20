@@ -4,10 +4,11 @@ Structured JSON logging configuration.
 import logging
 import json
 import sys
-from datetime import datetime
 from typing import Any, Dict
 from fastapi import Request
 import traceback
+
+from core.time_utils import utc_now
 
 
 class JSONFormatter(logging.Formatter):
@@ -16,7 +17,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_data: Dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_now().isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

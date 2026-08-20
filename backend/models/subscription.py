@@ -1,7 +1,6 @@
 """
 SQLAlchemy models for subscriptions and payments.
 """
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, String, DateTime, Boolean, Float, ForeignKey, JSON, Index
@@ -9,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from core.time_utils import utc_now
 
 
 class Subscription(Base):
@@ -24,8 +24,8 @@ class Subscription(Base):
     payment_provider = Column(String(20), nullable=True)           # manual | bog
     external_id = Column(String(255), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     user = relationship("User")
     payments = relationship("Payment", back_populates="subscription", cascade="all, delete-orphan")
@@ -42,7 +42,7 @@ class Payment(Base):
     provider_tx_id = Column(String(255), nullable=True)
     status = Column(String(20), nullable=False, default="succeeded")  # succeeded | pending | failed
     raw_webhook = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     subscription = relationship("Subscription", back_populates="payments")
 

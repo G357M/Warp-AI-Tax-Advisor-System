@@ -2,7 +2,7 @@
 Admin API: real system stats, document/user management, ops visibility.
 All endpoints require the admin role.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.security import require_admin
+from core.time_utils import utc_now
 from models import Feedback, User
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
@@ -134,7 +135,7 @@ def list_users(
         ORDER BY u.created_at DESC
         LIMIT :limit OFFSET :offset
     """), {"limit": limit, "offset": offset}).all()
-    now = datetime.utcnow()
+    now = utc_now()
     items = []
     for r in rows:
         plan = "free"

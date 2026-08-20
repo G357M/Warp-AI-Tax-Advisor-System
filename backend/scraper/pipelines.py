@@ -2,11 +2,11 @@
 Scrapy pipelines for processing scraped documents.
 """
 import hashlib
-from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from core.database import SessionLocal
+from core.time_utils import utc_now
 from models import Document
 
 
@@ -61,7 +61,7 @@ class DocumentPipeline:
                 if existing.file_hash != file_hash:
                     existing.full_text = content
                     existing.file_hash = file_hash
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = utc_now()
                     self.session.commit()
                     spider.logger.info(f"Updated document: {item.get('url')}")
                 else:

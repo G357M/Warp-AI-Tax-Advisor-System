@@ -6,13 +6,13 @@ import logging
 from typing import List, Dict, Optional
 from playwright.async_api import async_playwright, Page, Browser
 import hashlib
-from datetime import datetime
 
 from core.database import SessionLocal
 from models.document import Document, DocumentChunk
 from rag.embeddings import embeddings_generator
 from rag.vector_store import vector_store
 from core.config import settings
+from core.time_utils import utc_now
 
 
 logger = logging.getLogger(__name__)
@@ -207,7 +207,7 @@ class PlaywrightInfoHubScraper:
                 file_hash=content_hash,
                 metadata_json={
                     'source': 'infohub.rs.ge',
-                    'scraped_at': datetime.utcnow().isoformat(),
+                    'scraped_at': utc_now().isoformat(),
                     'scraper': 'playwright',
                     **doc_data.get('metadata', {})
                 },

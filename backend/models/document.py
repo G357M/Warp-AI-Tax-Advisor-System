@@ -2,7 +2,6 @@
 SQLAlchemy models for documents and related entities.
 """
 from __future__ import annotations
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -23,6 +22,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from core.time_utils import utc_now
 
 
 class Document(Base):
@@ -45,8 +45,8 @@ class Document(Base):
     file_hash = Column(String(64), nullable=True)
     metadata_json = Column("metadata", JSON, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
     relations_from = relationship("DocumentRelation", back_populates="source_document", foreign_keys="DocumentRelation.source_doc_id", cascade="all, delete-orphan")
@@ -75,7 +75,7 @@ class DocumentChunk(Base):
     embedding = Column(Vector(768), nullable=True)  # paraphrase-mpnet (legacy)
     embedding_v2 = Column(Vector(1024), nullable=True)  # bge-m3 (Phase 5)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     document = relationship("Document", back_populates="chunks")
 
@@ -90,7 +90,7 @@ class DocumentRelation(Base):
     source_doc_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     target_doc_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     relation_type = Column(String(50), nullable=True)  # amends | references | repeals
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     source_document = relationship("Document", foreign_keys=[source_doc_id], back_populates="relations_from")
     target_document = relationship("Document", foreign_keys=[target_doc_id], back_populates="relations_to")
@@ -120,7 +120,7 @@ class DecisionFacts(Base):
     raw_json = Column(JSON, nullable=True)               # full LLM extraction payload
     model = Column(String(60), nullable=True)
     extraction_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     document = relationship("Document")
 
@@ -148,7 +148,7 @@ class DecisionLink(Base):
     to_facts_id = Column(UUID(as_uuid=True), ForeignKey("decision_facts.id", ondelete="CASCADE"), nullable=False)
     method = Column(String(20), nullable=False)          # 'prior_ref' | 'case_number'
     confidence = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     __table_args__ = (UniqueConstraint("from_facts_id", "to_facts_id", name="uq_decision_links_pair"),)
 
@@ -178,7 +178,7 @@ class LawAmendment(Base):
     raw_json = Column(JSON, nullable=True)
     model = Column(String(60), nullable=True)
     extraction_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     amendment_document = relationship("Document", foreign_keys=[amendment_doc_id])
     target_law_document = relationship("Document", foreign_keys=[target_law_doc_id])

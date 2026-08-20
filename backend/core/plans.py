@@ -5,7 +5,7 @@ Plan resolution: admin -> business; active subscription within its period ->
 its plan; otherwise free. Quotas are daily Redis counters (fail-open when
 Redis is unavailable so billing never takes the chat down).
 """
-from datetime import datetime, date
+from datetime import date
 from typing import Optional
 
 import redis
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import get_db
 from core.security import get_current_user
+from core.time_utils import utc_now
 from models import User, Subscription
 
 PLAN_ORDER = {"free": 0, "pro": 1, "business": 2}
@@ -38,7 +39,7 @@ def get_active_plan(db: Session, user: User) -> str:
         return "business"
     sub = db.query(Subscription).filter_by(user_id=user.id, status="active").first()
     if sub and sub.plan in PLAN_ORDER:
-        if sub.period_end is None or sub.period_end >= datetime.utcnow():
+        if sub.period_end is None or sub.period_end >= utc_now():
             return sub.plan
     return "free"
 
