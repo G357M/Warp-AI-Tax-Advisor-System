@@ -159,3 +159,36 @@ def test_anomaly_manifest_samples_each_operational_queue():
     assert "missing_decision_number" in sql
     assert "missing_decision_date" in sql
     assert "unclear_outcome" in sql
+
+
+def test_current_expert_review_baseline_matches_current_contract():
+    contract = facts_eval.load_contract()
+    contract_bytes = json.dumps(
+        contract, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        facts_eval.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "decision_facts_quality_2026-08-20_48c9e88.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    assert baseline["contract_sha256"] == hashlib.sha256(contract_bytes).hexdigest()
+    assert baseline["contract_version"] == contract["contract_version"]
+    assert baseline["deployed_commit"].startswith("48c9e88")
+    assert baseline["failed_metrics"] == {}
+    assert set(baseline) == set(facts_eval.BASELINE_FIELDS)
+    assert baseline["review_sample_counts"] == {
+        "stratified_records": 19,
+        "anomaly_records": 18,
+        "unique_documents": 35,
+        "anomaly_categories": {
+            "duplicate_decision_identity": 3,
+            "missing_decision_date": 3,
+            "missing_decision_number": 3,
+            "non_simple_article_reference": 3,
+            "outcome_alignment": 3,
+            "unclear_outcome": 3,
+        },
+    }

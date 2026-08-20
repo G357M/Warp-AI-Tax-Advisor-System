@@ -272,14 +272,14 @@ report in two steps. First capture the exact item count and report hash:
 ```bash
 cd /root/infohub
 python3 backend/scripts/build_decision_facts_review_bundle.py \
-  --input .state/decision_facts_quality_report.json
+  --input .state/decision_facts_quality_nightly_report.json
 ```
 
 Then materialize only that reviewed scope into a new directory:
 
 ```bash
 python3 backend/scripts/build_decision_facts_review_bundle.py \
-  --input .state/decision_facts_quality_report.json \
+  --input .state/decision_facts_quality_nightly_report.json \
   --output-dir .state/decision-facts-expert-review/REVIEW_ID \
   --execute \
   --expected-items N \
