@@ -10,6 +10,7 @@ import os
 from typing import Any, Dict
 
 PLAN_PRICES_GEL = {"pro": 49.0, "business": 149.0}
+CHECKOUT_CONTACT_EMAIL = "ggrishikashvili@gmail.com"
 
 
 class ManualGateway:
@@ -21,9 +22,10 @@ class ManualGateway:
             "provider": self.name,
             "plan": plan,
             "amount_gel": price,
+            "contact_email": CHECKOUT_CONTACT_EMAIL,
             "instructions": (
                 f"Тариф {plan.capitalize()} — {price:g} ₾/мес. Онлайн-оплата скоро подключится; "
-                "пока напишите нам на ggrishikashvili@gmail.com — выставим счёт и активируем "
+                f"пока напишите нам на {CHECKOUT_CONTACT_EMAIL} — выставим счёт и активируем "
                 "подписку вручную в течение рабочего дня."
             ),
         }

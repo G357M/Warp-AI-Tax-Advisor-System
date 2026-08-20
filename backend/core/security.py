@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.hash import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,8 @@ from models import User
 
 
 # HTTP Bearer for token authentication
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+SESSION_COOKIE_NAME = "ta_session"
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -85,7 +86,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
     """
@@ -107,7 +109,9 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    token = credentials.credentials
+    token = credentials.credentials if credentials else request.cookies.get(SESSION_COOKIE_NAME)
+    if not token:
+        raise credentials_exception
     payload = verify_token(token)
     
     if payload is None:

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { register } from '@/lib/auth';
+import { AuthClientError, register } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { useT } from '@/lib/i18n';
 
@@ -27,8 +27,17 @@ export default function RegisterPage() {
     try {
       await register(username.trim(), email.trim(), password);
       router.push('/account');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const key = err instanceof AuthClientError && err.code === 'username_exists'
+        ? 'reg.err.username'
+        : err instanceof AuthClientError && err.code === 'email_exists'
+          ? 'reg.err.email'
+          : err instanceof AuthClientError && err.code === 'credentials'
+            ? 'auth.err.credentials'
+            : err instanceof AuthClientError && err.code === 'inactive'
+              ? 'auth.err.inactive'
+              : 'reg.err.service';
+      setError(t(key));
     } finally {
       setBusy(false);
     }

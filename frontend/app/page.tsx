@@ -17,7 +17,7 @@ interface DecisionStats {
 
 const PLAN_FEATURE_KEYS: Record<string, string[]> = {
   free: ['plan.free.f1', 'plan.free.f2', 'plan.free.f3'],
-  pro: ['plan.pro.f1', 'plan.pro.f2', 'plan.pro.f3', 'plan.pro.f4'],
+  pro: ['plan.pro.f1', 'plan.pro.f2'],
   business: ['plan.business.f1', 'plan.business.f2', 'plan.business.f3'],
 };
 

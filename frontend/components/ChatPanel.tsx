@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@/hooks/useQuery';
 import { Button } from '@/components/ui/Button';
 import { SourceChip } from '@/components/ui/SourceChip';
@@ -75,12 +76,22 @@ export function ChatPanel() {
                 {t(
                   error === 'rate_limit'
                     ? 'chat.err.rate'
-                    : error === 'network'
-                      ? 'chat.err.network'
-                      : 'chat.err.service',
+                    : error === 'auth'
+                      ? 'chat.err.auth'
+                      : error === 'network'
+                        ? 'chat.err.network'
+                        : 'chat.err.service',
                 )}
               </p>
-              {error !== 'rate_limit' && asked && (
+              {error === 'auth' && (
+                <Link
+                  href="/login"
+                  className="mt-0.5 inline-flex min-h-[44px] items-center text-[13px] font-medium text-error-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
+                >
+                  {t('chat.err.signin')}
+                </Link>
+              )}
+              {error !== 'rate_limit' && error !== 'auth' && asked && (
                 <button
                   type="button"
                   onClick={() => ask(asked)}
@@ -125,19 +136,42 @@ export function ChatPanel() {
                     {t('chat.sources')}
                   </div>
                   <div className="flex flex-col gap-2">
-                    {data.sources.slice(0, 5).map((s, i) => (
-                      <SourceChip
-                        key={i}
-                        title={s.metadata?.title || s.text}
-                        documentType={s.metadata?.document_type}
-                        url={s.metadata?.source_url}
-                        articleRef={s.metadata?.article_ref}
-                        pointRef={s.metadata?.point_ref}
-                        documentNumber={s.metadata?.document_number}
-                        datePublished={s.metadata?.date_published}
-                        dateEffective={s.metadata?.date_effective}
-                      />
-                    ))}
+                    {data.sources.slice(0, 5).map((s, i) => {
+                      const source = 'text' in s
+                        ? {
+                            title: s.metadata?.title || s.text,
+                            documentType: s.metadata?.document_type,
+                            url: s.metadata?.source_url,
+                            articleRef: s.metadata?.article_ref,
+                            pointRef: s.metadata?.point_ref,
+                            documentNumber: s.metadata?.document_number,
+                            datePublished: s.metadata?.date_published,
+                            dateEffective: s.metadata?.date_effective,
+                          }
+                        : {
+                            title: s.title,
+                            documentType: s.document_type,
+                            url: s.url,
+                            articleRef: s.article_ref,
+                            pointRef: s.point_ref,
+                            documentNumber: s.document_number,
+                            datePublished: s.date_published,
+                            dateEffective: s.date_effective,
+                          };
+                      return (
+                        <SourceChip
+                          key={i}
+                          title={source.title}
+                          documentType={source.documentType}
+                          url={source.url}
+                          articleRef={source.articleRef}
+                          pointRef={source.pointRef}
+                          documentNumber={source.documentNumber}
+                          datePublished={source.datePublished}
+                          dateEffective={source.dateEffective}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

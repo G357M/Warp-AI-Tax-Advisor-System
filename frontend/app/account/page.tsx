@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authFetch, clearToken, isLoggedIn } from '@/lib/auth';
+import { authFetch, isLoggedIn, logout } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useT, DATE_LOCALES } from '@/lib/i18n';
@@ -23,6 +23,20 @@ interface SubscriptionInfo {
   period_end: string | null;
 }
 
+interface CheckoutInfo {
+  plan: string;
+  amount_gel: number;
+  contact_email: string;
+}
+
+interface ConversationSummary {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages_count: number;
+}
+
 const PLAN_LABELS: Record<string, string> = {
   free: 'Free',
   pro: 'Pro',
@@ -34,7 +48,10 @@ export default function AccountPage() {
   const { lang, t } = useT();
   const [account, setAccount] = useState<Account | null>(null);
   const [sub, setSub] = useState<SubscriptionInfo | null>(null);
-  const [instructions, setInstructions] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<CheckoutInfo | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [historyState, setHistoryState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [upgradeState, setUpgradeState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [bugOpen, setBugOpen] = useState(false);
   const [bugText, setBugText] = useState('');
   const [bugState, setBugState] = useState<'idle' | 'sending' | 'sent' | 'error' | 'short'>('idle');
@@ -46,8 +63,23 @@ export default function AccountPage() {
     }
     authFetch('/api/v1/account')
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setAccount)
-      .catch(() => router.replace('/login'));
+      .then(async (data: Account) => {
+        setAccount(data);
+        if (data.plan !== 'free') {
+          setHistoryState('loading');
+          const response = await authFetch('/api/v1/query/conversations?limit=20');
+          if (!response.ok) throw new Error('history');
+          setConversations(await response.json());
+          setHistoryState('idle');
+        }
+      })
+      .catch((error) => {
+        if (error instanceof Error && error.message === 'history') {
+          setHistoryState('error');
+          return;
+        }
+        router.replace('/login');
+      });
     authFetch('/api/v1/billing/subscription')
       .then((r) => (r.ok ? r.json() : null))
       .then(setSub)
@@ -75,13 +107,25 @@ export default function AccountPage() {
   };
 
   const upgrade = async (plan: 'pro' | 'business') => {
-    const res = await authFetch('/api/v1/billing/checkout', {
-      method: 'POST',
-      body: JSON.stringify({ plan }),
-    });
-    if (res.ok) {
+    setUpgradeState('loading');
+    try {
+      const res = await authFetch('/api/v1/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ plan }),
+      });
+      if (!res.ok) throw new Error();
       const data = await res.json();
-      setInstructions(data.instructions ?? null);
+      if (typeof data.amount_gel !== 'number' || typeof data.contact_email !== 'string') {
+        throw new Error();
+      }
+      setCheckout({
+        plan: data.plan,
+        amount_gel: data.amount_gel,
+        contact_email: data.contact_email,
+      });
+      setUpgradeState('idle');
+    } catch {
+      setUpgradeState('error');
     }
   };
 
@@ -97,10 +141,13 @@ export default function AccountPage() {
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-2xl px-6 py-16">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-display">{t('acc.title')}</h1>
-          <p className="mt-1 text-[14px] text-muted-foreground">{account.email}</p>
+      <div className="flex flex-col items-start justify-between gap-5 sm:flex-row">
+        <div className="flex items-start gap-3">
+          <span aria-hidden className="mt-2 h-7 w-1 shrink-0 rounded-full bg-primary" />
+          <div>
+            <h1 className="font-heading text-4xl font-normal italic tracking-display">{t('acc.title')}</h1>
+            <p className="mt-1 text-[14px] text-muted-foreground">{account.email}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {account.role === 'admin' && (
@@ -113,8 +160,8 @@ export default function AccountPage() {
           )}
           <Button
             variant="ghost"
-            onClick={() => {
-              clearToken();
+            onClick={async () => {
+              await logout();
               router.push('/');
             }}
           >
@@ -124,7 +171,7 @@ export default function AccountPage() {
       </div>
 
       <Card className="mt-8 p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <div className="text-xs text-muted-foreground">{t('acc.plan')}</div>
             <div className="mt-1 text-[22px] font-semibold tracking-display">
@@ -137,18 +184,25 @@ export default function AccountPage() {
             )}
           </div>
           {account.plan === 'free' && (
-            <div className="flex gap-2">
-              <Button onClick={() => upgrade('pro')}>{t('acc.upgrade_pro')}</Button>
-              <Button variant="glass" onClick={() => upgrade('business')}>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button onClick={() => upgrade('pro')} disabled={upgradeState === 'loading'}>{t('acc.upgrade_pro')}</Button>
+              <Button variant="glass" onClick={() => upgrade('business')} disabled={upgradeState === 'loading'}>
                 Business
               </Button>
             </div>
           )}
         </div>
-        {instructions && (
+        {checkout && (
           <p className="mt-4 rounded-md bg-secondary px-4 py-3 text-[13px] leading-relaxed text-secondary-foreground">
-            {instructions}
+            {t('acc.checkout_instructions', {
+              plan: PLAN_LABELS[checkout.plan] ?? checkout.plan,
+              amount: checkout.amount_gel,
+              email: checkout.contact_email,
+            })}
           </p>
+        )}
+        {upgradeState === 'error' && (
+          <p className="mt-4 text-[13px] text-error-foreground">{t('acc.upgrade_error')}</p>
         )}
       </Card>
 
@@ -165,6 +219,49 @@ export default function AccountPage() {
         </div>
         {account.usage.daily_limit == null && (
           <div className="mt-1 text-[13px] text-muted-foreground">{t('acc.unlimited')}</div>
+        )}
+      </Card>
+
+      <Card className="mt-4 p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[15px] font-semibold tracking-display">{t('acc.history')}</div>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              {account.plan === 'free' ? t('acc.history_locked') : t('acc.history_hint')}
+            </p>
+          </div>
+          {account.plan === 'free' && (
+            <Button variant="glass" onClick={() => upgrade('pro')} disabled={upgradeState === 'loading'}>
+              {t('acc.upgrade_pro')}
+            </Button>
+          )}
+        </div>
+        {account.plan !== 'free' && historyState === 'loading' && (
+          <p className="mt-4 text-[13px] text-muted-foreground">{t('acc.history_loading')}</p>
+        )}
+        {account.plan !== 'free' && historyState === 'error' && (
+          <p className="mt-4 text-[13px] text-error-foreground">{t('acc.history_error')}</p>
+        )}
+        {account.plan !== 'free' && historyState === 'idle' && conversations.length === 0 && (
+          <p className="mt-4 text-[13px] text-muted-foreground">{t('acc.history_empty')}</p>
+        )}
+        {conversations.length > 0 && (
+          <div className="mt-4 divide-y divide-white/10">
+            {conversations.map((conversation) => (
+              <Link
+                key={conversation.id}
+                href={`/account/conversations/${conversation.id}`}
+                className="flex min-h-[56px] items-center justify-between gap-4 py-3 text-left transition-colors hover:text-white"
+              >
+                <span className="min-w-0 truncate text-[14px] text-white/90">
+                  {conversation.title || t('acc.history_untitled')}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(conversation.updated_at).toLocaleDateString(locale)} · {conversation.messages_count}
+                </span>
+              </Link>
+            ))}
+          </div>
         )}
       </Card>
 

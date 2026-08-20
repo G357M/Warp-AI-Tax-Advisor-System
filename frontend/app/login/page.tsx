@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { login } from '@/lib/auth';
+import { AuthClientError, login } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { useT } from '@/lib/i18n';
 
@@ -22,8 +22,13 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password);
       router.push('/account');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const key = err instanceof AuthClientError && err.code === 'credentials'
+        ? 'auth.err.credentials'
+        : err instanceof AuthClientError && err.code === 'inactive'
+          ? 'auth.err.inactive'
+          : 'auth.err.service';
+      setError(t(key));
     } finally {
       setBusy(false);
     }

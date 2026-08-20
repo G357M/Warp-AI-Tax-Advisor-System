@@ -33,6 +33,24 @@ export interface SourceInfo {
   };
 }
 
+export interface DirectSourceInfo {
+  document_id?: string | null;
+  title: string;
+  document_type: string;
+  url: string;
+  relevance: number;
+  snippet?: string | null;
+  article_ref?: string | null;
+  point_ref?: string | null;
+  section_label?: string | null;
+  document_number?: string | null;
+  date_published?: string | null;
+  date_effective?: string | null;
+  document_status?: string | null;
+  authority?: string | null;
+  retrieval_channel?: string | null;
+}
+
 export interface EvidenceInfo {
   status: 'grounded' | 'partial' | 'insufficient' | 'out_of_scope';
   basis: 'retrieval' | 'authoritative' | 'none' | 'scope';

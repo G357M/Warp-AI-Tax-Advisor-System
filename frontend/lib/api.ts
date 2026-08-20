@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { AIResponse, EvidenceInfo, SourceInfo } from './types'
+import { AIResponse, DirectSourceInfo, EvidenceInfo, SourceInfo } from './types'
 
 export type { SourceInfo } from './types'
 
@@ -18,12 +18,14 @@ export const apiClient = axios.create({
 export interface QueryRequest {
   query: string;
   language?: string;
+  conversation_id?: string;
 }
 
 export interface QueryResponse {
   response: string;
-  sources: SourceInfo[];
+  sources: Array<SourceInfo | DirectSourceInfo>;
   evidence: EvidenceInfo;
+  conversation_id?: string;
   retrieved_count: number;
   processing_time: number;
 }

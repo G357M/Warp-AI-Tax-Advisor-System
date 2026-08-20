@@ -88,6 +88,8 @@ def check_and_count_question(user: User, plan: str) -> None:
         if used == 1:
             client.expire(key, 172800)
         if used > FREE_DAILY_QUESTIONS:
+            # A rejected attempt must not inflate the visible daily usage.
+            client.decr(key)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=(
@@ -97,5 +99,21 @@ def check_and_count_question(user: User, plan: str) -> None:
             )
     except HTTPException:
         raise
+    except Exception:
+        return
+
+
+def refund_question(user: User, plan: str) -> None:
+    """Undo a reserved free-plan question when processing fails before a response."""
+    if plan != "free":
+        return
+    client = _redis()
+    if client is None:
+        return
+    try:
+        key = quota_key(user.id)
+        remaining = client.decr(key)
+        if remaining < 0:
+            client.set(key, 0, ex=172800)
     except Exception:
         return

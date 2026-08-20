@@ -2,7 +2,7 @@
 Authentication API routes.
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -11,6 +11,7 @@ from core.security import (
     hash_password,
     verify_password,
     get_current_user,
+    SESSION_COOKIE_NAME,
 )
 from core.config import settings
 from models import User
@@ -58,7 +59,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
+def login(credentials: UserLogin, response: Response, db: Session = Depends(get_db)):
     """Login and get access token."""
     
     # Find user
@@ -85,12 +86,34 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role}
     )
+    max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=access_token,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax",
+        path="/",
+    )
     
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "expires_in": max_age,
     }
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(response: Response):
+    """Clear the browser session cookie; bearer API clients are unaffected."""
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=settings.ENVIRONMENT == "production",
+        httponly=True,
+        samesite="lax",
+    )
 
 
 @router.get("/me", response_model=UserResponse)

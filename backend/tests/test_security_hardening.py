@@ -4,11 +4,15 @@ import asyncio
 import json
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, Response
 
+from api.routes import auth as auth_routes
+from api.schemas import UserLogin
 from core.rate_limit import get_client_ip, rate_limit_middleware, rate_limiter
+from core.security import create_access_token, get_current_user
 
 
 def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
@@ -100,3 +104,64 @@ def test_scraper_router_requires_admin_dependency():
     ).read_text(encoding="utf-8")
 
     assert "dependencies=[Depends(require_admin)]" in route_source
+
+
+def test_http_only_session_cookie_authenticates_without_bearer_header():
+    user = SimpleNamespace(username="cookie-user", is_active=True)
+
+    class FakeQuery:
+        def filter(self, *_args):
+            return self
+
+        def first(self):
+            return user
+
+    class FakeDb:
+        def query(self, *_args):
+            return FakeQuery()
+
+    token = create_access_token({"sub": user.username, "role": "user"})
+    request = _request(headers={"Cookie": f"ta_session={token}"})
+
+    assert get_current_user(request=request, credentials=None, db=FakeDb()) is user
+
+
+def test_login_sets_http_only_same_site_session_cookie(monkeypatch):
+    user = SimpleNamespace(
+        username="cookie-user",
+        role="user",
+        is_active=True,
+        password_hash="unused",
+        last_login=None,
+    )
+
+    class FakeQuery:
+        def filter(self, *_args):
+            return self
+
+        def first(self):
+            return user
+
+    class FakeDb:
+        def query(self, *_args):
+            return FakeQuery()
+
+        def commit(self):
+            return None
+
+    monkeypatch.setattr(auth_routes, "verify_password", lambda *_args: True)
+    monkeypatch.setattr(auth_routes.settings, "ENVIRONMENT", "production")
+    response = Response()
+
+    auth_routes.login(
+        UserLogin(username=user.username, password="valid-password"),
+        response,
+        FakeDb(),
+    )
+
+    cookie = response.headers["set-cookie"].lower()
+    assert cookie.startswith("ta_session=")
+    assert "httponly" in cookie
+    assert "secure" in cookie
+    assert "samesite=lax" in cookie
+    assert "path=/" in cookie
