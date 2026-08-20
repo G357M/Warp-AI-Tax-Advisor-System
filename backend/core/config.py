@@ -117,6 +117,13 @@ class Settings(BaseSettings):
         if v not in allowed:
             raise ValueError(f"LLM_PROVIDER must be one of {allowed}")
         return v
+
+    @validator("JWT_SECRET_KEY")
+    def validate_jwt_secret_key(cls, v):
+        """HS256 requires at least 256 bits of key material."""
+        if len(v.encode("utf-8")) < 32:
+            raise ValueError("JWT_SECRET_KEY must be at least 32 UTF-8 bytes")
+        return v
     
     class Config:
         env_file = ".env"

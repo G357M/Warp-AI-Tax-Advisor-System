@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import jwt
+import pytest
+from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 
@@ -21,7 +23,7 @@ from core.security import (
     verify_token,
     verify_password,
 )
-from core.config import settings
+from core.config import Settings, settings
 
 
 def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
@@ -171,6 +173,17 @@ def test_previous_jwt_key_is_accepted_only_during_rotation_window(monkeypatch):
         (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
     )
     assert verify_token(token) is None
+
+
+def test_jwt_primary_key_requires_256_bits_of_material():
+    with pytest.raises(ValidationError, match="at least 32 UTF-8 bytes"):
+        Settings(
+            _env_file=None,
+            SECRET_KEY="test-application-secret-with-at-least-32-characters",
+            JWT_SECRET_KEY="too-short",
+            DATABASE_URL="sqlite://",
+            REDIS_URL="redis://localhost:6379/15",
+        )
 
 
 def test_new_tokens_are_signed_only_with_current_jwt_key(monkeypatch):
