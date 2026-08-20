@@ -1,5 +1,7 @@
 """Contracts for the read-only decision-facts quality evaluator."""
 
+import hashlib
+import json
 from datetime import datetime, timezone
 
 from scripts import evaluate_decision_facts_quality as facts_eval
@@ -48,6 +50,49 @@ def test_default_contract_is_read_only_and_matches_extraction_version():
     assert contract["execution_profile"]["llm_calls_allowed"] is False
     assert contract["execution_profile"]["postgresql_writes_allowed"] is False
     assert set(contract["thresholds"]) == set(facts_eval.METRIC_NAMES)
+
+
+def test_committed_production_baseline_matches_contract_and_is_aggregate_only():
+    contract = facts_eval.load_contract()
+    contract_bytes = json.dumps(
+        contract, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        facts_eval.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "decision_facts_quality_2026-08-20_c2407c9.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    def nested_keys(value):
+        if isinstance(value, dict):
+            return set(value) | set().union(
+                *(nested_keys(item) for item in value.values()), set()
+            )
+        if isinstance(value, list):
+            return set().union(*(nested_keys(item) for item in value), set())
+        return set()
+
+    assert baseline["contract_sha256"] == hashlib.sha256(contract_bytes).hexdigest()
+    assert baseline["contract_version"] == contract["contract_version"]
+    assert baseline["deployed_commit"].startswith("c2407c9")
+    assert baseline["failed_metrics"] == {}
+    assert all(
+        baseline["metrics"][name] >= threshold
+        for name, threshold in contract["thresholds"].items()
+    )
+    assert baseline["counts"]["outdated_extraction_rows"] == 0
+    assert baseline["counts"]["nonpositive_amount_rows"] == 0
+    assert baseline["counts"]["self_prior_reference_rows"] == 0
+    assert {
+        "review_manifest",
+        "document_id",
+        "title",
+        "source_url",
+        "raw_json",
+        "amount_gel",
+    }.isdisjoint(nested_keys(baseline))
 
 
 def test_perfect_quality_snapshot_has_perfect_metrics():

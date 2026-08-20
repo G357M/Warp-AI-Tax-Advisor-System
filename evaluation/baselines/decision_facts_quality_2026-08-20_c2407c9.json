@@ -1,0 +1,574 @@
+{
+  "schema_version": 1,
+  "contract_version": "2026-08-20.1",
+  "contract_sha256": "0a65a47da9e5e330df69e5e473c2ff1ebe83e85545697ba29a30fd059b2d61c2",
+  "generated_at_utc": "2026-08-20T16:09:59.067098+00:00",
+  "deployed_commit": "c2407c92531d942a889cef1bb2eff627d2ad786a",
+  "backend": {
+    "mode": "db",
+    "driver": "psycopg",
+    "connectable": true
+  },
+  "execution_profile": {
+    "llm_calls_allowed": false,
+    "postgresql_writes_allowed": false,
+    "full_review_report_must_remain_operational": true
+  },
+  "corpus": {
+    "eligible_documents": 11363,
+    "facts_total": 11363,
+    "latest_fact_created_at": "2026-08-20T03:03:20.051948"
+  },
+  "counts": {
+    "eligible_documents": 11363,
+    "facts_total": 11363,
+    "covered_documents": 11363,
+    "current_version_rows": 11363,
+    "structural_issue_rows": 0,
+    "amount_rows": 9530,
+    "positive_amount_rows": 9530,
+    "nonpositive_amount_rows": 0,
+    "outcome_alignment_issue_rows": 22,
+    "self_prior_reference_rows": 0,
+    "article_rows": 9467,
+    "non_simple_article_rows": 39,
+    "missing_decision_number_rows": 7,
+    "missing_decision_date_rows": 5,
+    "unclear_outcome_rows": 131,
+    "outdated_extraction_rows": 0,
+    "latest_fact_created_at": "2026-08-20T03:03:20.051948",
+    "duplicate_identity_groups": 463,
+    "links_total": 2986,
+    "invalid_link_rows": 0,
+    "prior_ref_links": 2986,
+    "case_number_links": 0
+  },
+  "metrics": {
+    "fact_coverage_rate": 1.0,
+    "current_extraction_rate": 1.0,
+    "structural_integrity_rate": 1.0,
+    "positive_amount_rate": 1.0,
+    "outcome_alignment_rate": 0.9981,
+    "prior_reference_safety_rate": 1.0,
+    "simple_article_reference_rate": 0.9959,
+    "appeal_link_integrity_rate": 1.0
+  },
+  "failed_metrics": {},
+  "review_queue_counts": {
+    "outdated_extraction": 0,
+    "nonpositive_amount": 0,
+    "outcome_alignment": 22,
+    "self_prior_reference": 0,
+    "non_simple_article_reference": 39,
+    "unclear_outcome": 131,
+    "duplicate_identity_groups": 463,
+    "missing_decision_number": 7,
+    "missing_decision_date": 5
+  },
+  "distributions": [
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "authority",
+      "count": 2
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 1
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 3
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 31
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "authority",
+      "count": 3
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 3
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 3
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "appeals_court",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 8
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "both",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 31
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 5
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "customs",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 2
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "customs",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "other",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 1
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 6
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 17
+    },
+    {
+      "authority_body": "city_court",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 11
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 122
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 688
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 1089
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 11
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "unclear",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "both",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 3
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "customs",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "customs",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 41
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "customs",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 182
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "customs",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 4
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "customs",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "authority",
+      "count": 2
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 56
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 333
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 2008
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 44
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "mof_dispute_council",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 24
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "customs",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 2
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "other",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "other",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "other",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 2
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "other",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 55
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 2
+    },
+    {
+      "authority_body": "other",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 25
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 78
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "both",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 91
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 2
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "customs",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 121
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "customs",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 566
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "customs",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 21
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "customs",
+      "outcome": "unclear",
+      "in_favor": "authority",
+      "count": 3
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "authority",
+      "count": 5
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 1
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 1776
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 3606
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 171
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "authority",
+      "count": 10
+    },
+    {
+      "authority_body": "revenue_service_council",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "unclear",
+      "count": 4
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "partial",
+      "count": 1
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "both",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 2
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "both",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 39
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "authority",
+      "count": 7
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "both",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 4
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "customs",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 1
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "other",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "tax",
+      "outcome": "partially_satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "tax",
+      "outcome": "rejected",
+      "in_favor": "authority",
+      "count": 17
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "tax",
+      "outcome": "satisfied",
+      "in_favor": "taxpayer",
+      "count": 1
+    },
+    {
+      "authority_body": "supreme_court",
+      "dispute_type": "tax",
+      "outcome": "unclear",
+      "in_favor": "authority",
+      "count": 1
+    }
+  ]
+}
