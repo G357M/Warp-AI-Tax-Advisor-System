@@ -59,3 +59,18 @@ container. This never targets production resources.
 ```bash
 ./scripts/test_database_restore.sh --backup /restricted/path/infohub_ai.sql.gz
 ```
+
+### import_decision_facts_review_workbook.py
+
+Convert a protected expert-review XLSX worksheet into the exact CSV contract
+used by the decision-facts validator. The command is dry-run-first, rejects
+formulas, macros, external relationships and non-text cells, and verifies every
+immutable column against `review_bundle.json`. It performs no database or LLM
+work.
+
+```bash
+python3 backend/scripts/import_decision_facts_review_workbook.py \
+  --bundle /restricted/review_bundle.json \
+  --workbook /restricted/duplicate_groups.working.xlsx \
+  --review-type duplicate-groups
+```

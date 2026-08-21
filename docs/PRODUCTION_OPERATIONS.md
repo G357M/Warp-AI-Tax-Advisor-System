@@ -396,6 +396,42 @@ duplicate exclusions require a distinct second reviewer. An inaccessible
 source must be recorded as such; it is not evidence that the extracted value
 is correct or incorrect.
 
+Do not manually copy reviewed Excel cells back into CSV. Upload the working
+`.xlsx` as a new mode-`0600` regular file, then run the stdlib-only importer.
+It reads text cells only, rejects formulas/macros/external relationships,
+verifies all immutable columns against `review_bundle.json`, normalizes JSON
+and performs no database or LLM work. First capture the exact hashes and row
+count:
+
+```bash
+REVIEW_DIR=".state/decision-facts-full-expert-review/${REVIEW_ID}"
+python3 backend/scripts/import_decision_facts_review_workbook.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --workbook "$REVIEW_DIR/duplicate_groups.working.xlsx" \
+  --review-type duplicate-groups
+```
+
+Materialize a new validator-ready CSV only with every value from that plan:
+
+```bash
+python3 backend/scripts/import_decision_facts_review_workbook.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --workbook "$REVIEW_DIR/duplicate_groups.working.xlsx" \
+  --review-type duplicate-groups \
+  --execute \
+  --output "$REVIEW_DIR/duplicate_groups.imported-v1.csv" \
+  --expected-bundle-sha256 BUNDLE_SHA256 \
+  --expected-workbook-sha256 WORKBOOK_SHA256 \
+  --expected-output-sha256 OUTPUT_SHA256 \
+  --expected-rows DUPLICATE_GROUPS
+```
+
+Use `--review-type review-items` for the fact worksheet. If its sheet label is
+not `review_items completed`, pass the exact label with `--sheet-name`. The
+importer preserves pending rows as pending: prefilled evidence or a technical
+duplicate proposal is not converted into an expert signature. A completed
+duplicate exclusion still requires a distinct second reviewer.
+
 The validator may be run during the review without `--require-complete`. For
 the final pass, require every row and first capture its exact input hash:
 

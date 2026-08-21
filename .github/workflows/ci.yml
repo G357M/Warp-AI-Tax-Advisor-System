@@ -52,6 +52,7 @@ jobs:
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
           scripts/export_decision_facts_expert_review.py
+          scripts/import_decision_facts_review_workbook.py
           scripts/link_decision_chains.py
           scripts/repair_decision_fact_normalization.py
           scripts/validate_decision_facts_expert_review.py
@@ -72,6 +73,7 @@ jobs:
           tests/test_decision_fact_repair.py
           tests/test_decision_facts_quality_eval.py
           tests/test_decision_facts_full_review.py
+          tests/test_decision_facts_review_workbook_import.py
           tests/test_decision_facts_review_bundle.py
           tests/test_database_restore_drill.py
           tests/test_security_hardening.py
