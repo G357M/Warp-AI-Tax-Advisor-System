@@ -43,7 +43,35 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     role: str
     is_active: bool
+    email_verified: bool
     created_at: datetime
+
+
+class RegistrationResponse(UserResponse):
+    verification_required: bool
+
+
+class EmailActionRequest(BaseModel):
+    email: EmailStr
+
+
+class ActionTokenRequest(BaseModel):
+    token: str = Field(..., min_length=32, max_length=512)
+
+
+class PasswordResetRequest(ActionTokenRequest):
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be no more than 72 UTF-8 bytes")
+        return value
+
+
+class AuthActionResponse(BaseModel):
+    message: str
 
 # ==================== Query Schemas ====================
 

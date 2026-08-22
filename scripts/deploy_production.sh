@@ -69,6 +69,10 @@ docker compose build backend frontend
 docker compose run --rm --no-deps backend python -c \
     "import torch; from sqlalchemy import text; from api.main import app; from core.config import settings; from core.database import SessionLocal; assert settings.ENVIRONMENT == 'production' and settings.DEBUG is False and app.docs_url is None and settings.OPENAI_API_KEY; assert torch.__version__.endswith('+cpu') and torch.version.cuda is None and not torch.cuda.is_available(); db = SessionLocal(); db.execute(text('SELECT 1')); db.close(); print(f'backend preflight: ok (torch {torch.__version__})')"
 
+# Additive and idempotent. The first run preserves every existing account by
+# marking it verified before the new verification policy can become active.
+docker compose run --rm --no-deps backend python scripts/add_auth_recovery.py
+
 # Test the exact Nginx config and mounted certificate before touching ingress.
 docker compose run --rm --no-deps nginx nginx -t
 

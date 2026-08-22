@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthClientError, register } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
+import { AuthFrame, authInputClass, FormMessage } from '@/components/auth/AuthFrame';
 import { useT } from '@/lib/i18n';
 
 export default function RegisterPage() {
@@ -25,8 +26,8 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      await register(username.trim(), email.trim(), password);
-      router.push('/account');
+      const result = await register(username.trim(), email.trim(), password);
+      router.push(result.verificationRequired ? '/check-email?purpose=verify' : '/account');
     } catch (err: unknown) {
       const key = err instanceof AuthClientError && err.code === 'username_exists'
         ? 'reg.err.username'
@@ -44,44 +45,54 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-display">{t('reg.title')}</h1>
-      <p className="mt-2 text-[13px] text-muted-foreground">{t('reg.sub')}</p>
+    <AuthFrame title={t('reg.title')} description={t('reg.sub')} footer={(
+      <p className="text-center">
+        {t('reg.have')}{' '}
+        <Link href="/login" className="text-white underline decoration-white/30 underline-offset-4 hover:decoration-primary">
+          {t('auth.signin')}
+        </Link>
+      </p>
+    )}>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
+        <label className="block text-[13px] text-white/75">
+          {t('reg.username')}
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder={t('reg.username')}
           autoComplete="username"
-          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
+          minLength={3}
+          required
+          className={authInputClass}
         />
+        </label>
+        <label className="block text-[13px] text-white/75">
+          Email
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
           autoComplete="email"
-          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
+          required
+          className={authInputClass}
         />
+        </label>
+        <label className="block text-[13px] text-white/75">
+          {t('reg.password')}
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={t('reg.password')}
           autoComplete="new-password"
-          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
+          minLength={8}
+          required
+          className={authInputClass}
         />
-        {error && <p className="text-[13px] text-red-600">{error}</p>}
+        </label>
+        {error && <FormMessage>{error}</FormMessage>}
         <Button type="submit" size="lg" className="w-full" disabled={busy || !username || !email || !password}>
           {busy ? t('reg.creating') : t('reg.create')}
         </Button>
       </form>
-      <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        {t('reg.have')}{' '}
-        <Link href="/login" className="text-primary hover:underline">
-          {t('auth.signin')}
-        </Link>
-      </p>
-    </main>
+    </AuthFrame>
   );
 }

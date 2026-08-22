@@ -48,6 +48,7 @@ jobs:
           python -m compileall -q
           api billing core models
           decision_fact_contract.py
+          scripts/add_auth_recovery.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py

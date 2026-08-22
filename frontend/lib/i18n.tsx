@@ -8,6 +8,7 @@
  * components via the 'ta-lang-changed' event.
  */
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export type Lang = 'ru' | 'ka' | 'en';
 
@@ -30,13 +31,10 @@ export function setLang(lang: Lang) {
  */
 function applyDocumentLang(lang: Lang) {
   document.documentElement.lang = lang;
-  document.title = translate(lang, 'meta.title');
-  document
-    .querySelector('meta[name="description"]')
-    ?.setAttribute('content', translate(lang, 'meta.desc'));
 }
 
 export function useLang(): Lang {
+  const pathname = usePathname();
   const [lang, set] = useState<Lang>('ru');
   useEffect(() => {
     const sync = () => {
@@ -51,7 +49,7 @@ export function useLang(): Lang {
       window.removeEventListener('ta-lang-changed', sync);
       window.removeEventListener('storage', sync);
     };
-  }, []);
+  }, [pathname]);
   return lang;
 }
 
@@ -419,13 +417,25 @@ const DICT: Record<string, Entry> = {
 
   // Auth & account
   'auth.login': { ru: 'Вход', ka: 'შესვლა', en: 'Sign in' },
+  'auth.sub': {
+    ru: 'Безопасный доступ к сохранённым диалогам, источникам и вашему тарифу.',
+    ka: 'უსაფრთხო წვდომა შენახულ დიალოგებზე, წყაროებსა და თქვენს ტარიფზე.',
+    en: 'Secure access to saved conversations, sources and your plan.',
+  },
   'auth.username': { ru: 'Логин', ka: 'მომხმარებელი', en: 'Username' },
   'auth.password': { ru: 'Пароль', ka: 'პაროლი', en: 'Password' },
   'auth.signin': { ru: 'Войти', ka: 'შესვლა', en: 'Sign in' },
   'auth.signing': { ru: 'Вхожу…', ka: 'შესვლა…', en: 'Signing in…' },
   'auth.err.credentials': { ru: 'Неверный логин или пароль.', ka: 'მომხმარებლის სახელი ან პაროლი არასწორია.', en: 'Incorrect username or password.' },
   'auth.err.inactive': { ru: 'Аккаунт отключён. Свяжитесь с поддержкой.', ka: 'ანგარიში გამორთულია. დაუკავშირდით მხარდაჭერას.', en: 'This account is disabled. Contact support.' },
+  'auth.err.verification': {
+    ru: 'Сначала подтвердите email.',
+    ka: 'ჯერ დაადასტურეთ ელფოსტა.',
+    en: 'Verify your email first.',
+  },
   'auth.err.service': { ru: 'Не получилось войти. Попробуйте ещё раз.', ka: 'შესვლა ვერ მოხერხდა. სცადეთ თავიდან.', en: 'Could not sign in. Please try again.' },
+  'auth.forgot': { ru: 'Забыли пароль?', ka: 'დაგავიწყდათ პაროლი?', en: 'Forgot password?' },
+  'auth.resend.link': { ru: 'Отправить письмо ещё раз', ka: 'წერილის ხელახლა გაგზავნა', en: 'Send the email again' },
   'auth.noaccount': { ru: 'Нет аккаунта?', ka: 'არ გაქვთ ანგარიში?', en: 'No account?' },
   'auth.createfree': { ru: 'Создать бесплатно', ka: 'შექმენით უფასოდ', en: 'Create one free' },
   'reg.title': { ru: 'Регистрация', ka: 'რეგისტრაცია', en: 'Sign up' },
@@ -439,6 +449,85 @@ const DICT: Record<string, Entry> = {
   'reg.err.username': { ru: 'Такой логин уже зарегистрирован.', ka: 'ეს მომხმარებლის სახელი უკვე რეგისტრირებულია.', en: 'This username is already registered.' },
   'reg.err.email': { ru: 'Такой email уже зарегистрирован.', ka: 'ეს ელფოსტა უკვე რეგისტრირებულია.', en: 'This email is already registered.' },
   'reg.err.service': { ru: 'Не получилось создать аккаунт. Попробуйте ещё раз.', ka: 'ანგარიშის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.', en: 'Could not create the account. Please try again.' },
+  'recovery.forgot.title': { ru: 'Восстановить пароль', ka: 'პაროლის აღდგენა', en: 'Reset your password' },
+  'recovery.forgot.sub': {
+    ru: 'Укажите email аккаунта. Если он найден, мы отправим одноразовую ссылку.',
+    ka: 'მიუთითეთ ანგარიშის ელფოსტა. თუ ის მოიძებნა, ერთჯერად ბმულს გამოგიგზავნით.',
+    en: 'Enter the account email. If it is found, we will send a one-time link.',
+  },
+  'recovery.back': { ru: 'Вернуться ко входу', ka: 'შესვლაზე დაბრუნება', en: 'Back to sign in' },
+  'recovery.err.service': {
+    ru: 'Не удалось отправить запрос. Попробуйте позже.',
+    ka: 'მოთხოვნა ვერ გაიგზავნა. სცადეთ მოგვიანებით.',
+    en: 'Could not send the request. Try again later.',
+  },
+  'recovery.sending': { ru: 'Отправляю…', ka: 'იგზავნება…', en: 'Sending…' },
+  'recovery.send': { ru: 'Получить ссылку', ka: 'ბმულის მიღება', en: 'Send reset link' },
+  'verify.resend.title': { ru: 'Повторное письмо', ka: 'წერილის ხელახლა გაგზავნა', en: 'Resend verification' },
+  'verify.resend.sub': {
+    ru: 'Укажите email регистрации. Ответ не раскрывает, существует ли аккаунт.',
+    ka: 'მიუთითეთ რეგისტრაციის ელფოსტა. პასუხი ანგარიშის არსებობას არ გაამჟღავნებს.',
+    en: 'Enter the registration email. The response will not reveal whether the account exists.',
+  },
+  'verify.resend.send': { ru: 'Отправить подтверждение', ka: 'დადასტურების გაგზავნა', en: 'Send verification' },
+  'email.sent.title': { ru: 'Проверьте почту', ka: 'შეამოწმეთ ელფოსტა', en: 'Check your email' },
+  'email.sent.reset': {
+    ru: 'Если аккаунт подходит для восстановления, одноразовая ссылка уже отправлена.',
+    ka: 'თუ ანგარიშის აღდგენა შესაძლებელია, ერთჯერადი ბმული უკვე გამოგზავნილია.',
+    en: 'If the account is eligible for recovery, a one-time link has been sent.',
+  },
+  'email.sent.verify': {
+    ru: 'Если email ожидает подтверждения, новое письмо уже отправлено.',
+    ka: 'თუ ელფოსტა დადასტურებას ელოდება, ახალი წერილი უკვე გამოგზავნილია.',
+    en: 'If the email is awaiting verification, a new message has been sent.',
+  },
+  'email.sent.privacy': {
+    ru: 'Одинаковый ответ для всех адресов защищает данные пользователей. Проверьте также папку «Спам».',
+    ka: 'ყველა მისამართისთვის ერთნაირი პასუხი მომხმარებლის მონაცემებს იცავს. შეამოწმეთ სპამის საქაღალდეც.',
+    en: 'The same response for every address protects user data. Check your spam folder too.',
+  },
+  'email.sent.missing': { ru: 'Письма всё ещё нет?', ka: 'წერილი ჯერაც არ მიგიღიათ?', en: 'Still no email?' },
+  'verify.title': { ru: 'Подтверждение email', ka: 'ელფოსტის დადასტურება', en: 'Email verification' },
+  'verify.working': { ru: 'Проверяем одноразовую ссылку…', ka: 'ვამოწმებთ ერთჯერად ბმულს…', en: 'Checking the one-time link…' },
+  'verify.success.title': { ru: 'Email подтверждён', ka: 'ელფოსტა დადასტურებულია', en: 'Email verified' },
+  'verify.success.body': {
+    ru: 'Аккаунт готов. Теперь можно войти.',
+    ka: 'ანგარიში მზადაა. ახლა შეგიძლიათ შეხვიდეთ.',
+    en: 'Your account is ready. You can now sign in.',
+  },
+  'verify.error': {
+    ru: 'Ссылка недействительна или уже использована.',
+    ka: 'ბმული არასწორია ან უკვე გამოყენებულია.',
+    en: 'This link is invalid or has already been used.',
+  },
+  'reset.title': { ru: 'Новый пароль', ka: 'ახალი პაროლი', en: 'Choose a new password' },
+  'reset.sub': {
+    ru: 'После сохранения все ранее выданные сессии аккаунта будут отозваны.',
+    ka: 'შენახვის შემდეგ ანგარიშის ყველა ადრე გაცემული სესია გაუქმდება.',
+    en: 'Saving will revoke every previously issued session for this account.',
+  },
+  'reset.password': { ru: 'Новый пароль', ka: 'ახალი პაროლი', en: 'New password' },
+  'reset.confirm': { ru: 'Повторите пароль', ka: 'გაიმეორეთ პაროლი', en: 'Confirm password' },
+  'reset.error.match': { ru: 'Пароли не совпадают.', ka: 'პაროლები არ ემთხვევა.', en: 'Passwords do not match.' },
+  'reset.error.token': {
+    ru: 'Ссылка недействительна или истекла. Запросите новую.',
+    ka: 'ბმული არასწორია ან ვადა გაუვიდა. მოითხოვეთ ახალი.',
+    en: 'The link is invalid or expired. Request a new one.',
+  },
+  'reset.request.new': { ru: 'Получить новую ссылку', ka: 'ახალი ბმულის მიღება', en: 'Request a new link' },
+  'reset.save': { ru: 'Сохранить новый пароль', ka: 'ახალი პაროლის შენახვა', en: 'Save new password' },
+  'reset.saving': { ru: 'Сохраняю…', ka: 'ინახება…', en: 'Saving…' },
+  'reset.success.title': { ru: 'Пароль обновлён', ka: 'პაროლი განახლებულია', en: 'Password updated' },
+  'reset.success.body': {
+    ru: 'Используйте новый пароль при следующем входе.',
+    ka: 'შემდეგი შესვლისას გამოიყენეთ ახალი პაროლი.',
+    en: 'Use the new password the next time you sign in.',
+  },
+  'reset.success.session': {
+    ru: 'Все прежние сессии отозваны для защиты аккаунта.',
+    ka: 'ანგარიშის დასაცავად ყველა ძველი სესია გაუქმებულია.',
+    en: 'All previous sessions were revoked to protect the account.',
+  },
   'acc.title': { ru: 'Кабинет', ka: 'კაბინეტი', en: 'Account' },
   'acc.admin': { ru: 'Админпанель', ka: 'ადმინპანელი', en: 'Admin panel' },
   'acc.logout': { ru: 'Выйти', ka: 'გასვლა', en: 'Sign out' },

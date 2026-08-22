@@ -558,3 +558,38 @@ docker exec infohub-backend python /app/scripts/link_decision_chains.py \
 
 Only run the destructive `--apply` rebuild after reviewing that aggregate
 scope and the current `decision_links` count.
+
+## Account email verification and recovery
+
+The additive auth migration runs automatically inside the reviewed production
+deploy script before containers are replaced. It adds `email_verified_at`,
+`session_version` and `auth_action_tokens`; on its first run only, all existing
+accounts are marked verified. Re-running it never verifies later accounts.
+
+Email delivery is intentionally off unless every required production setting
+is present. Configure these values in `/root/infohub/.env` without committing
+credentials:
+
+```dotenv
+EMAIL_DELIVERY_ENABLED=true
+AUTH_PUBLIC_BASE_URL=https://tax-advisor.ge
+SMTP_HOST=smtp.provider.example
+SMTP_PORT=587
+SMTP_USER=provider-user
+SMTP_PASSWORD=provider-secret
+SMTP_FROM=Tax Advisor <noreply@tax-advisor.ge>
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+```
+
+Use exactly one transport mode: STARTTLS (normally port 587) or implicit SSL
+(normally port 465). `SMTP_PASSWORD` is mandatory when `SMTP_USER` is set. The
+production settings validator refuses incomplete, dual-TLS or non-HTTPS
+configuration before the deployment mutates runtime containers.
+
+Before setting `EMAIL_DELIVERY_ENABLED=true`, verify SPF/DKIM/DMARC with the
+chosen provider and perform one registration, verification, password-reset and
+old-session-revocation smoke flow using a dedicated test account. Never log or
+store a raw action token; PostgreSQL contains only its SHA-256 digest. If email
+delivery is disabled, registrations remain immediately usable and recovery
+request endpoints return `503`.

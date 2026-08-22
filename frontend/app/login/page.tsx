@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthClientError, login } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
+import { AuthFrame, authInputClass, FormMessage } from '@/components/auth/AuthFrame';
 import { useT } from '@/lib/i18n';
 
 export default function LoginPage() {
@@ -25,6 +26,8 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const key = err instanceof AuthClientError && err.code === 'credentials'
         ? 'auth.err.credentials'
+        : err instanceof AuthClientError && err.code === 'verification_required'
+          ? 'auth.err.verification'
         : err instanceof AuthClientError && err.code === 'inactive'
           ? 'auth.err.inactive'
           : 'auth.err.service';
@@ -35,35 +38,55 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-display">{t('auth.login')}</h1>
+    <AuthFrame title={t('auth.login')} description={t('auth.sub')} footer={(
+      <p className="text-center">
+        {t('auth.noaccount')}{' '}
+        <Link href="/register" className="text-white underline decoration-white/30 underline-offset-4 hover:decoration-primary">
+          {t('auth.createfree')}
+        </Link>
+      </p>
+    )}>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
+        <label className="block text-[13px] text-white/75">
+          {t('auth.username')}
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder={t('auth.username')}
           autoComplete="username"
-          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
+          required
+          className={authInputClass}
         />
+        </label>
+        <label className="block text-[13px] text-white/75">
+          {t('auth.password')}
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={t('auth.password')}
           autoComplete="current-password"
-          className="h-11 w-full rounded-md border border-white/15 bg-white/5 px-4 text-[14px] text-white placeholder:text-white/50"
+          required
+          className={authInputClass}
         />
-        {error && <p className="text-[13px] text-red-600">{error}</p>}
+        </label>
+        <div className="flex justify-end">
+          <Link href="/forgot-password" className="text-[13px] text-white/65 underline decoration-white/25 underline-offset-4 hover:text-white">
+            {t('auth.forgot')}
+          </Link>
+        </div>
+        {error && (
+          <FormMessage>
+            {error}{' '}
+            {error === t('auth.err.verification') && (
+              <Link href="/resend-verification" className="font-medium underline underline-offset-4">
+                {t('auth.resend.link')}
+              </Link>
+            )}
+          </FormMessage>
+        )}
         <Button type="submit" size="lg" className="w-full" disabled={busy || !username || !password}>
           {busy ? t('auth.signing') : t('auth.signin')}
         </Button>
       </form>
-      <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        {t('auth.noaccount')}{' '}
-        <Link href="/register" className="text-primary hover:underline">
-          {t('auth.createfree')}
-        </Link>
-      </p>
-    </main>
+    </AuthFrame>
   );
 }

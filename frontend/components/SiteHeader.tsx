@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { isLoggedIn } from '@/lib/auth';
-import { useT, setLang, Lang } from '@/lib/i18n';
+import { useT, setLang, translate, Lang } from '@/lib/i18n';
 
 const LANGS: { code: Lang; label: string }[] = [
   { code: 'en', label: 'EN' },
@@ -50,6 +50,28 @@ export function SiteHeader() {
       window.removeEventListener('storage', sync);
     };
   }, []);
+
+  useEffect(() => {
+    const title = translate(lang, 'meta.title');
+    const description = translate(lang, 'meta.desc');
+    const syncMetadata = () => {
+      if (document.title !== title) document.title = title;
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta?.getAttribute('content') !== description) {
+        meta?.setAttribute('content', description);
+      }
+    };
+    syncMetadata();
+    const observer = new MutationObserver(syncMetadata);
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['content'],
+    });
+    return () => observer.disconnect();
+  }, [lang, pathname]);
 
   if (pathname?.startsWith('/admin')) return null;
 

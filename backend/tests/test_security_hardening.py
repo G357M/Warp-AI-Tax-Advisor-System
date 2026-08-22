@@ -26,7 +26,12 @@ from core.security import (
 from core.config import Settings, settings
 
 
-def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
+def _request(
+    *,
+    headers=None,
+    client=("203.0.113.20", 12345),
+    path="/api/v1/public/stats",
+) -> Request:
     raw_headers = [
         (name.lower().encode("latin-1"), value.encode("latin-1"))
         for name, value in (headers or {}).items()
@@ -35,7 +40,7 @@ def _request(*, headers=None, client=("203.0.113.20", 12345)) -> Request:
         {
             "type": "http",
             "method": "GET",
-            "path": "/api/v1/public/stats",
+            "path": path,
             "headers": raw_headers,
             "client": client,
             "scheme": "https",
@@ -118,6 +123,30 @@ def test_allowed_response_receives_rate_limit_headers(monkeypatch):
     assert response.headers["X-RateLimit-Reset"] == str(reset)
 
 
+def test_recovery_endpoints_use_dedicated_hourly_rate_limit(monkeypatch):
+    observed = {}
+
+    async def allowed(**kwargs):
+        observed.update(kwargs)
+        return True, {}
+
+    async def call_next(_request):
+        return PlainTextResponse("ok")
+
+    monkeypatch.setattr(rate_limiter, "check_rate_limit", allowed)
+    monkeypatch.setattr(settings, "RATE_LIMIT_AUTH_RECOVERY", "10/hour")
+    response = asyncio.run(
+        rate_limit_middleware(
+            _request(path="/api/v1/auth/forgot-password"),
+            call_next,
+        )
+    )
+
+    assert response.status_code == 200
+    assert observed["max_requests"] == 10
+    assert observed["window_seconds"] == 3600
+
+
 def test_scraper_router_requires_admin_dependency():
     route_source = (
         Path(__file__).parents[1] / "api" / "routes" / "scraper.py"
@@ -186,6 +215,22 @@ def test_jwt_primary_key_requires_256_bits_of_material():
         )
 
 
+def test_email_delivery_requires_password_for_authenticated_smtp():
+    with pytest.raises(ValidationError, match="SMTP_PASSWORD"):
+        Settings(
+            _env_file=None,
+            SECRET_KEY="test-application-secret-with-at-least-32-characters",
+            JWT_SECRET_KEY="test-jwt-secret-with-at-least-32-characters",
+            DATABASE_URL="postgresql://test:test@localhost:5432/test",
+            REDIS_URL="redis://localhost:6379/15",
+            EMAIL_DELIVERY_ENABLED=True,
+            SMTP_HOST="smtp.example.com",
+            SMTP_FROM="Tax Advisor <noreply@example.com>",
+            SMTP_USER="smtp-user",
+            SMTP_PASSWORD=None,
+        )
+
+
 def test_new_tokens_are_signed_only_with_current_jwt_key(monkeypatch):
     current_key = "current-test-key-with-at-least-32-characters"
     previous_key = "previous-test-key-with-at-least-32-characters"
@@ -247,3 +292,25 @@ def test_login_sets_http_only_same_site_session_cookie(monkeypatch):
     assert "secure" in cookie
     assert "samesite=lax" in cookie
     assert "path=/" in cookie
+
+
+def test_session_version_rejects_token_after_password_reset():
+    user = SimpleNamespace(username="versioned-user", is_active=True, session_version=2)
+
+    class FakeQuery:
+        def filter(self, *_args):
+            return self
+
+        def first(self):
+            return user
+
+    class FakeDb:
+        def query(self, *_args):
+            return FakeQuery()
+
+    stale = create_access_token({"sub": user.username, "sv": 1})
+    request = _request(headers={"Cookie": f"ta_session={stale}"})
+
+    with pytest.raises(Exception) as exc_info:
+        get_current_user(request=request, credentials=None, db=FakeDb())
+    assert getattr(exc_info.value, "status_code", None) == 401

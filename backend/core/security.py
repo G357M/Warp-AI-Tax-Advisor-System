@@ -165,6 +165,14 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
+
+    token_session_version = payload.get("sv", 0)
+    try:
+        token_session_version = int(token_session_version)
+    except (TypeError, ValueError):
+        raise credentials_exception
+    if token_session_version != getattr(user, "session_version", 0):
+        raise credentials_exception
     
     return user
 

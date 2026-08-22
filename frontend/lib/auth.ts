@@ -8,8 +8,10 @@ const AUTH_MARKER_KEY = 'ta_authenticated';
 export type AuthErrorCode =
   | 'credentials'
   | 'inactive'
+  | 'verification_required'
   | 'username_exists'
   | 'email_exists'
+  | 'invalid_token'
   | 'service';
 
 export class AuthClientError extends Error {
@@ -66,6 +68,9 @@ export async function login(username: string, password: string): Promise<void> {
       throw new AuthClientError('credentials');
     }
     if (res.status === 403 || detail === 'Inactive user') {
+      if (detail === 'Email verification required') {
+        throw new AuthClientError('verification_required');
+      }
       throw new AuthClientError('inactive');
     }
     throw new AuthClientError('service');
@@ -85,7 +90,11 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function register(username: string, email: string, password: string): Promise<void> {
+export async function register(
+  username: string,
+  email: string,
+  password: string,
+): Promise<{ verificationRequired: boolean }> {
   const res = await fetch('/api/v1/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -101,5 +110,53 @@ export async function register(username: string, email: string, password: string
     }
     throw new AuthClientError('service');
   }
-  await login(username, password);
+  const data = await res.json();
+  const verificationRequired = data.verification_required === true;
+  if (!verificationRequired) await login(username, password);
+  return { verificationRequired };
+}
+
+async function requestEmailAction(path: string, email: string): Promise<void> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new AuthClientError('service');
+}
+
+export function requestPasswordReset(email: string): Promise<void> {
+  return requestEmailAction('/api/v1/auth/forgot-password', email);
+}
+
+export function resendVerification(email: string): Promise<void> {
+  return requestEmailAction('/api/v1/auth/resend-verification', email);
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await fetch('/api/v1/auth/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 422) {
+      throw new AuthClientError('invalid_token');
+    }
+    throw new AuthClientError('service');
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch('/api/v1/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 422) {
+      throw new AuthClientError('invalid_token');
+    }
+    throw new AuthClientError('service');
+  }
 }

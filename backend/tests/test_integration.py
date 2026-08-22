@@ -31,16 +31,19 @@ shadow_module = ModuleType("rag_v2.shadow_runtime")
 shadow_module.maybe_run_shadow = lambda **_kwargs: None
 live_module = ModuleType("rag_v2.live_runtime")
 live_module.maybe_run_live_rollout = lambda **_kwargs: None
+public_response_module = ModuleType("rag_v2.public_response")
+public_response_module.is_pure_refusal = lambda _text: False
 sys.modules["rag"] = rag_package
 sys.modules["rag.pipeline"] = rag_pipeline_module
 sys.modules["rag_v2"] = rag_v2_package
 sys.modules["rag_v2.shadow_runtime"] = shadow_module
 sys.modules["rag_v2.live_runtime"] = live_module
+sys.modules["rag_v2.public_response"] = public_response_module
 
 from api.routes import account, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
-from models import Conversation, Message, Payment, Subscription, User
+from models import AuthActionToken, Conversation, Message, Payment, Subscription, User
 
 
 app = FastAPI()
@@ -68,6 +71,7 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 TEST_TABLES = [
     User.__table__,
+    AuthActionToken.__table__,
     Conversation.__table__,
     Message.__table__,
     Subscription.__table__,
@@ -209,3 +213,114 @@ def test_protected_query_rejects_missing_session(client):
     )
 
     assert response.status_code == 401
+
+
+def test_email_verification_token_is_hashed_one_time_and_unlocks_login(
+    client,
+    monkeypatch,
+):
+    sent = []
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    monkeypatch.setattr(auth, "send_auth_email", lambda *args: sent.append(args))
+
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "verify-user@example.com",
+            "username": "verify-user",
+            "password": "safe-password-123",
+        },
+    )
+    assert registered.status_code == 201
+    assert registered.json()["verification_required"] is True
+    assert registered.json()["email_verified"] is False
+    assert len(sent) == 1
+    raw_token = sent[0][2]
+
+    db = TestingSessionLocal()
+    stored = db.query(AuthActionToken).filter_by(purpose="email_verification").one()
+    assert stored.token_hash != raw_token
+    assert len(stored.token_hash) == 64
+    db.close()
+
+    blocked = client.post(
+        "/api/v1/auth/login",
+        json={"username": "verify-user", "password": "safe-password-123"},
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"] == "Email verification required"
+
+    verified = client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": raw_token},
+    )
+    assert verified.status_code == 200
+    assert client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": raw_token},
+    ).status_code == 400
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "verify-user", "password": "safe-password-123"},
+    )
+    assert login.status_code == 200
+
+
+def test_password_reset_is_generic_one_time_and_revokes_existing_session(
+    client,
+    monkeypatch,
+):
+    username = "reset-user"
+    register_and_login(client, username)
+    sent = []
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    monkeypatch.setattr(auth, "send_auth_email", lambda *args: sent.append(args))
+
+    unknown = client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "missing-user@example.com"},
+    )
+    known = client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": f"{username}@example.com"},
+    )
+    assert unknown.status_code == known.status_code == 200
+    assert unknown.json() == known.json()
+    assert len(sent) == 1
+    raw_token = sent[0][2]
+
+    reset = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "new-safe-password-456"},
+    )
+    assert reset.status_code == 200
+    assert client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "another-password-789"},
+    ).status_code == 400
+
+    assert client.get("/api/v1/account").status_code == 401
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": username, "password": "safe-password-123"},
+    ).status_code == 401
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": username, "password": "new-safe-password-456"},
+    ).status_code == 200
+
+
+def test_recovery_reports_unavailable_when_email_delivery_is_disabled(
+    client,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", False)
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "anyone@example.com"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Account email delivery is not configured."

@@ -162,7 +162,17 @@ async def rate_limit_middleware(
     # Determine rate limit based on endpoint
     if not limit_string:
         path = request.url.path
-        if path.startswith("/api/v1/public"):
+        recovery_paths = {
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/resend-verification",
+            "/api/v1/auth/verify-email",
+        }
+        if path in recovery_paths:
+            limit_string = settings.RATE_LIMIT_AUTH_RECOVERY
+        elif path in {"/api/v1/auth/login", "/api/v1/auth/register"}:
+            limit_string = settings.RATE_LIMIT_AUTH
+        elif path.startswith("/api/v1/public"):
             limit_string = settings.RATE_LIMIT_GUEST
         elif path.startswith("/api/v1/auth"):
             limit_string = settings.RATE_LIMIT_USER

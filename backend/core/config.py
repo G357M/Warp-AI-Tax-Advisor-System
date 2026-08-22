@@ -3,7 +3,7 @@
 import json
 from typing import Any, Optional
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -94,6 +94,24 @@ class Settings(BaseSettings):
     RATE_LIMIT_USER: str = "60/minute"
     RATE_LIMIT_ADMIN: str = "1000/minute"
     RATE_LIMIT_BYPASS_TOKEN: str = ""
+    RATE_LIMIT_AUTH: str = "10/minute"
+    RATE_LIMIT_AUTH_RECOVERY: str = "10/hour"
+
+    # Account email verification and password recovery. Delivery stays disabled
+    # unless a complete SMTP configuration is explicitly supplied.
+    EMAIL_DELIVERY_ENABLED: bool = False
+    AUTH_PUBLIC_BASE_URL: str = "https://tax-advisor.ge"
+    AUTH_EMAIL_VERIFICATION_HOURS: int = 24
+    AUTH_PASSWORD_RESET_MINUTES: int = 30
+    AUTH_EMAIL_RESEND_COOLDOWN_SECONDS: int = 60
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[SecretStr] = None
+    SMTP_FROM: Optional[str] = None
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+    SMTP_TIMEOUT_SECONDS: int = 15
 
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -144,6 +162,33 @@ class Settings(BaseSettings):
         if len(value.encode("utf-8")) < 32:
             raise ValueError("JWT_SECRET_KEY must be at least 32 UTF-8 bytes")
         return value
+
+    @model_validator(mode="after")
+    def validate_email_delivery(self) -> "Settings":
+        if not self.EMAIL_DELIVERY_ENABLED:
+            return self
+        missing = [
+            name
+            for name, value in {
+                "SMTP_HOST": self.SMTP_HOST,
+                "SMTP_FROM": self.SMTP_FROM,
+            }.items()
+            if not value
+        ]
+        if missing:
+            raise ValueError(
+                "EMAIL_DELIVERY_ENABLED requires " + ", ".join(missing)
+            )
+        smtp_password = (
+            self.SMTP_PASSWORD.get_secret_value() if self.SMTP_PASSWORD else ""
+        )
+        if self.SMTP_USER and not smtp_password:
+            raise ValueError("SMTP_PASSWORD is required when SMTP_USER is set")
+        if self.SMTP_USE_TLS and self.SMTP_USE_SSL:
+            raise ValueError("SMTP_USE_TLS and SMTP_USE_SSL cannot both be enabled")
+        if self.ENVIRONMENT == "production" and not self.AUTH_PUBLIC_BASE_URL.startswith("https://"):
+            raise ValueError("AUTH_PUBLIC_BASE_URL must use HTTPS in production")
+        return self
 
 
 # Global settings instance
