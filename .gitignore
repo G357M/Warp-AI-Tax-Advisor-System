@@ -78,6 +78,9 @@ out/
 # Local browser/design audit artifacts
 .playwright-cli/
 .impeccable/
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
 
 # React
 build/

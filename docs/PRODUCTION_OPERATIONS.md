@@ -88,12 +88,15 @@ file and write a new evidence artifact in an existing restricted directory:
 
 The PostgreSQL image must already exist locally; image pulls are deliberately
 not implicit. The drill creates one unique ephemeral container with network
-mode `none`, no published ports and no mounted volumes. It validates the dump,
-restores it with fail-fast semantics, requires all current critical tables,
-checks document/chunk/fact counts, orphan references, foreign-key validation
-and the pgvector extension, records RPO/RTO, then removes the temporary
-container on every exit. It never connects to or names the production database
-container. Evidence targets are mode `0600` and are never overwritten.
+mode `none`, no published ports, no host bind mounts and no production volumes.
+The image-declared PostgreSQL data volume must be newly created and anonymous.
+The drill validates the dump, restores it with fail-fast semantics, requires all
+current critical tables, checks document/chunk/fact counts, orphan references,
+foreign-key validation and the pgvector extension, records RPO/RTO, then removes
+the temporary container and its ephemeral volume on every exit. It never
+connects to or names the production database container or its volumes. Evidence
+targets are mode `0600` and are never overwritten. Schema-v2 evidence records
+the host-bind, production-volume and ephemeral-volume facts separately.
 
 The first full production-host drill passed on 2026-08-22 against the protected
 pre-auth-migration custom dump
@@ -106,10 +109,60 @@ evidence remains at
 `/root/infohub/.state/database-restore-drills/database_restore_drill_20260822T120700Z_052f974.json`
 with SHA-256
 `288ef3308ea36bab6538c793848111333aac08e0d298ce14a3963643dd0132c0`.
-This proves recovery from that server-side dump only. The newest weekly copy
-held on the owner's computer must still pass the same SHA-pinned drill on the
-host where that copy is stored; Hetzner snapshot restoration remains a
-provider-level exercise.
+This proves recovery from that server-side dump only.
+
+The newest weekly off-site copy held on the owner's computer was tested on
+2026-08-22. The exact custom dump `infohub_ai-2026-08-17.dump` is
+2,800,328,054 bytes, has original mtime `2026-08-17T12:52:16Z` and SHA-256
+`cca73b4da74249775e376da07e6613eeb81d5ee50fd77968b700f4e1645b628d`.
+It was transferred as a `.partial`, re-hashed before promotion and restored in
+the same isolated server-side drill because Docker Desktop did not have enough
+safe system-disk headroom for the expanded database. The restore passed in 695
+seconds with an RPO of 453,971 seconds: 15,113 documents, 275,582 chunks,
+11,353 decision facts and 2,985 decision links, with no missing critical tables,
+orphans or unvalidated foreign keys and with pgvector present. The mode-600
+evidence remains at
+`/root/infohub/.state/database-restore-drills/offsite_restore_drill_20260822T185827Z_612f3c4.json`
+with SHA-256
+`c6a6884d302797ef156513ce0792bee9dcc5bb781fdb734523cfce8044d7e8e7`.
+The temporary uploaded copy and restored volume were removed after validation;
+the owner's original off-site file was not modified. Hetzner snapshot
+restoration remains a separate provider-level exercise.
+
+Git Bash on Windows is supported by the restore script. It converts the
+off-site host path with `cygpath` while preventing MSYS from rewriting `/tmp`
+paths passed to Docker. Do not mount the backup into the test container: the
+copy is deliberate evidence that the standalone off-site artifact is readable.
+The PostgreSQL image creates its own anonymous data volume; cleanup uses
+`docker rm -v` so that disposable restored data cannot accumulate.
+
+### Hetzner snapshot drill boundary
+
+Seeing a completed snapshot in the Hetzner panel proves provider retention, not
+application recovery. A complete provider-level drill requires a new temporary
+server created from one specifically recorded snapshot. It is a separate,
+billable operation and must not be run without explicit approval.
+
+For that drill:
+
+1. Record the source server, snapshot ID, creation time and status from the
+   provider panel.
+2. Create a uniquely named temporary server from that exact snapshot with a
+   pre-attached firewall: SSH only from the operator IP, no public application
+   ports and no outbound traffic. Do not change production DNS.
+3. Prevent scheduled jobs and application containers from starting until their
+   targets have been reviewed. Never attach the drill host to a production
+   Docker network or disconnect independently managed services such as the
+   Plausible instance serving `stats.modern-travel.ge`.
+4. Verify the filesystem, repository commit, environment/configuration files,
+   PostgreSQL volume and an isolated local health check. Record provider RPO,
+   boot/application RTO and hashes/counts without copying secrets into Git.
+5. After evidence is reviewed, request confirmation immediately before
+   destroying the temporary server.
+
+The 2026-08-22 desktop session had no configured Hetzner CLI/API credentials,
+and its isolated browser session was not signed in. Therefore no snapshot ID or
+provider restore result is claimed by this repository state.
 
 ## Logs
 

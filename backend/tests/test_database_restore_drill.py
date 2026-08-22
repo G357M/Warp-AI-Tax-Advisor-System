@@ -18,13 +18,21 @@ def test_restore_drill_never_references_production_resources():
 
     assert "--network none" in text
     assert '"published_ports": false' in text
-    assert '"mounted_volumes": false' in text
+    assert '"schema_version": 2' in text
+    assert '"host_bind_mounts": false' in text
+    assert '"production_volumes": false' in text
+    assert '"ephemeral_database_volume": true' in text
     assert "infohub-restore-drill-" in text
+    assert 'docker rm -f -v "$CONTAINER_NAME"' in text
+    assert "unexpectedly has host bind mounts" in text
+    assert "reused a pre-existing volume" in text
     assert "docker compose" not in text
     assert "infohub-postgres" not in text
     assert "postgres_data" not in text
     assert "--expected-sha256" in text
     assert "evidence target already exists" in text
+    assert "MSYS_NO_PATHCONV=1" in text
+    assert 'DOCKER_BACKUP_PATH="$(cygpath -w "$BACKUP_PATH")"' in text
 
 
 def test_owner_backup_has_no_embedded_password_and_pins_artifact():

@@ -19,8 +19,8 @@
 | Аналитика споров | **Соответствует** | 11 363 строки `decision_facts`, публичные агрегаты, суммы, статьи, цепочки и drill-down UI | Нужна выборочная экспертная валидация extraction и мониторинг качества новых данных |
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота, история Pro/Business, одноразовые хешированные verification/reset tokens и отзыв сессий при смене пароля | Production SMTP ещё не подключён; нет организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
-| Modern Ecosystem UI | **Соответствует на уровне кода и design contract** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; self-hosted pinned fonts без Google во время build; desktop и 390 px browser smoke-test пройдены | Нужен постоянный visual-regression прогон, а не только ручной smoke-test |
-| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; изолированный restore-drill contract; 2026-08-22 полный серверный dump восстановлен за 699 секунд с сохранённым RPO/RTO evidence | Нужно повторить drill именно на свежей off-site копии владельца и отдельно проверить восстановление Hetzner snapshot |
+| Modern Ecosystem UI | **Сильное соответствие** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; self-hosted pinned fonts; семь детерминированных desktop/mobile visual baselines в matching Playwright image, второй clean run 7/7 | Намеренные UI-изменения требуют визуального review baseline, а не слепого `--update-snapshots` |
+| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; серверный restore RTO 699 секунд и exact off-site restore RTO 695 секунд с mode-600 evidence и нулевыми integrity anomalies | Нужно отдельно проверить provider-level восстановление Hetzner snapshot |
 | Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; dry-run-first rollback retention | Глобальный BuildKit cache разделяется проектами и требует отдельной политики |
 
 ## Что концептуально реализовано
@@ -140,9 +140,8 @@ worksheet, proposal manifest и база автоматически не изм�
 
 ### P2 — operational maturity
 
-1. Повторить уже успешно выполненный серверный restore drill именно на свежей еженедельной off-site копии БД и отдельно провести provider-level восстановление Hetzner snapshot; сохранить отдельные RPO/RTO evidence.
+1. Провести provider-level восстановление конкретного Hetzner snapshot на временный изолированный сервер с отдельными RPO/RTO evidence; exact off-site database restore уже пройден.
 2. Отдельная bounded retention для общего Docker BuildKit cache; rollback images InfoHub уже ограничены тремя проверяемыми поколениями.
-3. Постоянный visual-regression набор: desktop, 390 px, RU/KA/EN, ошибки, длинные источники и пустые состояния.
 
 ## Граница обещания продукта
 

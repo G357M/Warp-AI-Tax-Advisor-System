@@ -19,6 +19,8 @@ EXECUTE=0
 CONTAINER_CREATED=0
 CONTAINER_NAME=""
 EVIDENCE_TEMP=""
+PREEXISTING_VOLUME_NAMES=""
+RESTORE_VOLUME_NAME=""
 
 usage() {
     cat <<'EOF'
@@ -127,6 +129,15 @@ BACKUP_PATH="$(realpath -- "$BACKUP_FILE")"
 BACKUP_NAME="$(basename -- "$BACKUP_PATH")"
 [[ "$BACKUP_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || die "backup filename contains unsafe characters"
 
+DOCKER_BACKUP_PATH="$BACKUP_PATH"
+if [[ -n "${MSYSTEM:-}" ]]; then
+    command -v cygpath >/dev/null 2>&1 || die "cygpath is required under Git Bash"
+    # Preserve the Windows host path for docker cp, then prevent MSYS from
+    # rewriting container paths such as /tmp/infohub-backup.input.
+    DOCKER_BACKUP_PATH="$(cygpath -w "$BACKUP_PATH")"
+    export MSYS_NO_PATHCONV=1
+fi
+
 BACKUP_SIZE="$(stat -c %s -- "$BACKUP_PATH")"
 (( BACKUP_SIZE > 0 )) || die "backup file is empty"
 BACKUP_MTIME="$(stat -c %Y -- "$BACKUP_PATH")"
@@ -193,7 +204,9 @@ cleanup() {
     fi
     if (( CONTAINER_CREATED == 1 )); then
         [[ "$CONTAINER_NAME" == infohub-restore-drill-* ]] || return
-        docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+        # pgvector/postgres declares an anonymous data volume. Remove it with
+        # the disposable container so every drill returns its database space.
+        docker rm -f -v "$CONTAINER_NAME" >/dev/null 2>&1 || true
     fi
 }
 trap cleanup EXIT
@@ -203,6 +216,7 @@ STARTED_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 CONTAINER_NAME="infohub-restore-drill-$(date -u +%Y%m%d%H%M%S)-$$"
 RESTORE_PASSWORD="restore-drill-$RANDOM-$RANDOM"
 POSTGRES_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$POSTGRES_IMAGE")"
+PREEXISTING_VOLUME_NAMES="$(docker volume ls -q)"
 
 docker run --detach \
     --name "$CONTAINER_NAME" \
@@ -213,6 +227,15 @@ docker run --detach \
     --env POSTGRES_DB=infohub_ai \
     "$POSTGRES_IMAGE" >/dev/null
 CONTAINER_CREATED=1
+
+HOST_BIND_MOUNTS="$(docker inspect --format '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}{{println}}{{end}}{{end}}' "$CONTAINER_NAME")"
+[[ -z "$HOST_BIND_MOUNTS" ]] || die "isolated PostgreSQL unexpectedly has host bind mounts"
+RESTORE_VOLUME_NAME="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$CONTAINER_NAME")"
+[[ "$RESTORE_VOLUME_NAME" =~ ^[0-9a-f]{64}$ ]] || die "isolated PostgreSQL data volume is not anonymous"
+while IFS= read -r existing_volume; do
+    [[ "$existing_volume" != "$RESTORE_VOLUME_NAME" ]] || \
+        die "isolated PostgreSQL reused a pre-existing volume"
+done <<< "$PREEXISTING_VOLUME_NAMES"
 
 READY=0
 for _attempt in $(seq 1 60); do
@@ -225,7 +248,7 @@ for _attempt in $(seq 1 60); do
 done
 (( READY == 1 )) || die "isolated PostgreSQL did not become ready in 60 seconds"
 
-docker cp "$BACKUP_PATH" "$CONTAINER_NAME:/tmp/infohub-backup.input"
+docker cp "$DOCKER_BACKUP_PATH" "$CONTAINER_NAME:/tmp/infohub-backup.input"
 
 case "$BACKUP_FORMAT" in
     postgres_custom)
@@ -282,7 +305,7 @@ COMPLETED_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RTO_SECONDS="$((COMPLETED_EPOCH - STARTED_EPOCH))"
 
 install -m 0600 /dev/null "$EVIDENCE_TEMP"
-printf '{\n  "schema_version": 1,\n  "result": "passed",\n  "started_at_utc": "%s",\n  "completed_at_utc": "%s",\n  "rpo_seconds": %s,\n  "rto_seconds": %s,\n  "backup": {"name": "%s", "bytes": %s, "format": "%s", "modified_at_utc": "%s", "sha256": "%s"},\n  "isolation": {"image": "%s", "image_id": "%s", "network": "none", "published_ports": false, "mounted_volumes": false},\n  "counts": {"documents": %s, "document_chunks": %s, "decision_facts": %s, "decision_links": %s, "users": %s, "conversations": %s},\n  "integrity": {"missing_critical_tables": 0, "orphan_chunks": %s, "orphan_decision_facts": %s, "orphan_decision_links": %s, "unvalidated_foreign_keys": %s, "vector_extension": true}\n}\n' \
+printf '{\n  "schema_version": 2,\n  "result": "passed",\n  "started_at_utc": "%s",\n  "completed_at_utc": "%s",\n  "rpo_seconds": %s,\n  "rto_seconds": %s,\n  "backup": {"name": "%s", "bytes": %s, "format": "%s", "modified_at_utc": "%s", "sha256": "%s"},\n  "isolation": {"image": "%s", "image_id": "%s", "network": "none", "published_ports": false, "host_bind_mounts": false, "production_volumes": false, "ephemeral_database_volume": true},\n  "counts": {"documents": %s, "document_chunks": %s, "decision_facts": %s, "decision_links": %s, "users": %s, "conversations": %s},\n  "integrity": {"missing_critical_tables": 0, "orphan_chunks": %s, "orphan_decision_facts": %s, "orphan_decision_links": %s, "unvalidated_foreign_keys": %s, "vector_extension": true}\n}\n' \
     "$STARTED_UTC" "$COMPLETED_UTC" "$BACKUP_AGE_SECONDS" "$RTO_SECONDS" \
     "$BACKUP_NAME" "$BACKUP_SIZE" "$BACKUP_FORMAT" "$BACKUP_MODIFIED_UTC" \
     "$BACKUP_SHA256" "$POSTGRES_IMAGE" "$POSTGRES_IMAGE_ID" \

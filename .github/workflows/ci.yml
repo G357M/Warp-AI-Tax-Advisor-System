@@ -132,9 +132,45 @@ jobs:
       # Production dependencies must remain free of high/critical advisories.
       - run: npm audit --omit=dev --audit-level=high
 
+  visual:
+    name: Deterministic visual regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      # Matches @playwright/test 1.62.1; digest prevents runner-image drift.
+      image: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:visual
+
+      - name: Upload visual differences
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-${{ github.run_id }}
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
+
   containers:
     name: Production image builds
-    needs: [backend, frontend]
+    needs: [backend, frontend, visual]
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
