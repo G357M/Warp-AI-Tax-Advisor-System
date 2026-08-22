@@ -14,14 +14,15 @@ from core.embedding_model_loader import (
 
 
 def test_existing_local_model_path_never_calls_snapshot_resolver():
-    model_dir = Path("C:/models/local-model")
+    model_dir = Path("local-model")
+    resolved_model_dir = Path("resolved-local-model")
 
     def unexpected_snapshot_resolver(**_kwargs):
         raise AssertionError("Hub cache resolver must not be called for local paths")
 
     with (
         patch.object(Path, "is_dir", return_value=True),
-        patch.object(Path, "resolve", return_value=model_dir),
+        patch.object(Path, "resolve", return_value=resolved_model_dir),
     ):
         location = resolve_cached_model(
             str(model_dir),
@@ -29,7 +30,7 @@ def test_existing_local_model_path_never_calls_snapshot_resolver():
         )
 
     assert location == CachedModelLocation(
-        path=str(model_dir.resolve()),
+        path=str(resolved_model_dir),
         source="local_path",
     )
 
