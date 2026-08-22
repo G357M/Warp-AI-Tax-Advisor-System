@@ -95,6 +95,22 @@ and the pgvector extension, records RPO/RTO, then removes the temporary
 container on every exit. It never connects to or names the production database
 container. Evidence targets are mode `0600` and are never overwritten.
 
+The first full production-host drill passed on 2026-08-22 against the protected
+pre-auth-migration custom dump
+`infohub_ai_pre_auth_20260822T114300Z-052f974.dump` (2,802,237,970 bytes,
+SHA-256 `c54e5cdf8738d150d6cccb54dd1c66fcb7859bb0c31966a5f7f2e673e4ff921c`).
+It restored 15,140 documents, 275,976 chunks, 11,370 decision facts and 2,986
+decision links in 699 seconds. The recorded RPO was 1,165 seconds; every
+integrity check passed and the disposable container was removed. The mode-600
+evidence remains at
+`/root/infohub/.state/database-restore-drills/database_restore_drill_20260822T120700Z_052f974.json`
+with SHA-256
+`288ef3308ea36bab6538c793848111333aac08e0d298ce14a3963643dd0132c0`.
+This proves recovery from that server-side dump only. The newest weekly copy
+held on the owner's computer must still pass the same SHA-pinned drill on the
+host where that copy is stored; Hetzner snapshot restoration remains a
+provider-level exercise.
+
 ## Logs
 
 Docker services use bounded JSON logs (five files of 10 MB per service).
