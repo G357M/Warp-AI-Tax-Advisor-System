@@ -2,11 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fontsource packages keep production builds independent from Google Fonts.
+   These metric-compatible local fallbacks preserve the previous next/font
+   loading geometry while the same RU/KA/EN type roles remain authoritative. */
+@font-face {
+  font-family: 'Instrument Serif Fallback';
+  src: local('Times New Roman');
+  ascent-override: 117.94%;
+  descent-override: 36.93%;
+  line-gap-override: 0%;
+  size-adjust: 83.94%;
+}
+
+@font-face {
+  font-family: 'Barlow Fallback';
+  src: local('Arial');
+  ascent-override: 103.43%;
+  descent-override: 20.69%;
+  line-gap-override: 0%;
+  size-adjust: 96.68%;
+}
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
 /* Design tokens — Modern Ecosystem skin (Variant C "Balanced Modern").
    Pure black canvas, liquid-glass surfaces, Instrument Serif italic headings.
    Tax Advisor's ecosystem accent: Signal Red #DC2626.
    Signature element: the red citation tick (see components/ui/SourceChip). */
 :root {
+  --font-instrument: 'Instrument Serif';
+  --font-barlow: 'Barlow';
+  --font-inter: 'Inter Variable';
+  --font-georgian: 'Noto Sans Georgian Variable';
+  --font-georgian-serif: 'Noto Serif Georgian Variable';
   --background: 0 0% 0%;            /* pure black */
   --foreground: 0 0% 100%;
   --muted: 0 0% 7%;                 /* solid panels when glass is too light */
