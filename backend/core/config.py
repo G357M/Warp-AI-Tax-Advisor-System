@@ -74,6 +74,9 @@ class Settings(BaseSettings):
         "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
     EMBEDDING_DIMENSION: int = 768
+    # Development may bootstrap a missing model from the Hub. Production
+    # Compose overrides this to false and requires a verified local cache.
+    EMBEDDING_ALLOW_DOWNLOAD: bool = True
 
     # RAG Configuration
     RAG_TOP_K: int = 10

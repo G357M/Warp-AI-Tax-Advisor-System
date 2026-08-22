@@ -67,7 +67,7 @@ docker compose build backend frontend
 # Validate the new backend image against production configuration and DB before
 # it is allowed to replace the running container.
 docker compose run --rm --no-deps backend python -c \
-    "import torch; from sqlalchemy import text; from api.main import app; from core.config import settings; from core.database import SessionLocal; assert settings.ENVIRONMENT == 'production' and settings.DEBUG is False and app.docs_url is None and settings.OPENAI_API_KEY; assert torch.__version__.endswith('+cpu') and torch.version.cuda is None and not torch.cuda.is_available(); db = SessionLocal(); db.execute(text('SELECT 1')); db.close(); print(f'backend preflight: ok (torch {torch.__version__})')"
+    "import torch; from sqlalchemy import text; from api.main import app; from core.config import settings; from core.database import SessionLocal; from rag.embeddings import embeddings_generator; assert settings.ENVIRONMENT == 'production' and settings.DEBUG is False and app.docs_url is None and settings.OPENAI_API_KEY; assert settings.EMBEDDING_ALLOW_DOWNLOAD is False; assert embeddings_generator.model is not None and embeddings_generator.model_source in {'cache', 'local_path'}; assert torch.__version__.endswith('+cpu') and torch.version.cuda is None and not torch.cuda.is_available(); db = SessionLocal(); db.execute(text('SELECT 1')); db.close(); print(f'backend preflight: ok (torch {torch.__version__}, embeddings {embeddings_generator.model_source})')"
 
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.

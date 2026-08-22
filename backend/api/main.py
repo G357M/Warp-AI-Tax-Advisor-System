@@ -94,11 +94,18 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check(response: Response):
     """Health check endpoint."""
+    from rag.embeddings import embeddings_generator
+
+    embeddings_healthy = embeddings_generator.model is not None
+    if not embeddings_healthy:
+        response.status_code = 503
     return {
-        "status": "healthy",
+        "status": "healthy" if embeddings_healthy else "degraded",
         "version": settings.APP_VERSION,
+        "components": {"embeddings": embeddings_healthy},
+        "embedding_model_source": embeddings_generator.model_source,
     }
 
 

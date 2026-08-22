@@ -65,6 +65,15 @@ def test_explicit_celery_urls_override_redis_fallback(monkeypatch):
     assert settings.CELERY_RESULT_BACKEND == "redis://results:6379/2"
 
 
+def test_embedding_download_policy_can_be_disabled(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("EMBEDDING_ALLOW_DOWNLOAD", "false")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.EMBEDDING_ALLOW_DOWNLOAD is False
+
+
 def test_env_file_ignores_unrelated_legacy_entries(monkeypatch):
     for name in (*REQUIRED_ENV, "CORS_ORIGINS"):
         monkeypatch.delenv(name, raising=False)

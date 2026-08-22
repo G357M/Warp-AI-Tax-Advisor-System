@@ -124,6 +124,7 @@ async def health_check():
             "total_documents": document_count,
             "total_chunks": vector_store.get_count() if vector_store.client else 0,
             "embedding_dimension": settings.EMBEDDING_DIMENSION,
+            "embedding_model_source": embeddings_generator.model_source,
             "llm_model": settings.LLM_MODEL,
         }
     }

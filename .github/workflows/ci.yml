@@ -46,7 +46,7 @@ jobs:
       - name: Compile runtime modules
         run: >-
           python -m compileall -q
-          api billing core models
+          api billing core models rag
           decision_fact_contract.py
           scripts/add_auth_recovery.py
           scripts/build_decision_facts_full_review_bundle.py
@@ -63,6 +63,7 @@ jobs:
         run: >-
           python -m pytest
           tests/test_config_contract.py
+          tests/test_embedding_model_loader.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
           tests/test_nightly_quality_gates.py
