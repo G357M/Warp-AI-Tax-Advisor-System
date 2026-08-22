@@ -49,6 +49,7 @@ jobs:
           api billing core models rag
           decision_fact_contract.py
           scripts/add_auth_recovery.py
+          scripts/audit_production_readiness.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
@@ -64,6 +65,7 @@ jobs:
           python -m pytest
           tests/test_config_contract.py
           tests/test_embedding_model_loader.py
+          tests/test_production_readiness_audit.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
           tests/test_nightly_quality_gates.py

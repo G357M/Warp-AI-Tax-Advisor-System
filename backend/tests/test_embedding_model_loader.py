@@ -147,6 +147,13 @@ def test_deploy_preflight_requires_a_cached_embedding_model():
     deploy_script = (repository_root / "scripts" / "deploy_production.sh").read_text(
         encoding="utf-8"
     )
+    readiness_audit = (
+        repository_root / "backend" / "core" / "production_readiness.py"
+    ).read_text(encoding="utf-8")
 
-    assert "settings.EMBEDDING_ALLOW_DOWNLOAD" in deploy_script
-    assert "embeddings_generator.model_source in {'cache', 'local_path'}" in deploy_script
+    assert "python scripts/audit_production_readiness.py" in deploy_script
+    assert "settings.EMBEDDING_ALLOW_DOWNLOAD is not False" in readiness_audit
+    assert (
+        'embedding_generator.model_source not in {"cache", "local_path"}'
+        in readiness_audit
+    )

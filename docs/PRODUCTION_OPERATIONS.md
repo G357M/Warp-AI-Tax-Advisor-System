@@ -126,8 +126,8 @@ evidence remains at
 with SHA-256
 `c6a6884d302797ef156513ce0792bee9dcc5bb781fdb734523cfce8044d7e8e7`.
 The temporary uploaded copy and restored volume were removed after validation;
-the owner's original off-site file was not modified. Hetzner snapshot
-restoration remains a separate provider-level exercise.
+the owner's original off-site file was not modified. A separate provider-level
+Hetzner recovery was subsequently completed as recorded below.
 
 Git Bash on Windows is supported by the restore script. It converts the
 off-site host path with `cygpath` while preventing MSYS from rewriting `/tmp`
@@ -136,7 +136,7 @@ copy is deliberate evidence that the standalone off-site artifact is readable.
 The PostgreSQL image creates its own anonymous data volume; cleanup uses
 `docker rm -v` so that disposable restored data cannot accumulate.
 
-### Hetzner snapshot drill boundary
+### Hetzner provider-level restore evidence and future drill boundary
 
 Seeing a completed snapshot in the Hetzner panel proves provider retention, not
 application recovery. A complete provider-level drill requires a new temporary
@@ -160,9 +160,38 @@ For that drill:
 5. After evidence is reviewed, request confirmation immediately before
    destroying the temporary server.
 
-The 2026-08-22 desktop session had no configured Hetzner CLI/API credentials,
-and its isolated browser session was not signed in. Therefore no snapshot ID or
-provider restore result is claimed by this repository state.
+The first provider-level drill passed on 2026-08-23 using Hetzner automatic
+backup image `423119703`, created at `2026-08-22T18:28:06Z` from production
+server `120694722`. No manual snapshot existed; the automatic backup is the
+exact provider image proven by this exercise. It booted as disposable CPX32
+server `163175971` behind firewall `11504939`, with SSH as the only inbound
+service from the operator address, no normal egress, no IPv6/private network and
+no DNS change. Production and the independently managed Plausible service were
+not changed.
+
+The restored filesystem, repository commit, Docker volumes and PostgreSQL 15.16
+data were present. PostgreSQL reported 15,140 documents, 275,976 chunks, 11,370
+decision facts and 2,986 decision links, with no invalid/unready indexes; the
+frontend passed local HTTPS and the 5.4 GB embedding cache loaded offline with
+dimension 768. The fully isolated backend cold start exposed a pre-existing Hub
+metadata request before Uvicorn bind. That finding was subsequently closed by
+the cache-only loader, health contract and deployment preflight described in
+the ML runtime section below.
+
+During the drill, a read-only filesystem was mistakenly remounted while adding
+temporary systemd masks. The directory-entry damage was limited to the
+disposable clone, repaired with offline `e2fsck -fy`, and followed by a clean
+read-only five-pass `e2fsck`. Neither the source server nor backup image was
+modified. After evidence capture, server `163175971`, its primary IPs, firewall
+`11504939` and temporary SSH key `codex-restore-drill-20260823` were deleted;
+cleanup completed at `2026-08-22T21:48:13Z`.
+
+The ignored operator evidence is
+`.state/hetzner-restore-drills/20260823T013921+04/evidence.json`, SHA-256
+`ab804423463fe8e9424d30f4c2352b87e89caf133ff2f14309f42ea10324d59a`.
+It is operational evidence, not a file to add to Git. Future provider drills
+must repeat the isolated, explicitly approved procedure above and create new
+evidence rather than overwriting this record.
 
 ## Logs
 
@@ -200,6 +229,56 @@ Both the Docker build and production deploy preflight fail unless the installed
 PyTorch version has the `+cpu` suffix, reports no CUDA runtime and reports CUDA
 as unavailable. This prevents a dependency refresh from silently restoring the
 multi-gigabyte NVIDIA runtime on the CPU-only Hetzner host.
+
+### Cache-only embedding startup and readiness audit
+
+Production Compose sets `EMBEDDING_ALLOW_DOWNLOAD=false`. The loader resolves a
+local directory or Hugging Face snapshot with `local_files_only=True` and fails
+closed if the cache is absent or cannot be loaded. Root health returns `503`
+when embeddings are unavailable; both root and public health expose only the
+non-sensitive model source (`cache`, `local_path` or `unavailable`).
+
+Every deployment runs the versioned readiness audit before replacing the
+backend. The audit forces Hugging Face/Transformers offline mode, requires
+production/no-debug policy and CPU-only PyTorch, resolves the same local model
+source, then hashes a deterministic bounded manifest of the complete snapshot.
+It rejects missing config/modules/tokenizer/weight assets, broken or escaping
+symlinks, more than 2,048 files or more than 16 GiB. It runs fixed KA/RU/EN
+probes twice and checks row count, configured dimension, finite non-zero vectors
+and repeatability within `1e-6`. The only database operation is `SELECT 1`; no
+LLM, external network call or PostgreSQL write is permitted.
+
+Run the same read-only plan manually against the deployed image/cache:
+
+```bash
+cd /root/infohub
+AUDIT_COMMIT="$(git rev-parse --short=12 HEAD)"
+docker compose run --rm --no-deps backend \
+  python scripts/audit_production_readiness.py --commit "$AUDIT_COMMIT"
+```
+
+The `PRODUCTION_READINESS_AUDIT` line contains the content-addressed cache hash,
+file count and byte count. To retain evidence, first create a restricted host
+directory, then repeat only that exact scope into a new file:
+
+```bash
+install -d -m 0700 /root/infohub/.state/production-readiness
+AUDIT_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+docker compose run --rm --no-deps \
+  -v /root/infohub/.state/production-readiness:/evidence \
+  backend python scripts/audit_production_readiness.py \
+  --commit "$(git rev-parse --short=12 HEAD)" \
+  --execute \
+  --output "/evidence/${AUDIT_ID}.json" \
+  --expected-cache-sha256 SHA256_FROM_PLAN \
+  --expected-cache-files FILES_FROM_PLAN \
+  --expected-cache-bytes BYTES_FROM_PLAN
+```
+
+The writer refuses a changed scope, insecure evidence directory or existing
+target and creates mode-`0600` JSON. It records relative cache filenames and
+content hashes, never model contents, credentials, legal documents or probe
+text. Keep it under ignored `.state/`; do not commit it.
 
 ## Rollback image retention
 

@@ -1,6 +1,6 @@
 # Аудит соответствия Modern Ecosystem — tax-advisor.ge
 
-**Дата:** 2026-08-20. **Контур проверки:** локальный репозиторий, GitHub `main`, production `/root/infohub` на Hetzner и публичный домен `tax-advisor.ge`.
+**Дата основного аудита:** 2026-08-20. **Operational evidence обновлён:** 2026-08-23. **Контур проверки:** локальный репозиторий, GitHub `main`, production `/root/infohub` на Hetzner и публичный домен `tax-advisor.ge`.
 
 Этот документ заменяет июльский аудит как актуальный срез. Июльский файл остаётся историей изменений: его выводы про отсутствующую аналитику и меньший размер корпуса больше не описывают текущий production.
 
@@ -20,8 +20,8 @@
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота, история Pro/Business, одноразовые хешированные verification/reset tokens и отзыв сессий при смене пароля | Production SMTP ещё не подключён; нет организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Сильное соответствие** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; self-hosted pinned fonts; семь детерминированных desktop/mobile visual baselines в matching Playwright image, второй clean run 7/7 | Намеренные UI-изменения требуют визуального review baseline, а не слепого `--update-snapshots` |
-| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; серверный restore RTO 699 секунд и exact off-site restore RTO 695 секунд с mode-600 evidence и нулевыми integrity anomalies | Нужно отдельно проверить provider-level восстановление Hetzner snapshot |
-| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; dry-run-first rollback retention | Глобальный BuildKit cache разделяется проектами и требует отдельной политики |
+| Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; серверный restore RTO 699 секунд, exact off-site restore RTO 695 секунд и отдельный provider-level Hetzner restore с удалением временных ресурсов | Нужно сохранять квартальный recovery cadence с новым pinned evidence |
+| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; cache-only embedding startup с health/deploy audit; dry-run-first rollback retention | Глобальный BuildKit cache разделяется проектами и требует отдельной политики |
 
 ## Что концептуально реализовано
 
@@ -54,6 +54,7 @@
 - Пароли проверяются напрямую совместимым bcrypt-форматом `$2b$`, а предел 72 UTF-8 bytes валидируется на API boundary.
 - Frontend Docker image собирается детерминированно через `npm ci`, использует standalone Next output и непривилегированного пользователя; все RU/KA/EN webfonts поставляются pinned Fontsource-пакетами без обращения к Google во время build.
 - Backend использует `torch 2.13.0+cpu`; активный image по Docker inspect уменьшен с 3,163 ГБ до 492 МБ. Контрольный embedding и top-5 retrieval до и после перехода совпали побайтово.
+- Production больше не делает Hub-запрос до старта при наличии cache: downloads выключены, health показывает источник модели, а deploy preflight выполняет bounded content manifest и повторяемые RU/EN/KA embedding-пробы до замены контейнера.
 - GitHub CI проверяет актуальные контракты, а не удалённые или несуществующие тестовые команды.
 - Production CD оставлен ручным и использует pinned SSH host key; публичный health-check завершает поставку.
 
@@ -138,10 +139,20 @@ similarity и metadata differences. Точное совпадение стано
 Оба результата являются технической приоритизацией, не юридическим вердиктом;
 worksheet, proposal manifest и база автоматически не изменяются.
 
-### P2 — operational maturity
+### Выполнено — provider-level recovery и cache-only cold start
 
-1. Провести provider-level восстановление конкретного Hetzner snapshot на временный изолированный сервер с отдельными RPO/RTO evidence; exact off-site database restore уже пройден.
-2. Отдельная bounded retention для общего Docker BuildKit cache; rollback images InfoHub уже ограничены тремя проверяемыми поколениями.
+Hetzner automatic backup image `423119703` был восстановлен на отдельный CPX32
+без production DNS, private network или публичных application-портов. Проверены
+boot, SSH, filesystem, Docker volumes, PostgreSQL, frontend HTTPS и локальный
+embedding-cache. Временный server, firewall и SSH key после фиксации evidence
+удалены; production и Plausible не менялись. Обнаруженная на полностью
+изолированном cold start попытка Hub HEAD-запроса закрыта cache-only loader,
+health/deploy gate и детерминированным cache-integrity audit.
+
+### P2 — remaining operational maturity
+
+1. Отдельная bounded retention/изоляция для общего Docker BuildKit cache; rollback images InfoHub уже ограничены тремя проверяемыми поколениями.
+2. Поддерживать квартальный recovery cadence для server-side, off-site и provider-level слоёв с новым pinned evidence.
 
 ## Граница обещания продукта
 

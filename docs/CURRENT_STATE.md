@@ -66,7 +66,7 @@ infohub.rs.ge / infohubapi.rs.ge
 
 ---
 
-## Verified live state (2026-08-20)
+## Verified live and recovery state (2026-08-23)
 
 - `documents = 15126`
 - `document_chunks = 275821`
@@ -74,6 +74,11 @@ infohub.rs.ge / infohubapi.rs.ge
 - `decision_facts = 11363`
 - `GET /api/v1/public/health` → `healthy`
 - origin TLS certificate → valid through `2026-11-17`
+- provider-level Hetzner restore → passed from automatic backup image
+  `423119703` created at `2026-08-22T18:28:06Z`;
+- disposable restore server `163175971`, firewall `11504939` and temporary SSH
+  key were removed after evidence capture; production, DNS and Plausible were not
+  changed.
 
 Main containers:
 - `infohub-backend`
@@ -118,7 +123,7 @@ Main containers:
 2. **Deploy only through the checked script.** Использовать `/root/infohub/scripts/deploy_production.sh` — он делает fast-forward-only, preflight и public health-check.
 3. **pgvector is the real vector path.** Старые упоминания Chroma относятся к раннему этапу проекта.
 4. **Historical docs exist.** Старые сводки и черновики могут описывать pre-production состояние.
-5. **Backups have two owner-confirmed layers.** Hetzner snapshots/backups и еженедельная полная копия БД на компьютер владельца. Серверный custom dump пройден с RPO 1 165 секунд / RTO 699 секунд; exact off-site custom dump от 2026-08-17 отдельно пройден с RPO 453 971 секунд / RTO 695 секунд и полными integrity gates. Непроверенным остаётся только provider-level restore Hetzner snapshot.
+5. **Both backup layers now have recovery evidence.** Серверный custom dump пройден с RPO 1 165 секунд / RTO 699 секунд; exact off-site custom dump от 2026-08-17 отдельно пройден с RPO 453 971 секунд / RTO 695 секунд и полными integrity gates. Provider-level восстановление Hetzner automatic backup также пройдено на изолированном временном сервере: ОС загрузилась, PostgreSQL и frontend проверены, локальный embedding-cache читается; временный сервер, firewall и SSH key удалены. Clone-only filesystem incident был исправлен через offline `e2fsck`, финальная read-only проверка чистая; production и backup image не изменялись.
 6. **CI checks real contracts.** GitHub Actions запускает текущие security/quota/evidence/integration тесты, frontend lint/type-check/build, pinned Chromium visual regression для семи RU/KA/EN desktop/mobile состояний, аудит production Python-зависимостей и сборку обоих Docker-образов.
 7. **Production CD is intentionally manual.** Workflow требует pinned `HETZNER_KNOWN_HOSTS` и отдельный SSH key; он вызывает тот же проверенный deploy-script и не подменяет его набором команд в YAML.
 8. **Dependency baseline.** Production Python resolution проходит `pip-audit`, а полный frontend tree — `npm audit` без известных уязвимостей на 2026-08-20. После контролируемой миграции на Next 16 / React 19 high/critical findings в production frontend являются жёстким CI-блокером.
@@ -143,6 +148,7 @@ Main containers:
 27. **Shared ingress keeps the production analytics route declarative.** `stats.modern-travel.ge` is preserved in the versioned Nginx configuration and proxies to the independently managed Plausible container through request-time Docker DNS. A Plausible restart or absence therefore produces an isolated `502` on the statistics host instead of preventing the Tax Advisor ingress from starting.
 28. **Frontend fonts are deterministic and language-aware.** Production builds no longer call Google Fonts. Exact Fontsource 5.3.0 packages in the npm lockfile provide Instrument Serif italic, Barlow 300–600, variable Inter and variable Noto Sans/Serif Georgian as local Next assets. The stack places every real language font before metric fallbacks, so Cyrillic now reaches Inter instead of being intercepted by Arial and Georgian reaches Noto. A static CI contract rejects external font delivery or unpinned packages; production build, RU/KA desktop/mobile browser checks and local WOFF2 requests passed.
 29. **Visual regressions are CI-blocking and reproducible.** Exact `@playwright/test` 1.62.1 and the matching digest-pinned Noble image exercise seven deterministic Chromium states: RU desktop landing, KA mobile landing/menu, EN long-title legislation, KA empty guides, RU login error and EN invalid reset token. API fixtures, viewport, timezone, color scheme, scale and reduced motion are fixed; fonts are awaited and horizontal overflow is asserted. Linux baselines were visually reviewed, then passed a second clean run 7/7 without snapshot updates. Failed CI runs retain actual/expected/diff artifacts for 14 days.
+30. **Production embeddings are cache-only and content-audited.** Production Compose disables Hub downloads by default. Root/public health expose embedding availability and source, and root health returns `503` when the model is unavailable. The deployment preflight resolves the local snapshot without network access, hashes a bounded file manifest, rejects missing model/tokenizer assets or escaping symlinks, runs repeatable RU/EN/KA vector probes with the configured dimension, verifies CPU-only PyTorch and executes only `SELECT 1` against PostgreSQL before replacing the backend.
 
 ---
 
@@ -160,7 +166,7 @@ Main containers:
 - подключение production SMTP и end-to-end smoke для уже реализованных email verification / password recovery;
 - автоматизированная оплата;
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
-- квартальный тест восстановления резервной копии, а не только факт её создания.
+- квартальный повтор recovery drill с новым pinned evidence, чтобы подтверждённое восстановление не стало одноразовым историческим фактом.
 
 
 ## Scrapling status
