@@ -60,6 +60,22 @@ container. This never targets production resources.
 ./scripts/test_database_restore.sh --backup /restricted/path/infohub_ai.sql.gz
 ```
 
+### manage_infohub_buildkit.py
+
+Create and validate the production-only `docker-container` Buildx builder,
+build/load the two explicit InfoHub images and bound only that builder's cache.
+The prune command is dry-run-first and never targets the host-wide default
+builder.
+
+```bash
+python3 scripts/manage_infohub_buildkit.py ensure
+python3 scripts/manage_infohub_buildkit.py prune
+python3 scripts/manage_infohub_buildkit.py prune --execute
+```
+
+Normal production builds invoke the `build` subcommand through
+`scripts/deploy_production.sh`; operators should not run a global Docker prune.
+
 ### import_decision_facts_review_workbook.py
 
 Convert a protected expert-review XLSX worksheet into the exact CSV contract

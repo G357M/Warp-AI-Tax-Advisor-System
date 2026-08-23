@@ -62,7 +62,12 @@ if [[ -n "$FRONTEND_IMAGE" ]]; then
     docker image tag "$FRONTEND_IMAGE" "infohub/frontend:rollback-$OLD_COMMIT"
 fi
 
-docker compose build backend frontend
+# Use a dedicated docker-container builder so InfoHub cannot grow or prune the
+# host-wide BuildKit cache shared with unrelated projects. The helper loads the
+# two explicit Compose images into Docker and enforces only this builder's
+# bounded cache policy before any running container can be replaced.
+python3 scripts/manage_infohub_buildkit.py build \
+    --compose-file docker-compose.yml
 
 # Validate the new backend image, production policy, CPU runtime, complete local
 # embedding snapshot, deterministic multilingual probes and DB reachability

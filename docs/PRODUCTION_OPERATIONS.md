@@ -299,8 +299,41 @@ printed policy with:
 ./scripts/prune_infohub_rollbacks.sh --apply
 ```
 
-BuildKit cache is shared by every project on the host and therefore remains
-outside this automated policy. Review it separately before any global prune.
+## Project-scoped BuildKit cache
+
+Production builds never use or prune the host's active `default` builder. The
+deployment helper creates `infohub-production-v1` with the isolated
+`docker-container` driver, builds and loads only the explicit
+`infohub-backend` and `infohub-frontend` images, then applies retention only to
+that named builder. It never passes `--use`, so unrelated projects keep their
+existing builder selection.
+
+Review the exact dry-run plan without deleting cache:
+
+```bash
+cd /root/infohub
+python3 scripts/manage_infohub_buildkit.py ensure
+python3 scripts/manage_infohub_buildkit.py prune
+```
+
+The defaults keep at most 18 GB of project cache, reserve 6 GB and target at
+least 25 GB of free host space. Apply the printed named-builder policy with:
+
+```bash
+python3 scripts/manage_infohub_buildkit.py prune --execute
+```
+
+`scripts/deploy_production.sh` performs the same bounded prune after every
+successful image build and attempts it after a failed build. An existing
+builder with the same name but any driver other than `docker-container` is a
+hard failure before image replacement. Overrides are limited to validated
+`INFOHUB_BUILDX_BUILDER`, `INFOHUB_BUILDKIT_MAX_USED_SPACE`,
+`INFOHUB_BUILDKIT_RESERVED_SPACE` and `INFOHUB_BUILDKIT_MIN_FREE_SPACE`.
+
+The legacy cache already held by the shared `default` builder remains outside
+this policy. Do not run global `docker builder prune` or `docker system prune`
+automatically: it may remove cache or images owned by other projects. Review
+and retire that legacy cache only as a separate host-wide maintenance action.
 
 ## Database credential rotation
 
