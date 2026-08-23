@@ -396,10 +396,11 @@ The execution issues one `docker buildx prune` per exact ID against the fixed
 `mutable!=true`, `immutable!=false`, `type=regular` and InfoHub
 dependency-description regexp filters. These negative boolean selectors match
 the installed Buildx behavior; equality to `false` produces a safe no-op. The
-tool then requires every exact ID to be absent. Stop on any changed plan or
-metadata; do not fall back to a description-only, age-only or global prune.
-Re-run the storage audit and application/Plausible identity checks after the
-operation.
+tool retries a transient exact-ID no-op at most three times, revalidates the
+complete reviewed metadata before every attempt and then requires every exact
+ID to be absent. Stop on any changed plan or metadata; do not fall back to a
+description-only, age-only or global prune. Re-run the storage audit and
+application/Plausible identity checks after the operation.
 
 The separate rollback-image retention was applied after that inventory. It
 removed twelve exact obsolete `infohub/backend:rollback-*` and

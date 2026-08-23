@@ -9,9 +9,10 @@ import json
 import re
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Protocol, Sequence
+from typing import Callable, Protocol, Sequence
 
 
 LEGACY_BUILDER = "default"
@@ -30,6 +31,8 @@ SIZE_MULTIPLIERS = {
     "tb": 1_000_000_000_000,
 }
 MAX_RECORDS = 16
+PRUNE_ATTEMPTS = 3
+PRUNE_RETRY_SECONDS = 1.0
 
 
 class LegacyRetirementError(RuntimeError):
@@ -229,6 +232,7 @@ def execute_plan(
     expected_record_count: int,
     expected_total_bytes: int,
     expected_plan_sha256: str,
+    sleeper: Callable[[float], None] = time.sleep,
 ) -> None:
     if expected_record_count != plan.record_count:
         raise LegacyRetirementError("record count changed after review")
@@ -238,11 +242,24 @@ def execute_plan(
         raise LegacyRetirementError("plan SHA-256 changed after review")
 
     for record in plan.records:
-        runner.run(_prune_command(record.record_id))
-        if _load_record(record.record_id, runner, allow_missing=True) is not None:
-            raise LegacyRetirementError(
-                f"record {record.record_id} remained after exact-ID prune"
-            )
+        for attempt in range(1, PRUNE_ATTEMPTS + 1):
+            current = _load_record(record.record_id, runner, allow_missing=True)
+            if current is None:
+                break
+            if current != record:
+                raise LegacyRetirementError(
+                    f"record {record.record_id} metadata changed during retirement"
+                )
+
+            runner.run(_prune_command(record.record_id))
+            if _load_record(record.record_id, runner, allow_missing=True) is None:
+                break
+            if attempt == PRUNE_ATTEMPTS:
+                raise LegacyRetirementError(
+                    f"record {record.record_id} remained after "
+                    f"{PRUNE_ATTEMPTS} exact-ID prune attempts"
+                )
+            sleeper(PRUNE_RETRY_SECONDS)
 
 
 def plan_summary(plan: RetirementPlan, *, execute: bool) -> dict[str, object]:

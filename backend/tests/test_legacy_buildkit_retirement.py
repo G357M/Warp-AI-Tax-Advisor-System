@@ -46,8 +46,9 @@ RECORDS = {
 
 
 class FakeDockerRunner:
-    def __init__(self, records=None):
+    def __init__(self, records=None, prune_noops=None):
         self.records = deepcopy(RECORDS if records is None else records)
+        self.prune_noops = dict(prune_noops or {})
         self.calls: list[tuple[str, ...]] = []
 
     def run(self, command, *, check=True, capture_output=False):
@@ -61,7 +62,12 @@ class FakeDockerRunner:
             return subprocess.CompletedProcess(command, 0, output, "")
         if command_tuple[:3] == ("docker", "buildx", "prune"):
             selector = command_tuple[command_tuple.index("--filter") + 1]
-            self.records.pop(selector.removeprefix("id="), None)
+            record_id = selector.removeprefix("id=")
+            remaining_noops = self.prune_noops.get(record_id, 0)
+            if remaining_noops:
+                self.prune_noops[record_id] = remaining_noops - 1
+            else:
+                self.records.pop(record_id, None)
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(f"unexpected command: {command_tuple}")
 
@@ -119,6 +125,73 @@ def test_execute_uses_exact_id_and_all_safety_filters_then_verifies_absence():
             "description~=requirements-production[.]txt",
         ]
         assert "--force" in call
+
+
+def test_execute_revalidates_and_retries_a_transient_exact_id_noop():
+    record_id = "a" * 25
+    runner = FakeDockerRunner(prune_noops={record_id: 1})
+    plan = MODULE.build_plan([record_id], runner)
+    delays: list[float] = []
+
+    MODULE.execute_plan(
+        plan,
+        runner,
+        expected_record_count=plan.record_count,
+        expected_total_bytes=plan.total_bytes,
+        expected_plan_sha256=plan.plan_sha256,
+        sleeper=delays.append,
+    )
+
+    prune_calls = [call for call in runner.calls if call[2] == "prune"]
+    assert len(prune_calls) == 2
+    assert delays == [MODULE.PRUNE_RETRY_SECONDS]
+    assert record_id not in runner.records
+
+
+def test_execute_stops_after_bounded_exact_id_noops():
+    record_id = "a" * 25
+    runner = FakeDockerRunner(
+        prune_noops={record_id: MODULE.PRUNE_ATTEMPTS},
+    )
+    plan = MODULE.build_plan([record_id], runner)
+    delays: list[float] = []
+
+    with pytest.raises(MODULE.LegacyRetirementError, match="remained after 3"):
+        MODULE.execute_plan(
+            plan,
+            runner,
+            expected_record_count=plan.record_count,
+            expected_total_bytes=plan.total_bytes,
+            expected_plan_sha256=plan.plan_sha256,
+            sleeper=delays.append,
+        )
+
+    prune_calls = [call for call in runner.calls if call[2] == "prune"]
+    assert len(prune_calls) == MODULE.PRUNE_ATTEMPTS
+    assert delays == [MODULE.PRUNE_RETRY_SECONDS] * (MODULE.PRUNE_ATTEMPTS - 1)
+    assert record_id in runner.records
+
+
+def test_execute_refuses_metadata_drift_between_exact_id_attempts():
+    record_id = "a" * 25
+    runner = FakeDockerRunner(prune_noops={record_id: 1})
+    plan = MODULE.build_plan([record_id], runner)
+
+    def mutate_record(_delay):
+        runner.records[record_id]["Size"] = "8.68GB"
+
+    with pytest.raises(MODULE.LegacyRetirementError, match="metadata changed"):
+        MODULE.execute_plan(
+            plan,
+            runner,
+            expected_record_count=plan.record_count,
+            expected_total_bytes=plan.total_bytes,
+            expected_plan_sha256=plan.plan_sha256,
+            sleeper=mutate_record,
+        )
+
+    prune_calls = [call for call in runner.calls if call[2] == "prune"]
+    assert len(prune_calls) == 1
 
 
 @pytest.mark.parametrize(
