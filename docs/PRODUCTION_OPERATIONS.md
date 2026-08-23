@@ -335,6 +335,41 @@ this policy. Do not run global `docker builder prune` or `docker system prune`
 automatically: it may remove cache or images owned by other projects. Review
 and retire that legacy cache only as a separate host-wide maintenance action.
 
+### Nightly storage-pressure audit
+
+The nightly runner executes a read-only storage audit before ingest:
+
+```bash
+cd /root/infohub
+python3 scripts/audit_production_storage.py
+```
+
+It measures root filesystem headroom and aggregate cache bytes from
+`docker buildx du --format json` for the bounded `infohub-production-v1`
+builder and the shared `default` builder. It never returns cache descriptions
+in its machine summary and has no prune, image-removal or volume-removal code.
+The default thresholds are 25 GB minimum free space, 82% maximum root usage,
+18 GB maximum project cache and a 60 GB observation ceiling for the legacy
+cache. A pressure or measurement failure sends the single aggregate
+`PRODUCTION_STORAGE_AUDIT=` line through the existing Telegram path; a healthy
+run sends no message and all outcomes leave the primary scraper exit unchanged.
+
+The first read-only inventory on 2026-08-23 measured 54.26 GB in the legacy
+builder. Four reclaimable, non-shared records totalling 34.616 GB were old
+InfoHub `pip install --no-cache-dir -r requirements-production.txt` layers;
+another 3.811 GB matched the previous InfoHub CPU-only virtualenv/copy chain.
+This attribution is evidence for a later exact host-maintenance decision, not
+permission for automatic global prune. The independent Plausible service and
+its images, containers, networks and volumes remain outside every InfoHub
+cleanup policy.
+
+The separate rollback-image retention was applied after that inventory. It
+removed twelve exact obsolete `infohub/backend:rollback-*` and
+`infohub/frontend:rollback-*` tags while retaining the newest three of each.
+Because the deleted images shared most layers, it returned about 1 GB rather
+than their summed virtual sizes. No BuildKit cache, active image, volume or
+Plausible resource was touched.
+
 ## Database credential rotation
 
 Database URLs and passwords must come only from the environment. The RAG v2

@@ -52,5 +52,5 @@ fi
 send_telegram "🔴 InfoHub ${GATE_LABEL} FAILED on ${HOST}
 ${SUMMARY:-aggregate summary was not produced}
 ${NOW}
-The deterministic nightly quality contract is below threshold or its protected artifact is incomplete. See the latest /root/infohub/logs/scraper_*.log and /root/infohub/.state/."
+The deterministic nightly operational contract is below threshold or its protected artifact is incomplete. See the latest /root/infohub/logs/scraper_*.log and /root/infohub/.state/."
 exit 0

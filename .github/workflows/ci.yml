@@ -59,6 +59,7 @@ jobs:
           scripts/repair_decision_fact_normalization.py
           scripts/validate_decision_facts_expert_review.py
           scripts/verify_infohub_duplicate_candidates.py
+          ../scripts/audit_production_storage.py
           ../scripts/manage_infohub_buildkit.py
 
       - name: Run current API contracts
@@ -67,6 +68,7 @@ jobs:
           tests/test_config_contract.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py
+          tests/test_production_storage_audit.py
           tests/test_buildkit_cache_policy.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py

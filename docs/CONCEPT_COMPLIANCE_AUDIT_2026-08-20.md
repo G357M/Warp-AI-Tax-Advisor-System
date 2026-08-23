@@ -21,7 +21,7 @@
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Сильное соответствие** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; self-hosted pinned fonts; семь детерминированных desktop/mobile visual baselines в matching Playwright image, второй clean run 7/7 | Намеренные UI-изменения требуют визуального review baseline, а не слепого `--update-snapshots` |
 | Production operations | **Сильное соответствие** | Только Nginx публикует порты; TLS verify включён; rate limits; health-gated deploy с rollback; ротация логов; серверный restore RTO 699 секунд, exact off-site restore RTO 695 секунд и отдельный provider-level Hetzner restore с удалением временных ресурсов | Нужно сохранять квартальный recovery cadence с новым pinned evidence |
-| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; cache-only embedding startup с health/deploy audit; dry-run-first rollback retention; отдельный bounded `docker-container` builder для production InfoHub | Старый cache host-wide `default` builder требует отдельной ручной инвентаризации, но больше не растёт от InfoHub deploy |
+| Проверяемая поставка | **Сильное соответствие после модернизации** | Next 16.3.1 / React 19.2.8, реальные backend contracts, dependency audit и Docker builds в CI; ручной CD с pinned host key; CPU-only ML runtime; cache-only embedding startup с health/deploy audit; scoped rollback retention; отдельный bounded `docker-container` builder и nightly read-only disk/cache-pressure audit | Атрибутированные старые InfoHub records в host-wide `default` builder требуют отдельного exact-ID retirement; автоматический global prune запрещён |
 
 ## Что концептуально реализовано
 
@@ -152,7 +152,7 @@ health/deploy gate и детерминированным cache-integrity audit.
 ### P2 — remaining operational maturity
 
 1. Поддерживать квартальный recovery cadence для server-side, off-site и provider-level слоёв с новым pinned evidence.
-2. Отдельно инвентаризировать старый cache host-wide `default` builder перед любым ручным удалением; новый InfoHub builder уже изолирован и ограничен.
+2. Подготовить отдельный exact-ID retirement для уже атрибутированных старых InfoHub records в host-wide `default` builder; новый builder изолирован, а nightly audit лишь наблюдает пороги и никогда не выполняет global prune.
 
 ## Граница обещания продукта
 

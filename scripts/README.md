@@ -76,6 +76,29 @@ python3 scripts/manage_infohub_buildkit.py prune --execute
 Normal production builds invoke the `build` subcommand through
 `scripts/deploy_production.sh`; operators should not run a global Docker prune.
 
+### audit_production_storage.py
+
+Read the root-filesystem headroom and aggregate cache usage for the isolated
+InfoHub builder and the legacy shared `default` builder. The command only runs
+`docker buildx du`; it has no prune, image-removal or volume-removal path.
+
+```bash
+python3 scripts/audit_production_storage.py
+```
+
+The default contract requires at least 25 GB free, at most 82% root usage, at
+most 18 GB in `infohub-production-v1`, and observes a 60 GB alert ceiling for
+the legacy shared cache. A healthy audit exits `0`; pressure exits `1`; an
+unmeasurable state exits `2`. All cases emit one aggregate
+`PRODUCTION_STORAGE_AUDIT=` JSON line. The nightly runner forwards only that
+line to the existing Telegram alert path and never cleans the shared builder.
+
+Threshold overrides are validated through
+`INFOHUB_STORAGE_MIN_FREE_SPACE`, `INFOHUB_STORAGE_MAX_USED_PERCENT`,
+`INFOHUB_PROJECT_CACHE_MAX_USED_SPACE` and
+`INFOHUB_LEGACY_CACHE_OBSERVATION_CEILING`. The project builder override reuses
+the restricted `INFOHUB_BUILDX_BUILDER` name.
+
 ### import_decision_facts_review_workbook.py
 
 Convert a protected expert-review XLSX worksheet into the exact CSV contract

@@ -7,6 +7,7 @@ set -e
 MAX_DOCS=200
 LOG_DIR="/root/infohub/logs"
 CONTAINER_NAME="infohub-backend"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 OPTIONAL_FAILURES=()
 
 run_optional() {
@@ -36,10 +37,30 @@ mkdir -p "$LOG_DIR"
 
 # Log file for this run
 LOG_FILE="$LOG_DIR/scraper_$(date +%Y%m%d_%H%M%S).log"
+touch "$LOG_FILE"
+chmod 0600 "$LOG_FILE"
 
 echo "========================================" | tee -a "$LOG_FILE"
 echo "Starting scraper at $(date)" | tee -a "$LOG_FILE"
 echo "========================================" | tee -a "$LOG_FILE"
+
+# Observe root-disk pressure, the bounded InfoHub builder and the legacy
+# shared builder before ingest. This audit never prunes or removes anything.
+# A failure alerts through the aggregate-only Telegram path but does not hide
+# or replace the primary scraper exit code.
+STORAGE_EXIT=0
+STORAGE_OUT="$(python3 "$SCRIPT_DIR/scripts/audit_production_storage.py" 2>>"$LOG_FILE")" \
+    || STORAGE_EXIT=$?
+printf '%s\n' "$STORAGE_OUT" | tee -a "$LOG_FILE"
+STORAGE_SUMMARY="$(printf '%s\n' "$STORAGE_OUT" \
+    | grep '^PRODUCTION_STORAGE_AUDIT=' | tail -1 || true)"
+if [ -z "$STORAGE_SUMMARY" ]; then
+    STORAGE_EXIT=2
+    STORAGE_SUMMARY='PRODUCTION_STORAGE_AUDIT={"schema_version":1,"status":"error","error":"summary_missing"}'
+fi
+bash "$SCRIPT_DIR/quality_gate_alert.sh" \
+    "$STORAGE_EXIT" "production storage audit" "$STORAGE_SUMMARY" \
+    2>&1 | tee -a "$LOG_FILE" || true
 
 # Run scraper inside backend container (direct JSON API; incremental)
 docker exec "$CONTAINER_NAME" python /app/scripts/scrape_infohub_api.py \
