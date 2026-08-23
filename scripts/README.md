@@ -125,10 +125,13 @@ python3 scripts/retire_infohub_legacy_buildkit.py \
 ```
 
 The tool fixes the builder name, validates the complete record metadata, adds
-exact ID plus non-shared/immutable/type/description prune filters, and verifies
-that every target ID disappeared. It has no global builder, image or volume
-cleanup path. Record IDs must come from a separate read-only attribution; never
-substitute aggregate sizes or description matching for reviewed exact IDs.
+exact ID plus negative in-use/shared/mutable/false-immutable, exact type and
+description-regexp prune filters, and verifies that every target ID
+disappeared. The negative boolean selectors match the installed Buildx filter
+semantics; equality to `false` is not equivalent and produces a safe no-op. The
+tool has no global builder, image or volume cleanup path. Record IDs must come
+from a separate read-only attribution; never substitute aggregate sizes or
+description matching for reviewed exact IDs.
 
 ### import_decision_facts_review_workbook.py
 

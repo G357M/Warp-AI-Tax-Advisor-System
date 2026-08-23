@@ -111,11 +111,12 @@ def test_execute_uses_exact_id_and_all_safety_filters_then_verifies_absence():
         ]
         assert filters == [
             f"id={record.record_id}",
-            "inuse=false",
-            "shared=false",
-            "mutable=false",
+            "inuse!=true",
+            "shared!=true",
+            "mutable!=true",
+            "immutable!=false",
             "type=regular",
-            "description=requirements-production.txt",
+            "description~=requirements-production[.]txt",
         ]
         assert "--force" in call
 
