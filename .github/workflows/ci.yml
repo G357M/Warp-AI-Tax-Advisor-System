@@ -61,6 +61,7 @@ jobs:
           scripts/verify_infohub_duplicate_candidates.py
           ../scripts/audit_production_storage.py
           ../scripts/manage_infohub_buildkit.py
+          ../scripts/retire_infohub_legacy_buildkit.py
 
       - name: Run current API contracts
         run: >-
@@ -70,6 +71,7 @@ jobs:
           tests/test_production_readiness_audit.py
           tests/test_production_storage_audit.py
           tests/test_buildkit_cache_policy.py
+          tests/test_legacy_buildkit_retirement.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
           tests/test_nightly_quality_gates.py

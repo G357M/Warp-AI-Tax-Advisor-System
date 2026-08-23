@@ -363,6 +363,41 @@ permission for automatic global prune. The independent Plausible service and
 its images, containers, networks and volumes remain outside every InfoHub
 cleanup policy.
 
+### Exact-ID legacy cache retirement
+
+Use the dedicated retirement tool only for records already attributed through
+the read-only inventory. A dry-run re-inspects every exact ID and refuses a
+different description, type, mutability, shared/reclaimable state, missing
+timestamp or invalid size:
+
+```bash
+cd /root/infohub
+python3 scripts/retire_infohub_legacy_buildkit.py \
+  --record-id EXACT_REVIEWED_ID_1 \
+  --record-id EXACT_REVIEWED_ID_2
+```
+
+Record the emitted `record_count`, `total_bytes` and `plan_sha256`. After code
+review and green CI, repeat the identical IDs and require all three values for
+the mutation:
+
+```bash
+python3 scripts/retire_infohub_legacy_buildkit.py \
+  --record-id EXACT_REVIEWED_ID_1 \
+  --record-id EXACT_REVIEWED_ID_2 \
+  --execute \
+  --expected-record-count 2 \
+  --expected-total-bytes EXACT_DRY_RUN_BYTES \
+  --expected-plan-sha256 EXACT_DRY_RUN_SHA256
+```
+
+The execution issues one `docker buildx prune` per exact ID against the fixed
+`default` builder, with additional `inuse=false`, `shared=false`,
+`mutable=false`, `type=regular` and InfoHub dependency-description filters. It
+then requires every exact ID to be absent. Stop on any changed plan or metadata;
+do not fall back to a description-only, age-only or global prune. Re-run the
+storage audit and application/Plausible identity checks after the operation.
+
 The separate rollback-image retention was applied after that inventory. It
 removed twelve exact obsolete `infohub/backend:rollback-*` and
 `infohub/frontend:rollback-*` tags while retaining the newest three of each.

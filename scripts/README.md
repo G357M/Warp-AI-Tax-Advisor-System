@@ -99,6 +99,37 @@ Threshold overrides are validated through
 `INFOHUB_LEGACY_CACHE_OBSERVATION_CEILING`. The project builder override reuses
 the restricted `INFOHUB_BUILDX_BUILDER` name.
 
+### retire_infohub_legacy_buildkit.py
+
+Retire only individually reviewed, immutable, reclaimable and non-shared old
+InfoHub dependency records from the host-wide `default` Buildx builder. First
+repeat `--record-id` for every approved exact ID and save the printed count,
+total bytes and plan SHA-256:
+
+```bash
+python3 scripts/retire_infohub_legacy_buildkit.py \
+  --record-id EXACT_REVIEWED_ID_1 \
+  --record-id EXACT_REVIEWED_ID_2
+```
+
+Execute only the unchanged reviewed plan by supplying all three guards:
+
+```bash
+python3 scripts/retire_infohub_legacy_buildkit.py \
+  --record-id EXACT_REVIEWED_ID_1 \
+  --record-id EXACT_REVIEWED_ID_2 \
+  --execute \
+  --expected-record-count 2 \
+  --expected-total-bytes EXACT_DRY_RUN_BYTES \
+  --expected-plan-sha256 EXACT_DRY_RUN_SHA256
+```
+
+The tool fixes the builder name, validates the complete record metadata, adds
+exact ID plus non-shared/immutable/type/description prune filters, and verifies
+that every target ID disappeared. It has no global builder, image or volume
+cleanup path. Record IDs must come from a separate read-only attribution; never
+substitute aggregate sizes or description matching for reviewed exact IDs.
+
 ### import_decision_facts_review_workbook.py
 
 Convert a protected expert-review XLSX worksheet into the exact CSV contract
