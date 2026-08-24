@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-24.1",
+  "suite_version": "2026-08-24.2",
   "description": "Balanced RU/EN/KA live-corpus locator contracts. Semantic retrieval is disabled so the suite performs no translation or answer-generation LLM calls.",
   "retrieval_profile": {
     "disabled_channels": ["semantic_search"],
@@ -227,6 +227,30 @@
       "query": "რა წერია დოკუმენტ 1432-ში?",
       "expected_class": "named_document_lookup",
       "expected_top": {"document_type": "guideline", "channel": "exact_doc_resolver", "document_id": "ddf2e849-443b-43bc-81f8-41e52b403388", "metadata": {"document_number": "1432"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "appeal_procedure_ru",
+      "language": "ru",
+      "query": "Как обжаловать решение налоговой?",
+      "expected_class": "practical_tax_guidance",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "299", "is_current": true}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "appeal_procedure_en",
+      "language": "en",
+      "query": "How do I appeal a tax decision?",
+      "expected_class": "practical_tax_guidance",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "299", "is_current": true}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "appeal_procedure_ka",
+      "language": "ka",
+      "query": "როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?",
+      "expected_class": "practical_tax_guidance",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "299", "is_current": true}},
       "expected_source_audit": true
     }
   ]
