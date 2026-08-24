@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-24.4",
-  "suite_sha256": "4eeaad3f8417f95a5aa1e3fe7b3d20ac703693d97dfd5edf95eba7061df65f3e",
-  "generated_at_utc": "2026-08-24T16:34:49.521022+00:00",
-  "deployed_commit": "67caaba483f7eea9752e83e89fac5b5593f208d2",
+  "suite_version": "2026-08-24.5",
+  "suite_sha256": "44bcfd032beeb0e9571314bb297609b78533889148ab537db8c87fb5605289d1",
+  "generated_at_utc": "2026-08-24T17:34:53.588717+00:00",
+  "deployed_commit": "7886aeff270c79453ad858e2aabc6657eebabeca",
   "backend": {
     "mode": "db",
     "driver": "psycopg",
@@ -22,8 +22,8 @@
     "decision_facts": 11370,
     "latest_document_update": "2026-08-22T03:00:44.953005"
   },
-  "cases": 57,
-  "passed_cases": 57,
+  "cases": 60,
+  "passed_cases": 60,
   "failed_cases": [],
   "metrics": {
     "classification_accuracy": 1.0,
@@ -34,21 +34,21 @@
   },
   "language_metrics": {
     "ru": {
-      "cases": 19,
+      "cases": 20,
       "classification_accuracy": 1.0,
       "top1_contract_recall": 1.0,
       "source_audit_rate": 1.0,
       "official_provision_link_rate": 1.0
     },
     "en": {
-      "cases": 19,
+      "cases": 20,
       "classification_accuracy": 1.0,
       "top1_contract_recall": 1.0,
       "source_audit_rate": 1.0,
       "official_provision_link_rate": 1.0
     },
     "ka": {
-      "cases": 19,
+      "cases": 20,
       "classification_accuracy": 1.0,
       "top1_contract_recall": 1.0,
       "source_audit_rate": 1.0,
