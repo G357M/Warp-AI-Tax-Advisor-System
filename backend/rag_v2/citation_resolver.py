@@ -28,20 +28,30 @@ DOC_NUMBER_FIXTURES = {
 }
 
 
+ARTICLE_NUMBER = r"\d+(?:[¹²³]|-\d+)*"
+
+
 ARTICLE_PATTERNS = [
-    re.compile(r"ст\.?\s*(\d+[¹²³\-\d]*)", re.IGNORECASE),
-    re.compile(r"статья\s*(\d+[¹²³\-\d]*)", re.IGNORECASE),
-    re.compile(r"article\s*(\d+[¹²³\-\d]*)", re.IGNORECASE),
-    re.compile(r"მუხლი\s*(\d+[¹²³\-\d]*)", re.IGNORECASE),
-    re.compile(r"(\d+(?:[¹²³]|-\d+)*)-?ე\s*მუხლ", re.IGNORECASE),
+    re.compile(rf"\bст\.?\s*({ARTICLE_NUMBER})", re.IGNORECASE),
+    re.compile(rf"\bстатья\s*({ARTICLE_NUMBER})", re.IGNORECASE),
+    re.compile(rf"\barticle\s*({ARTICLE_NUMBER})", re.IGNORECASE),
+    re.compile(rf"\bart\.?\s*({ARTICLE_NUMBER})", re.IGNORECASE),
+    re.compile(rf"მუხლი\s*({ARTICLE_NUMBER})", re.IGNORECASE),
+    re.compile(rf"({ARTICLE_NUMBER})-?ე\s*მუხლ", re.IGNORECASE),
 ]
 
 DOC_NUMBER_PATTERNS = [
-    re.compile(r"(?:\b|^)n\s*(\d{3,}(?:/\d+/\d{4})?)\b", re.IGNORECASE),
-    re.compile(r"№\s*(\d{3,}(?:/\d+/\d{4})?)", re.IGNORECASE),
-    # bare number right after a document-type word: "ბრძანება 14640", "приказ 996"
     re.compile(
-        r"(?:ბრძანებ\w*|დადგენილებ\w*|გადაწყვეტილებ\w*|приказ\w*|постановлени\w*|решени\w*|order|resolution|decision)"
+        r"(?:\b|^)(?:n\.?|no\.)\s*(\d{3,}(?:/\d+/\d{4})?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"№\s*(\d{3,}(?:/\d+/\d{4})?)", re.IGNORECASE),
+    # Bare number right after a document-type word: "ბრძანება 14640",
+    # "приказ 996", "document 1432".
+    re.compile(
+        r"(?:ბრძანებ\w*|დადგენილებ\w*|გადაწყვეტილებ\w*|დოკუმენტ\w*|"
+        r"приказ\w*|постановлени\w*|решени\w*|документ\w*|"
+        r"order|resolution|decision|document)"
         r"\s+(?:no\.?\s*)?(\d{3,}(?:/\d+/\d{4})?)\b",
         re.IGNORECASE,
     ),

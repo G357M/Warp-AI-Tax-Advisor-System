@@ -25,6 +25,26 @@ class PipelineV2RegressionTests(unittest.TestCase):
         self.assertEqual(top["channel"], "citation_resolver")
         self.assertTrue(trace.source_audit["passed"])
 
+    def test_english_no_document_reference_stops_on_direct_resolution(self):
+        trace = pipeline_v2.build_trace(
+            "What does document No. 1432 say?", language="en"
+        )
+        top = trace.reranking["top_ranked_documents"][0]
+        self.assertEqual(trace.classification["question_class"], "named_document_lookup")
+        self.assertEqual(trace.candidate_generation["channels_used"], ["citation_resolver"])
+        self.assertEqual(top["document_id"], "property-guidance-1432")
+        self.assertEqual(top["channel"], "citation_resolver")
+        self.assertTrue(trace.source_audit["passed"])
+
+    def test_english_negative_no_before_number_is_not_a_document_reference(self):
+        parsed = parse_query("There were no 1432 responses", language="en")
+        self.assertIsNone(parsed.document_ref)
+
+    def test_english_part_before_number_is_not_an_article_reference(self):
+        parsed = parse_query("This is part 202 of the Tax Code", language="en")
+        self.assertIsNone(parsed.article_ref)
+        self.assertIsNone(parsed.point_ref)
+
     def test_article_lookup_prefers_article_resolver(self):
         trace, top = self._top("Что говорит статья 168 Налогового кодекса?")
         self.assertEqual(trace.classification["question_class"], "canonical_law_lookup")
@@ -49,6 +69,40 @@ class PipelineV2RegressionTests(unittest.TestCase):
         self.assertEqual(top["metadata"].get("point_ref"), "169.1")
         self.assertEqual(top["metadata"].get("section_label"), "მუხლი 169 პუნქტი 1")
         self.assertTrue(trace.source_audit["passed"])
+
+    def test_russian_tax_code_abbreviation_routes_generic_article(self):
+        trace, top = self._top("Что говорит ст. 202 НК Грузии?")
+        self.assertEqual(trace.parsed_query["topic"], "tax")
+        self.assertEqual(trace.classification["question_class"], "canonical_law_lookup")
+        self.assertEqual(top["channel"], "article_resolver")
+        self.assertEqual(top["metadata"].get("article_ref"), "202")
+        self.assertTrue(trace.source_audit["passed"])
+
+    def test_english_art_abbreviation_routes_generic_article(self):
+        trace = pipeline_v2.build_trace(
+            "What does Art. 202 of the Georgian Tax Code say?", language="en"
+        )
+        top = trace.reranking["top_ranked_documents"][0]
+        self.assertEqual(trace.parsed_query["article_ref"], "202")
+        self.assertEqual(top["channel"], "article_resolver")
+        self.assertEqual(top["metadata"].get("article_ref"), "202")
+        self.assertTrue(trace.source_audit["passed"])
+
+    def test_parenthetical_point_references_route_to_point_resolver(self):
+        cases = (
+            ("ru", "Что говорит ст. 169(1) Налогового кодекса?"),
+            ("en", "What does Article 169(1) of the Tax Code say?"),
+            ("ka", "რა წერია საგადასახადო კოდექსის 169-ე მუხლის (1) პუნქტში?"),
+        )
+        for language, query in cases:
+            with self.subTest(language=language):
+                trace = pipeline_v2.build_trace(query, language=language)
+                top = trace.reranking["top_ranked_documents"][0]
+                self.assertEqual(trace.parsed_query["article_ref"], "169")
+                self.assertEqual(trace.parsed_query["point_ref"], "169.1")
+                self.assertEqual(top["channel"], "point_resolver")
+                self.assertEqual(top["metadata"].get("point_ref"), "169.1")
+                self.assertTrue(trace.source_audit["passed"])
 
     def test_dispute_query_prefers_court_decision(self):
         trace, top = self._top("Какое решение по спору №19068/2/2023?")

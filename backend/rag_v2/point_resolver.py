@@ -25,14 +25,54 @@ GENERIC_TAX_CODE_POINT = {
 }
 
 
+ARTICLE_NUMBER = r"\d+(?:[¹²³]|-\d+)*"
+
+
 POINT_PATTERNS = [
-    re.compile(r"ст\.?\s*(\d+)\s*(?:п\.?|пункт)\s*(\d+)", re.IGNORECASE),
-    re.compile(r"статья\s*(\d+)\s*пункт\s*(\d+)", re.IGNORECASE),
-    re.compile(r"статья\s*(\d+)\s*(?:часть|ч\.)\s*(\d+)", re.IGNORECASE),
-    re.compile(r"ст\.?\s*(\d+)\s*(?:часть|ч\.)\s*(\d+)", re.IGNORECASE),
-    re.compile(r"article\s*(\d+)\s*(?:point|paragraph)\s*(\d+)", re.IGNORECASE),
-    re.compile(r"მუხლი\s*(\d+)\s*პუნქტი\s*(\d+)", re.IGNORECASE),
-    re.compile(r"(\d+)-?ე\s*მუხლ(?:ის|ში|ით)?\s*(\d+)-?ე\s*პუნქტ", re.IGNORECASE),
+    re.compile(
+        rf"(?:\bст\.?|\bстатья|\barticle|\bart\.?)\s*({ARTICLE_NUMBER})"
+        r"\s*\(\s*(\d+)\s*\)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"მუხლი\s*({ARTICLE_NUMBER})\s*\(\s*(\d+)\s*\)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"({ARTICLE_NUMBER})-?ე\s*მუხლ(?:ის|ში|ით)?"
+        r"\s*\(\s*(\d+)\s*\)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\bст\.?\s*({ARTICLE_NUMBER})\s*(?:п\.?|пункт)\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\bстатья\s*({ARTICLE_NUMBER})\s*пункт\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\bстатья\s*({ARTICLE_NUMBER})\s*(?:часть|ч\.)\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\bст\.?\s*({ARTICLE_NUMBER})\s*(?:часть|ч\.)\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"(?:\barticle|\bart\.?)\s*({ARTICLE_NUMBER})"
+        r"\s*(?:point|paragraph)\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"მუხლი\s*({ARTICLE_NUMBER})\s*პუნქტი\s*(\d+)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"({ARTICLE_NUMBER})-?ე\s*მუხლ(?:ის|ში|ით)?"
+        r"\s*(\d+)-?ე\s*პუნქტ",
+        re.IGNORECASE,
+    ),
 ]
 
 

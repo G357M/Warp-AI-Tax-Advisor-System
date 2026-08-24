@@ -122,7 +122,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     elif is_income_tax_query:
         topic = "tax"
 
-    if any(token in q for token in ["налогов", "tax code", "საგადასახადო კოდექს"]):
+    if any(
+        token in q for token in ["налогов", "tax code", "საგადასახადო კოდექს"]
+    ) or re.search(r"\bнк(?:\s+грузии)?\b", q):
         if topic is None:
             topic = "tax"
 
