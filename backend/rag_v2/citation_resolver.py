@@ -4,9 +4,11 @@ import re
 from typing import Dict, List
 
 from .models import ParsedQuery, CandidateDocument
+from .named_legal_acts import ORDER_996, exact_reference_metadata
 
 
 DOC_NUMBER_FIXTURES = {
+    "996": ORDER_996,
     "1432": {
         "document_id": "property-guidance-1432",
         "title": "ქონების გადასახადის მიზნებისთვის მეუღლეთა შემოსავლის გაანგარიშება N1432",
@@ -94,10 +96,21 @@ def resolve_citations(parsed: ParsedQuery) -> List[CandidateDocument]:
                     metadata={
                         "resolved_doc_number": doc_number,
                         "resolved_articles": found["articles"],
-                        "topics": ["property_tax"] if doc_number in {"1432", "1433"} else ["customs", "dispute"],
+                        "topics": fixture.get("topics")
+                        or (
+                            ["property_tax"]
+                            if doc_number in {"1432", "1433"}
+                            else ["customs", "dispute"]
+                        ),
                         "subjects": ["individual"] if doc_number == "1432" else ["individual", "legal_entity"] if doc_number == "1433" else [],
                         "goals": ["document_summary", "calculation_rule"] if doc_number in {"1432", "1433"} else ["dispute_outcome"],
-                        "authority_rank": 0.8 if doc_number in {"1432", "1433"} else 0.82,
+                        "authority_rank": (
+                            0.9
+                            if doc_number == "996"
+                            else 0.8 if doc_number in {"1432", "1433"} else 0.82
+                        ),
+                        "is_current": doc_number == "996",
+                        **exact_reference_metadata(parsed),
                     },
                 )
             )

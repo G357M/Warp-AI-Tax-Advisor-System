@@ -2,6 +2,7 @@ from rag_v2.faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL
 from rag_v2.official_provisions import (
     enrich_source,
     has_official_provision_link,
+    load_official_provision_registries,
     load_tax_code_registry,
 )
 
@@ -23,6 +24,53 @@ def test_registry_is_complete_and_contains_verified_key_articles():
     assert registry["article_anchors"]["88"] == "part_108"
     assert registry["article_anchors"]["169"] == "part_557"
     assert registry["article_anchors"]["272"] == "part_345"
+
+
+def test_general_administrative_code_registry_is_complete_and_verified():
+    registries = {
+        registry["registry_id"]: registry
+        for registry in load_official_provision_registries()
+    }
+    registry = registries["general_administrative_code"]
+
+    assert len(registry["article_anchors"]) == 233
+    assert registry["article_anchors"]["177"] == "part_207"
+    assert registry["article_anchors"]["180"] == "part_210"
+    assert registry["article_anchors"]["201"] == "part_231"
+    assert registry["article_anchors"]["271"] == "part_33"
+
+
+def test_general_administrative_code_article_gets_exact_official_link():
+    source = enrich_source(
+        {
+            "title": "საქართველოს ზოგადი ადმინისტრაციული კოდექსი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/8e288090-11dc-497e-a867-ff233c9d79e7",
+            "article_ref": "180",
+        }
+    )
+
+    assert source["official_act_url"] == "https://matsne.gov.ge/ka/document/view/16270"
+    assert source["provision_links"] == [
+        {
+            "article_ref": "180",
+            "point_ref": None,
+            "url": "https://matsne.gov.ge/ka/document/view/16270#part_210",
+        }
+    ]
+    assert source["provision_publication_url"].endswith("?publication=45")
+    assert has_official_provision_link(source) is True
+
+
+def test_hyphenated_superscript_article_uses_verified_anchor():
+    source = enrich_source(
+        {
+            "url": "https://infohub.rs.ge/ka/workspace/document/8e288090-11dc-497e-a867-ff233c9d79e7",
+            "article_ref": "27-1",
+        }
+    )
+
+    assert source["provision_links"][0]["article_ref"] == "27-1"
+    assert source["provision_links"][0]["url"].endswith("#part_33")
 
 
 def test_canonical_article_source_gets_official_act_and_provision_link():

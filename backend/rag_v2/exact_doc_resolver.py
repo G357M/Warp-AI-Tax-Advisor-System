@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from typing import List
 from .models import ParsedQuery, CandidateDocument
+from .named_legal_acts import GENERAL_ADMINISTRATIVE_CODE
 
 
 CANONICAL_DOCS = [
+    {
+        **GENERAL_ADMINISTRATIVE_CODE,
+    },
     {
         "aliases": [
             "customs clearance and customs control of goods",
@@ -50,7 +54,12 @@ def resolve_exact_documents(parsed: ParsedQuery) -> List[CandidateDocument]:
                     why="matched canonical alias",
                     metadata={
                         "aliases": doc["aliases"],
-                        "topics": ["customs"] if "customs" in doc["title"].lower() else ["tax"],
+                        "topics": doc.get("topics")
+                        or (
+                            ["customs"]
+                            if "customs" in doc["title"].lower()
+                            else ["tax"]
+                        ),
                         "subjects": ["individual", "legal_entity"] if doc["document_type"] == "law" else [],
                         "goals": ["document_summary", "legal_basis"],
                         "authority_rank": 1.0 if doc["document_type"] == "law" else 0.78,

@@ -6,6 +6,7 @@ from .models import ParsedQuery, CandidateDocument
 from .citation_resolver import resolve_citations
 from .exact_doc_resolver import resolve_exact_documents
 from .article_resolver import resolve_article
+from .named_legal_acts import exact_reference_metadata
 from .point_resolver import resolve_point
 from .db_utils import db_available, run_query
 
@@ -27,7 +28,13 @@ LIMIT 10
 """
 
 
-def _rows_to_candidates(rows, channel: str, why_prefix: str, score: float) -> List[CandidateDocument]:
+def _rows_to_candidates(
+    rows,
+    channel: str,
+    why_prefix: str,
+    score: float,
+    parsed: ParsedQuery | None = None,
+) -> List[CandidateDocument]:
     return [
         CandidateDocument(
             channel=channel,
@@ -39,6 +46,7 @@ def _rows_to_candidates(rows, channel: str, why_prefix: str, score: float) -> Li
             why=f"{why_prefix}: {row.get('document_number') or row.get('title')}",
             metadata={
                 "document_number": row.get("document_number"),
+                **(exact_reference_metadata(parsed) if parsed else {}),
             },
         )
         for row in rows
@@ -52,7 +60,13 @@ def resolve_exact_from_backend(parsed: ParsedQuery) -> List[CandidateDocument]:
     if parsed.document_ref:
         rows = run_query(EXACT_BY_DOC_NUMBER_SQL, [parsed.document_ref])
         if rows:
-            return _rows_to_candidates(rows, "exact_doc_resolver", "db exact document_number match", 0.995)
+            return _rows_to_candidates(
+                rows,
+                "exact_doc_resolver",
+                "db exact document_number match",
+                0.995,
+                parsed,
+            )
 
     rows = run_query(
         EXACT_BY_SOURCE_OR_TITLE_SQL,
@@ -71,7 +85,13 @@ def resolve_citation_from_backend(parsed: ParsedQuery) -> List[CandidateDocument
     if parsed.document_ref:
         rows = run_query(EXACT_BY_DOC_NUMBER_SQL, [parsed.document_ref])
         if rows:
-            return _rows_to_candidates(rows, "citation_resolver", "db citation document_number match", 0.99)
+            return _rows_to_candidates(
+                rows,
+                "citation_resolver",
+                "db citation document_number match",
+                0.99,
+                parsed,
+            )
 
     return resolve_citations(parsed)
 

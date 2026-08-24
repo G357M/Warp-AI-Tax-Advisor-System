@@ -481,6 +481,15 @@ machine-summary line can reach Telegram. A healthy run sends no message. A
 non-zero evaluator exit, missing summary or incomplete protected artifact sends
 a quality-gate alert but does not replace the primary scraper exit code.
 
+Exact-provision coverage is registry-backed. The Tax Code registry is pinned to
+Matsne publication 245 and the General Administrative Code registry to
+publication 45; both map only anchors observed in the official document tree.
+A source from another act stays document-level unless a separately reviewed
+registry exists. In particular, Finance Minister Order No. 996 preserves an
+explicit requested article for retrieval, but must not claim an official
+provision deep-link while its public consolidated publication exposes no stable
+article anchor.
+
 The four rolling operational files are:
 
 ```text

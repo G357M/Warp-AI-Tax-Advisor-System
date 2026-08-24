@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
+  "registry_id": "tax_code",
   "registry_version": "2026-08-24.1",
+  "minimum_article_anchor_count": 300,
   "act_title": "საქართველოს საგადასახადო კოდექსი",
   "infohub_source_url": "https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0",
   "matsne_document_url": "https://matsne.gov.ge/ka/document/view/1043717",

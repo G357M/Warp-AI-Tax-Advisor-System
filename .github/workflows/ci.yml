@@ -78,6 +78,7 @@ jobs:
           tests/test_nightly_quality_gates.py
           tests/test_rag_v2_live_corpus_eval.py
           tests/test_official_provisions.py
+          tests/test_named_legal_acts.py
           tests/test_source_audit_currentness.py
           tests/test_answer_safety_eval.py
           tests/test_decision_chain_reporting.py

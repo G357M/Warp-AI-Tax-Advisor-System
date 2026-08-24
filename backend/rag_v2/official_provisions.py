@@ -1,9 +1,9 @@
 """Verified official deep links for concrete legal provisions.
 
 The public source URL stored in the corpus remains the Revenue Service
-InfoHub document.  For the Georgian Tax Code, Matsne additionally exposes
-stable named anchors for individual articles.  This module enriches source
-objects with those links without making a network request at answer time.
+InfoHub document.  For supported acts, Matsne additionally exposes stable
+named anchors for individual articles.  This module enriches source objects
+with those links without making a network request at answer time.
 
 The registry is evidence, not a legal conclusion.  If an article is absent
 from the verified registry, the source remains document-level and the public
@@ -20,17 +20,23 @@ from typing import Any, Iterable
 from urllib.parse import urlsplit
 
 
-REGISTRY_PATH = Path(__file__).with_name("official_tax_code_provisions.json")
-_ARTICLE_TOKEN = re.compile(r"\d+(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+)?")
+REGISTRY_PATHS = (
+    Path(__file__).with_name("official_tax_code_provisions.json"),
+    Path(__file__).with_name("official_general_administrative_code_provisions.json"),
+)
+# Backwards-compatible name used by earlier tests and operational tooling.
+REGISTRY_PATH = REGISTRY_PATHS[0]
+_ARTICLE_TOKEN = re.compile(r"\d+(?:(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+)|(?:-\d+))?")
 _SUPERSCRIPT_TRANSLATION = str.maketrans("¹²³⁴⁵⁶⁷⁸⁹⁰", "1234567890")
 _OFFICIAL_HOSTS = {"matsne.gov.ge", "www.matsne.gov.ge"}
 
 
-@lru_cache(maxsize=1)
-def load_tax_code_registry() -> dict[str, Any]:
-    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+def _load_registry(path: Path) -> dict[str, Any]:
+    registry = json.loads(path.read_text(encoding="utf-8"))
     if registry.get("schema_version") != 1:
         raise ValueError("unsupported official-provision registry schema")
+    if not registry.get("registry_id"):
+        raise ValueError("official-provision registry id is required")
     if not registry.get("registry_version"):
         raise ValueError("official-provision registry version is required")
     source = urlsplit(str(registry.get("infohub_source_url") or ""))
@@ -40,7 +46,10 @@ def load_tax_code_registry() -> dict[str, Any]:
     if matsne.scheme != "https" or matsne.hostname not in _OFFICIAL_HOSTS:
         raise ValueError("official-provision Matsne source is invalid")
     anchors = registry.get("article_anchors")
-    if not isinstance(anchors, dict) or len(anchors) < 300:
+    minimum_anchor_count = registry.get("minimum_article_anchor_count")
+    if not isinstance(minimum_anchor_count, int) or minimum_anchor_count < 1:
+        raise ValueError("official-provision minimum anchor count is invalid")
+    if not isinstance(anchors, dict) or len(anchors) < minimum_anchor_count:
         raise ValueError("official-provision article registry is incomplete")
     for article, anchor in anchors.items():
         if not re.fullmatch(r"\d+", str(article)):
@@ -50,7 +59,25 @@ def load_tax_code_registry() -> dict[str, Any]:
     return registry
 
 
-def _is_tax_code_source(source_url: str, registry: dict[str, Any]) -> bool:
+@lru_cache(maxsize=1)
+def load_official_provision_registries() -> tuple[dict[str, Any], ...]:
+    registries = tuple(_load_registry(path) for path in REGISTRY_PATHS)
+    registry_ids = [str(registry["registry_id"]) for registry in registries]
+    if len(registry_ids) != len(set(registry_ids)):
+        raise ValueError("official-provision registry ids must be unique")
+    return registries
+
+
+@lru_cache(maxsize=1)
+def load_tax_code_registry() -> dict[str, Any]:
+    return next(
+        registry
+        for registry in load_official_provision_registries()
+        if registry["registry_id"] == "tax_code"
+    )
+
+
+def _is_registry_source(source_url: str, registry: dict[str, Any]) -> bool:
     try:
         actual = urlsplit(source_url)
         expected = urlsplit(registry["infohub_source_url"])
@@ -64,7 +91,7 @@ def _is_tax_code_source(source_url: str, registry: dict[str, Any]) -> bool:
 
 
 def _article_key(value: str) -> str:
-    return value.translate(_SUPERSCRIPT_TRANSLATION)
+    return value.translate(_SUPERSCRIPT_TRANSLATION).replace("-", "")
 
 
 def _article_refs(source: dict[str, Any]) -> list[tuple[str, str, str | None]]:
@@ -116,8 +143,15 @@ def enrich_source(source: dict[str, Any]) -> dict[str, Any]:
         enriched.pop("official_act_url", None)
 
     source_url = str(source.get("url") or source.get("source_url") or "").strip()
-    registry = load_tax_code_registry()
-    if not _is_tax_code_source(source_url, registry):
+    registry = next(
+        (
+            candidate
+            for candidate in load_official_provision_registries()
+            if _is_registry_source(source_url, candidate)
+        ),
+        None,
+    )
+    if registry is None:
         return enriched
 
     links = []

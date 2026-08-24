@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from .models import ParsedQuery, CandidateDocument
+from .named_legal_acts import match_named_article_act
 
 
 ARTICLE_FIXTURES: Dict[str, Dict[str, object]] = {
@@ -36,7 +37,8 @@ def resolve_article(parsed: ParsedQuery) -> List[CandidateDocument]:
     if not parsed.article_ref:
         return []
 
-    fixture = ARTICLE_FIXTURES.get(parsed.article_ref)
+    named_act = match_named_article_act(parsed)
+    fixture = named_act or ARTICLE_FIXTURES.get(parsed.article_ref)
     if not fixture and parsed.topic != "tax":
         return []
 
@@ -58,7 +60,14 @@ def resolve_article(parsed: ParsedQuery) -> List[CandidateDocument]:
             metadata={
                 "article_ref": parsed.article_ref,
                 "chunk_hint": fixture.get("chunk_hint"),
-                "section_label": fixture["section_label"],
+                "section_label": fixture.get(
+                    "section_label", f"მუხლი {parsed.article_ref}"
+                ),
+                "topics": fixture.get(
+                    "topics", [parsed.topic] if parsed.topic else []
+                ),
+                "authority_rank": 1.0,
+                "is_current": True,
             },
         )
     ]

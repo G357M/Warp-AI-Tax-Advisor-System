@@ -4,6 +4,7 @@ import re
 from typing import Dict, List, Optional
 
 from .models import ParsedQuery, CandidateDocument
+from .named_legal_acts import match_named_article_act
 
 
 POINT_FIXTURES: Dict[str, Dict[str, object]] = {
@@ -89,7 +90,8 @@ def resolve_point(parsed: ParsedQuery) -> List[CandidateDocument]:
     if not point_ref:
         return []
 
-    fixture = POINT_FIXTURES.get(point_ref)
+    named_act = match_named_article_act(parsed)
+    fixture = named_act or POINT_FIXTURES.get(point_ref)
     if not fixture and parsed.topic != "tax":
         return []
 
@@ -111,8 +113,16 @@ def resolve_point(parsed: ParsedQuery) -> List[CandidateDocument]:
             why=f"resolved explicit point reference: {point_ref}",
             metadata={
                 "point_ref": point_ref,
+                "article_ref": point_ref.split(".", 1)[0],
                 "chunk_hint": fixture.get("chunk_hint"),
-                "section_label": fixture["section_label"],
+                "section_label": fixture.get(
+                    "section_label", f"მუხლი {point_ref.split('.', 1)[0]}"
+                ),
+                "topics": fixture.get(
+                    "topics", [parsed.topic] if parsed.topic else []
+                ),
+                "authority_rank": 1.0,
+                "is_current": True,
             },
         )
     ]
