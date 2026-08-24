@@ -2,8 +2,8 @@
   "schema_version": 1,
   "suite_version": "2026-08-24.4",
   "suite_sha256": "4eeaad3f8417f95a5aa1e3fe7b3d20ac703693d97dfd5edf95eba7061df65f3e",
-  "generated_at_utc": "2026-08-24T16:25:47.581748+00:00",
-  "deployed_commit": "candidate-working-tree",
+  "generated_at_utc": "2026-08-24T16:34:49.521022+00:00",
+  "deployed_commit": "67caaba483f7eea9752e83e89fac5b5593f208d2",
   "backend": {
     "mode": "db",
     "driver": "psycopg",
