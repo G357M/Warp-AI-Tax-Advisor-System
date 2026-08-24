@@ -19,11 +19,13 @@ def _source(**overrides):
 def test_registry_is_complete_and_contains_verified_key_articles():
     registry = load_tax_code_registry()
 
-    assert len(registry["article_anchors"]) == 354
+    assert len(registry["article_anchors"]) == 326
     assert registry["article_anchors"]["34"] == "part_41"
     assert registry["article_anchors"]["88"] == "part_108"
     assert registry["article_anchors"]["169"] == "part_557"
     assert registry["article_anchors"]["272"] == "part_345"
+    assert registry["article_anchors"]["288-2"] == "part_430"
+    assert "208" not in registry["article_anchors"]
 
 
 def test_general_administrative_code_registry_is_complete_and_verified():
@@ -33,11 +35,46 @@ def test_general_administrative_code_registry_is_complete_and_verified():
     }
     registry = registries["general_administrative_code"]
 
-    assert len(registry["article_anchors"]) == 233
+    assert len(registry["article_anchors"]) == 232
     assert registry["article_anchors"]["177"] == "part_207"
     assert registry["article_anchors"]["180"] == "part_210"
     assert registry["article_anchors"]["201"] == "part_231"
-    assert registry["article_anchors"]["271"] == "part_33"
+    assert registry["article_anchors"]["27-1"] == "part_33"
+
+
+def test_civil_code_registry_is_complete_and_verified():
+    registries = {
+        registry["registry_id"]: registry
+        for registry in load_official_provision_registries()
+    }
+    registry = registries["civil_code"]
+
+    assert len(registry["article_anchors"]) == 1595
+    assert registry["article_anchors"]["18-1"] == "part_24"
+    assert registry["article_anchors"]["623"] == "part_745"
+    assert registry["article_anchors"]["624-1"] == "part_1838"
+    assert registry["article_anchors"]["882-1"] == "part_1870"
+
+
+def test_civil_code_article_gets_exact_official_link():
+    source = enrich_source(
+        {
+            "title": "საქართველოს სამოქალაქო კოდექსი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/1aa5b5a8-f2d6-4858-b2dc-642a4068bf98",
+            "article_ref": "623",
+        }
+    )
+
+    assert source["official_act_url"] == "https://matsne.gov.ge/ka/document/view/31702"
+    assert source["provision_links"] == [
+        {
+            "article_ref": "623",
+            "point_ref": None,
+            "url": "https://matsne.gov.ge/ka/document/view/31702#part_745",
+        }
+    ]
+    assert source["provision_publication_url"].endswith("?publication=140")
+    assert has_official_provision_link(source) is True
 
 
 def test_general_administrative_code_article_gets_exact_official_link():
@@ -71,6 +108,16 @@ def test_hyphenated_superscript_article_uses_verified_anchor():
 
     assert source["provision_links"][0]["article_ref"] == "27-1"
     assert source["provision_links"][0]["url"].endswith("#part_33")
+
+
+def test_superscript_article_does_not_collide_with_plain_article_number():
+    superscript = enrich_source(_source(article_ref="288²"))
+    hyphenated = enrich_source(_source(article_ref="288-2"))
+    ambiguous_removed = enrich_source(_source(article_ref="208"))
+
+    assert superscript["provision_links"][0]["url"].endswith("#part_430")
+    assert hyphenated["provision_links"][0]["url"].endswith("#part_430")
+    assert "provision_links" not in ambiguous_removed
 
 
 def test_canonical_article_source_gets_official_act_and_provision_link():

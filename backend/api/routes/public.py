@@ -81,11 +81,29 @@ async def health_check():
     # Check database connection
     database_healthy = False
     document_count = 0
+    last_document_ingested_at = None
+    documents_last_24h = 0
+    documents_last_7d = 0
     db = None
     try:
         db = SessionLocal()
         db.execute(sqlalchemy.text("SELECT 1"))
-        document_count = int(db.execute(sqlalchemy.text("SELECT COUNT(*) FROM documents")).scalar() or 0)
+        document_stats = db.execute(sqlalchemy.text("""
+            SELECT
+                count(*) AS total,
+                max(created_at) AS last_ingested_at,
+                count(*) FILTER (WHERE created_at >= now() - interval '24 hours') AS last_24h,
+                count(*) FILTER (WHERE created_at >= now() - interval '7 days') AS last_7d
+            FROM documents
+        """)).one()
+        document_count = int(document_stats.total or 0)
+        last_document_ingested_at = (
+            document_stats.last_ingested_at.isoformat()
+            if document_stats.last_ingested_at
+            else None
+        )
+        documents_last_24h = int(document_stats.last_24h or 0)
+        documents_last_7d = int(document_stats.last_7d or 0)
         database_healthy = True
     except Exception as e:
         print(f"Database health check failed: {e}")
@@ -123,6 +141,9 @@ async def health_check():
         "stats": {
             "total_documents": document_count,
             "total_chunks": vector_store.get_count() if vector_store.client else 0,
+            "last_document_ingested_at": last_document_ingested_at,
+            "documents_last_24h": documents_last_24h,
+            "documents_last_7d": documents_last_7d,
             "embedding_dimension": settings.EMBEDDING_DIMENSION,
             "embedding_model_source": embeddings_generator.model_source,
             "llm_model": settings.LLM_MODEL,

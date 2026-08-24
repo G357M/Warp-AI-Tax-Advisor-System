@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 REGISTRY_PATHS = (
     Path(__file__).with_name("official_tax_code_provisions.json"),
     Path(__file__).with_name("official_general_administrative_code_provisions.json"),
+    Path(__file__).with_name("official_civil_code_provisions.json"),
 )
 # Backwards-compatible name used by earlier tests and operational tooling.
 REGISTRY_PATH = REGISTRY_PATHS[0]
@@ -52,10 +53,12 @@ def _load_registry(path: Path) -> dict[str, Any]:
     if not isinstance(anchors, dict) or len(anchors) < minimum_anchor_count:
         raise ValueError("official-provision article registry is incomplete")
     for article, anchor in anchors.items():
-        if not re.fullmatch(r"\d+", str(article)):
+        if not re.fullmatch(r"\d+(?:-\d+)?", str(article)):
             raise ValueError(f"invalid provision article key: {article}")
         if not re.fullmatch(r"part_\d+", str(anchor)):
             raise ValueError(f"invalid provision anchor: {anchor}")
+    if len(set(anchors.values())) != len(anchors):
+        raise ValueError("official-provision anchors must identify one article each")
     return registry
 
 
@@ -91,7 +94,15 @@ def _is_registry_source(source_url: str, registry: dict[str, Any]) -> bool:
 
 
 def _article_key(value: str) -> str:
-    return value.translate(_SUPERSCRIPT_TRANSLATION).replace("-", "")
+    if "-" in value:
+        return value.translate(_SUPERSCRIPT_TRANSLATION)
+    superscript = re.fullmatch(r"(\d+)([¹²³⁴⁵⁶⁷⁸⁹⁰]+)", value)
+    if superscript:
+        return (
+            f"{superscript.group(1)}-"
+            f"{superscript.group(2).translate(_SUPERSCRIPT_TRANSLATION)}"
+        )
+    return value.translate(_SUPERSCRIPT_TRANSLATION)
 
 
 def _article_refs(source: dict[str, Any]) -> list[tuple[str, str, str | None]]:

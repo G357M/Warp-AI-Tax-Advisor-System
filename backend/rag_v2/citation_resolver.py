@@ -30,7 +30,7 @@ DOC_NUMBER_FIXTURES = {
 }
 
 
-ARTICLE_NUMBER = r"\d+(?:[¹²³]|-\d+)*"
+ARTICLE_NUMBER = r"\d+(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+|-\d+)?"
 
 
 ARTICLE_PATTERNS = [

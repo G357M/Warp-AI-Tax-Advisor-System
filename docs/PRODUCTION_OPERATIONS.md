@@ -483,13 +483,41 @@ non-zero evaluator exit, missing summary or incomplete protected artifact sends
 a quality-gate alert but does not replace the primary scraper exit code.
 
 Exact-provision coverage is registry-backed. The Tax Code registry is pinned to
-Matsne publication 245 and the General Administrative Code registry to
-publication 45; both map only anchors observed in the official document tree.
-A source from another act stays document-level unless a separately reviewed
-registry exists. In particular, Finance Minister Order No. 996 preserves an
+Matsne publication 245, the General Administrative Code registry to publication
+45 and the Civil Code registry to publication 140. They expose only one-to-one
+article anchors observed in the official document tree. The reproducible
+builder excludes future nodes and every article in an ambiguous shared-anchor
+block; for example, removed Tax Code articles 207–237 share `part_511` and must
+not be presented as exact provision links. Civil Code article 623 is verified
+as `part_745`. A source from another act stays document-level unless a
+separately reviewed registry exists. In particular, Finance Minister Order No. 996 preserves an
 explicit requested article for retrieval, but must not claim an official
 provision deep-link while its public consolidated publication exposes no stable
 article anchor.
+
+### Ingestion freshness observability
+
+The API scraper emits one aggregate `INFOHUB_INGEST_SUMMARY=` JSON line after a
+run. For each source species it distinguishes catalog totals and pages from
+`known`, `unseen`, `ingested`, `skipped_short`, `detail_failures` and
+`processing_errors`. An unseen card is not counted as ingested until `store()`
+returns a document. This is important for the Bill catalog, where InfoHub may
+publish UUIDs whose detail payload has no body or attachment.
+
+`GET /api/v1/public/health` also exposes:
+
+```text
+stats.last_document_ingested_at
+stats.documents_last_24h
+stats.documents_last_7d
+```
+
+Use those fields together with `total_documents` and the nightly summary. A
+flat total is expected when the upstream catalog has no new usable content; it
+is an incident signal only when the source has unseen usable entries, errors
+are non-zero, cron did not complete, or the ingestion timestamp exceeds the
+agreed freshness window. The 2026-08-24 evidence and interpretation are stored
+in `docs/INGESTION_FRESHNESS_AUDIT_2026-08-24.md`.
 
 The four rolling operational files are:
 

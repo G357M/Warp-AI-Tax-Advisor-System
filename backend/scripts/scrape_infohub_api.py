@@ -9,6 +9,7 @@ Usage:
 import sys
 import logging
 import argparse
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -51,6 +52,17 @@ def main():
     logger.info("=" * 60)
     logger.info(f"Done. New documents: {result['documents_scraped']} | pages: {result['pages_visited']}")
     logger.info(f"Vector store count after: {after} (was {before})")
+    print(
+        "INFOHUB_INGEST_SUMMARY="
+        + json.dumps(
+            {
+                "documents_scraped": result["documents_scraped"],
+                "pages_visited": result["pages_visited"],
+                "species": result["species"],
+            },
+            sort_keys=True,
+        )
+    )
     print(f"\n✅ Scrape complete: +{result['documents_scraped']} new docs, vector count {before} -> {after}")
 
 

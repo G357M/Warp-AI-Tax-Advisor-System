@@ -37,8 +37,6 @@ from core.config import settings
 from core.database import SessionLocal
 from models.document import Document, DocumentChunk
 from processor.chunker import text_chunker
-from rag.embeddings import embeddings_generator
-from rag.vector_store_pgvector import vector_store
 from scraper.normalize import classify_news_subtype, infer_document_type, parse_receipt_date
 
 logger = logging.getLogger(__name__)
@@ -56,6 +54,7 @@ class InfoHubAPIScraper:
         self.delay = settings.SCRAPER_DELAY if delay is None else delay
         self.documents_scraped = 0
         self.pages_visited = 0
+        self.species_stats: Dict[str, Dict[str, int]] = {}
 
     # ---- HTTP ---------------------------------------------------------------
     def _get(self, url: str) -> Optional[dict]:
@@ -126,6 +125,13 @@ class InfoHubAPIScraper:
 
     # ---- storage ------------------------------------------------------------
     def store(self, detail: dict, source_url: str, db: Session) -> Optional[Document]:
+        # Keep the expensive embedding/vector-store initialization on the
+        # storage path.  Listing and observability tests must not download a
+        # model or require a live pgvector database merely to inspect source
+        # freshness.
+        from rag.embeddings import embeddings_generator
+        from rag.vector_store_pgvector import vector_store
+
         text = self.build_text(detail)
         if not text or len(text) < 100:
             logger.info(f"Skipping {source_url}: content too short")
@@ -208,12 +214,27 @@ class InfoHubAPIScraper:
         """
         species_list = species_list or SPECIES
         for species in species_list:
+            stats = {
+                "source_total": 0,
+                "pages_visited": 0,
+                "known": 0,
+                "unseen": 0,
+                "ingested": 0,
+                "skipped_short": 0,
+                "detail_failures": 0,
+                "processing_errors": 0,
+            }
+            self.species_stats[species] = stats
             skip = 0
             while self.documents_scraped < max_docs:
                 items, total = self.fetch_page(species, skip)
                 if not items:
                     break
-                new_on_page = 0
+                stats["source_total"] = int(total or 0)
+                stats["pages_visited"] += 1
+                unseen_on_page = 0
+                ingested_on_page = 0
+                skipped_on_page = 0
                 for item in items:
                     if self.documents_scraped >= max_docs:
                         break
@@ -224,26 +245,44 @@ class InfoHubAPIScraper:
                     db = SessionLocal()
                     try:
                         if db.query(Document.id).filter_by(source_url=source_url).first():
+                            stats["known"] += 1
                             continue  # already ingested — skip (no detail fetch)
+                        unseen_on_page += 1
+                        stats["unseen"] += 1
                         detail = self.fetch_details(uid)
                         if not detail:
+                            stats["detail_failures"] += 1
                             continue
-                        self.store(detail, source_url, db)
-                        new_on_page += 1
+                        stored = self.store(detail, source_url, db)
+                        if stored is None:
+                            skipped_on_page += 1
+                            stats["skipped_short"] += 1
+                        else:
+                            ingested_on_page += 1
+                            stats["ingested"] += 1
                         if self.delay:
                             time.sleep(self.delay)
                     except Exception as e:
                         db.rollback()
+                        stats["processing_errors"] += 1
                         logger.error(f"Error processing {uid}: {e}")
                     finally:
                         db.close()
-                logger.info(f"[{species}] skip={skip}/{total} | new this page: {new_on_page} | total new: {self.documents_scraped}")
-                if new_on_page == 0:
-                    logger.info(f"[{species}] no new documents on page — caught up.")
+                logger.info(
+                    f"[{species}] skip={skip}/{total} | unseen: {unseen_on_page} "
+                    f"| ingested: {ingested_on_page} | skipped short: {skipped_on_page} "
+                    f"| total ingested: {self.documents_scraped}"
+                )
+                if unseen_on_page == 0:
+                    logger.info(f"[{species}] all documents on page are known — caught up.")
                     break
                 skip += self.page_size
                 if skip >= total:
                     break
             if self.documents_scraped >= max_docs:
                 break
-        return {"documents_scraped": self.documents_scraped, "pages_visited": self.pages_visited}
+        return {
+            "documents_scraped": self.documents_scraped,
+            "pages_visited": self.pages_visited,
+            "species": self.species_stats,
+        }

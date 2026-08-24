@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import List
 from .models import ParsedQuery, CandidateDocument
-from .named_legal_acts import GENERAL_ADMINISTRATIVE_CODE
+from .named_legal_acts import CIVIL_CODE, GENERAL_ADMINISTRATIVE_CODE
 
 
 CANONICAL_DOCS = [
     {
         **GENERAL_ADMINISTRATIVE_CODE,
+    },
+    {
+        **CIVIL_CODE,
     },
     {
         "aliases": [

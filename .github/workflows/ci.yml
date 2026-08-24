@@ -46,10 +46,11 @@ jobs:
       - name: Compile runtime modules
         run: >-
           python -m compileall -q
-          api billing core models rag
+          api billing core models rag rag_v2 scraper
           decision_fact_contract.py
           scripts/add_auth_recovery.py
           scripts/audit_production_readiness.py
+          scripts/build_official_provision_registry.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
@@ -78,7 +79,9 @@ jobs:
           tests/test_nightly_quality_gates.py
           tests/test_rag_v2_live_corpus_eval.py
           tests/test_official_provisions.py
+          tests/test_official_provision_registry_builder.py
           tests/test_named_legal_acts.py
+          tests/test_infohub_api_scraper_stats.py
           tests/test_source_audit_currentness.py
           tests/test_answer_safety_eval.py
           tests/test_decision_chain_reporting.py

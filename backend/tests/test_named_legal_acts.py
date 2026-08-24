@@ -17,6 +17,10 @@ ORDER_996_SOURCE = (
     "https://infohub.rs.ge/ka/workspace/document/"
     "fe1cc7b3-a080-4283-85dd-ea9c9f85d947"
 )
+CIVIL_CODE_SOURCE = (
+    "https://infohub.rs.ge/ka/workspace/document/"
+    "1aa5b5a8-f2d6-4858-b2dc-642a4068bf98"
+)
 
 
 @pytest.mark.parametrize(
@@ -60,6 +64,34 @@ def test_named_general_administrative_code_point_resolves_to_same_act():
     assert candidates[0].source_url == GENERAL_ADMIN_SOURCE
     assert candidates[0].metadata["article_ref"] == "180"
     assert candidates[0].metadata["point_ref"] == "180.1"
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 623 Гражданского кодекса Грузии?", "ru"),
+        ("What does Article 623 of the Civil Code of Georgia provide?", "en"),
+        ("რას ადგენს საქართველოს სამოქალაქო კოდექსის 623-ე მუხლი?", "ka"),
+    ],
+)
+def test_named_civil_code_article_resolves_in_all_languages(query, language):
+    parsed = parse_query(query, language=language)
+    candidates = resolve_article(parsed)
+
+    assert parsed.article_ref == "623"
+    assert len(candidates) == 1
+    assert candidates[0].source_url == CIVIL_CODE_SOURCE
+    assert candidates[0].metadata["article_ref"] == "623"
+    assert candidates[0].metadata["section_label"] == "მუხლი 623"
+
+    source = enrich_source(
+        {
+            "url": candidates[0].source_url,
+            "article_ref": candidates[0].metadata["article_ref"],
+        }
+    )
+    assert source["provision_links"][0]["url"].endswith("#part_745")
+    assert has_official_provision_link(source) is True
 
 
 @pytest.mark.parametrize(
@@ -146,6 +178,27 @@ def test_pipeline_prefers_named_general_administrative_code_article(
     assert top["document_id"] == "3f33cb75-b642-477e-9265-661b04571e5a"
     assert top["channel"] == "article_resolver"
     assert top["metadata"]["article_ref"] == "180"
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 623 Гражданского кодекса Грузии?", "ru"),
+        ("What does Article 623 of the Civil Code of Georgia provide?", "en"),
+        ("რას ადგენს საქართველოს სამოქალაქო კოდექსის 623-ე მუხლი?", "ka"),
+    ],
+)
+def test_pipeline_prefers_named_civil_code_article(query, language):
+    trace = pipeline_v2.build_trace(
+        query,
+        language=language,
+        disabled_channels={"semantic_search"},
+    )
+    top = trace.reranking["top_ranked_documents"][0]
+
+    assert top["document_id"] == "2d2f2e3c-78ce-49f1-94a6-b2580c0da1ef"
+    assert top["channel"] == "article_resolver"
+    assert top["metadata"]["article_ref"] == "623"
 
 
 def test_pipeline_prefers_order_996_and_keeps_article_locator():

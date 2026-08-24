@@ -26,7 +26,7 @@ GENERIC_TAX_CODE_POINT = {
 }
 
 
-ARTICLE_NUMBER = r"\d+(?:[¹²³]|-\d+)*"
+ARTICLE_NUMBER = r"\d+(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+|-\d+)?"
 
 
 POINT_PATTERNS = [
