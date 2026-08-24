@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-20.1",
+  "suite_version": "2026-08-24.1",
   "description": "Balanced RU/EN/KA live-corpus locator contracts. Semantic retrieval is disabled so the suite performs no translation or answer-generation LLM calls.",
   "retrieval_profile": {
     "disabled_channels": ["semantic_search"],
@@ -179,6 +179,54 @@
       "query": "დღგ-ის რა ცვლილებები მიიღეს 2026 წელს?",
       "expected_class": "amendment_tracking",
       "expected_top": {"document_type": "law", "channel": "metadata_search", "title_contains_all": ["2026", "საგადასახადო კოდექსში ცვლილების შეტანის შესახებ"], "metadata": {"is_current": true}, "document_id_format": "uuid"},
+      "expected_source_audit": true
+    },
+    {
+      "id": "article_202_nk_ru",
+      "language": "ru",
+      "query": "Что говорит ст. 202 НК Грузии?",
+      "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "202"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "point_169_1_parenthetical_ru",
+      "language": "ru",
+      "query": "Что говорит ст. 169(1) Налогового кодекса?",
+      "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "point_resolver", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"point_ref": "169.1"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "article_202_art_en",
+      "language": "en",
+      "query": "What does Art. 202 of the Georgian Tax Code say?",
+      "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "202"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "named_1432_no_en",
+      "language": "en",
+      "query": "What does document No. 1432 say?",
+      "expected_class": "named_document_lookup",
+      "expected_top": {"document_type": "guideline", "channel": "exact_doc_resolver", "document_id": "ddf2e849-443b-43bc-81f8-41e52b403388", "metadata": {"document_number": "1432"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "point_169_1_parenthetical_ka",
+      "language": "ka",
+      "query": "რა წერია საგადასახადო კოდექსის 169-ე მუხლის (1) პუნქტში?",
+      "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "point_resolver", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"point_ref": "169.1"}},
+      "expected_source_audit": true
+    },
+    {
+      "id": "named_1432_bare_ka",
+      "language": "ka",
+      "query": "რა წერია დოკუმენტ 1432-ში?",
+      "expected_class": "named_document_lookup",
+      "expected_top": {"document_type": "guideline", "channel": "exact_doc_resolver", "document_id": "ddf2e849-443b-43bc-81f8-41e52b403388", "metadata": {"document_number": "1432"}},
       "expected_source_audit": true
     }
   ]

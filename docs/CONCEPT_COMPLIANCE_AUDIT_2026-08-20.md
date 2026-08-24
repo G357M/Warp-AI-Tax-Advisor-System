@@ -14,9 +14,9 @@
 
 | Ось | Вердикт | Подтверждение | Оставшийся разрыв |
 |---|---|---|---|
-| Правовой корпус Грузии | **Сильное соответствие** | 15 126 документов, 275 821 чанк, 11 416 решений; PostgreSQL + pgvector | Нужны регулярные проверки свежести и полноты, особенно вне InfoHub |
+| Правовой корпус Грузии | **Сильное соответствие** | 15 140 документов, 275 976 чанков, 11 423 решения; PostgreSQL + pgvector | Нужны регулярные проверки свежести и полноты, особенно вне InfoHub |
 | Ответы по источникам | **Сильное соответствие** | `evidence` вычисляется кодом; источники несут статью, пункт, документ и URL; вне юрисдикции — отдельный статус | `grounded` означает документальную опору, но не юридическую верификацию вывода человеком |
-| Аналитика споров | **Соответствует** | 11 363 строки `decision_facts`, публичные агрегаты, суммы, статьи, цепочки и drill-down UI | Нужна выборочная экспертная валидация extraction и мониторинг качества новых данных |
+| Аналитика споров | **Соответствует** | 11 370 строк `decision_facts`, публичные агрегаты, суммы, статьи, цепочки и drill-down UI | Нужна выборочная экспертная валидация extraction и мониторинг качества новых данных |
 | Аккаунтный продукт | **Частично соответствует** | HttpOnly-сессии, Free-квота, история Pro/Business, одноразовые хешированные verification/reset tokens и отзыв сессий при смене пароля | Production SMTP ещё не подключён; нет организаций и мест Business |
 | Коммерческий контур | **Частично соответствует** | Тарифные ограничения enforced на backend; checkout и плановый UI связаны с аккаунтом | Оплата и смена плана пока не являются полностью автоматизированным биллингом |
 | Modern Ecosystem UI | **Сильное соответствие** | Чёрный холст, liquid-glass, сигнальный красный, serif/display + sans/body, SourceChip, общий ecosystem footer, RU/KA/EN; self-hosted pinned fonts; семь детерминированных desktop/mobile visual baselines в matching Playwright image, второй clean run 7/7 | Намеренные UI-изменения требуют визуального review baseline, а не слепого `--update-snapshots` |
@@ -94,15 +94,17 @@ matrix subtests. Контракт отдельно фиксирует распр
 Telegram-alert. Ошибки вспомогательных post-ingest шагов теперь также агрегируются
 в alert, а не маскируются `|| true`.
 
-Дополнительно подготовлен отдельный deterministic live-corpus слой: 21 запрос
-поровну на RU/EN/KA проверяет classification, top-1 документ/канал/locator и
+Дополнительно подготовлен отдельный deterministic live-corpus слой: 27 запросов
+поровну на RU/EN/KA проверяют classification, top-1 документ/канал/locator и
 source audit непосредственно через production PostgreSQL. Отчёт включает hash
 набора, commit, fingerprint корпуса и метрики по каждому языку. Semantic/LLM
 канал в этом прогоне запрещён, поэтому измерение воспроизводимо и не создаёт
-скрытых API-расходов. Первый production baseline на `ea53af6` прошёл `21/21`:
+скрытых API-расходов. Расширенный production baseline на `67273a2` прошёл `27/27`:
 classification, top-1 contract, source audit и минимальный языковой recall равны
 `1.0`; в Git сохраняется только агрегированный allowlist без запросов и строк
-по отдельным документам.
+по отдельным документам. Дополнительные шесть случаев постоянно контролируют
+распространённые формы `НК`, `Art.` / `No.`, скобочные пункты и явный номер
+документа на RU/EN/KA.
 
 Поверх retrieval-слоя добавлен отдельный bounded answer-safety набор из 12
 сценариев, поровну на RU/EN/KA: grounded VAT, другая юрисдикция, несуществующая
@@ -113,7 +115,7 @@ Production baseline на `e52ecac` прошёл `12/12`, все метрики �
 остаётся operational-only, в Git попадает только агрегированный allowlist.
 
 После post-ingest maintenance nightly runner автоматически запускает два
-read-only/no-LLM gate: 21-case live-corpus locator contract и decision-facts
+read-only/no-LLM gate: 27-case live-corpus locator contract и decision-facts
 quality contract. При non-zero exit, отсутствии агрегированной строки или
 неполном mode-600 operational artifact отправляется Telegram-alert; успешный
 прогон сообщений не создаёт. Provider-backed answer-safety остаётся ручным и

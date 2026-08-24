@@ -462,6 +462,12 @@ per-language metrics and individual failures. Copy accepted reports into
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
 
+The accepted `2026-08-24.1` suite contains 27 balanced cases (9 RU, 9 EN,
+9 KA). It includes six citation-variant regressions added after the parser
+hardening on production commit `67273a2`; the connected-corpus run passed 27/27
+with every overall and per-language metric at 1.0. The committed aggregate is
+`evaluation/baselines/rag_v2_live_corpus_2026-08-24_67273a2.json`.
+
 The nightly runner executes this live-corpus check and the decision-facts
 quality contract after post-ingest maintenance. Both are read-only and prohibit
 LLM calls. Their latest full and aggregate reports are stored under
