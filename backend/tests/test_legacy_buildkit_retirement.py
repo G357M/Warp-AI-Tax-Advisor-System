@@ -43,6 +43,20 @@ RECORDS = {
         "Type": "regular",
     },
 }
+GRAPH_RECORDS = {
+    **RECORDS,
+    "c" * 25: {
+        "ID": "c" * 25,
+        "CreatedAt": "2026-08-20 08:46:48 +0000 UTC",
+        "Description": MODULE.DEPENDENT_DESCRIPTION,
+        "Mutable": False,
+        "Parents": ["a" * 25],
+        "Reclaimable": True,
+        "Shared": False,
+        "Size": "2.488MB",
+        "Type": "regular",
+    },
+}
 
 
 class FakeDockerRunner:
@@ -125,6 +139,43 @@ def test_execute_uses_exact_id_and_all_safety_filters_then_verifies_absence():
             "description~=requirements-production[.]txt",
         ]
         assert "--force" in call
+
+
+def test_dependent_copy_leaf_is_pinned_to_root_and_pruned_first():
+    runner = FakeDockerRunner(GRAPH_RECORDS)
+    plan = MODULE.build_plan(
+        ["a" * 25, "b" * 25],
+        runner,
+        dependent_record_ids=["c" * 25],
+    )
+
+    assert [record.role for record in plan.records] == [
+        MODULE.DEPENDENT_ROLE,
+        MODULE.ROOT_ROLE,
+        MODULE.ROOT_ROLE,
+    ]
+    assert plan.records[0].parent_ids == ("a" * 25,)
+    assert plan.record_count == 3
+    assert plan.total_bytes == 17_311_488_000
+
+    MODULE.execute_plan(
+        plan,
+        runner,
+        expected_record_count=plan.record_count,
+        expected_total_bytes=plan.total_bytes,
+        expected_plan_sha256=plan.plan_sha256,
+    )
+
+    prune_calls = [call for call in runner.calls if call[2] == "prune"]
+    assert [
+        call[call.index("--filter") + 1] for call in prune_calls
+    ] == [f"id={'c' * 25}", f"id={'a' * 25}", f"id={'b' * 25}"]
+    dependent_filters = [
+        prune_calls[0][index + 1]
+        for index, value in enumerate(prune_calls[0])
+        if value == "--filter"
+    ]
+    assert dependent_filters[-1] == "description~=COPY"
 
 
 def test_execute_revalidates_and_retries_a_transient_exact_id_noop():
@@ -238,6 +289,47 @@ def test_unapproved_record_metadata_is_rejected(field, value, message):
         MODULE.build_plan(["a" * 25], runner)
 
     assert not any(call[2] == "prune" for call in runner.calls)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("Description", "[7/7] COPY . .", "approved legacy InfoHub"),
+        ("Parents", [], "exactly one approved"),
+        ("Parents", ["z" * 25], "exactly one approved"),
+        ("Parents", ["a" * 25, "b" * 25], "exactly one approved"),
+    ],
+)
+def test_dependent_record_requires_exact_copy_leaf_and_approved_parent(
+    field,
+    value,
+    message,
+):
+    records = deepcopy(GRAPH_RECORDS)
+    records["c" * 25][field] = value
+    runner = FakeDockerRunner(records)
+
+    with pytest.raises(MODULE.LegacyRetirementError, match=message):
+        MODULE.build_plan(
+            ["a" * 25],
+            runner,
+            dependent_record_ids=["c" * 25],
+        )
+
+    assert not any(call[2] == "prune" for call in runner.calls)
+
+
+def test_root_and_dependent_ids_must_be_disjoint():
+    runner = FakeDockerRunner()
+
+    with pytest.raises(MODULE.LegacyRetirementError, match="duplicate record IDs"):
+        MODULE.build_plan(
+            ["a" * 25],
+            runner,
+            dependent_record_ids=["a" * 25],
+        )
+
+    assert runner.calls == []
 
 
 @pytest.mark.parametrize(

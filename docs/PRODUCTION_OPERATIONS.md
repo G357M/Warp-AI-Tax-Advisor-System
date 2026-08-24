@@ -366,15 +366,16 @@ cleanup policy.
 ### Exact-ID legacy cache retirement
 
 Use the dedicated retirement tool only for records already attributed through
-the read-only inventory. A dry-run re-inspects every exact ID and refuses a
-different description, type, mutability, shared/reclaimable state, missing
-timestamp or invalid size:
+the read-only inventory. Pass dependency roots as `--record-id` and every
+reviewed direct `[6/6] COPY . .` leaf as `--dependent-record-id`. A dry-run
+re-inspects every exact ID and refuses a different description, parent, type,
+mutability, shared/reclaimable state, missing timestamp or invalid size:
 
 ```bash
 cd /root/infohub
 python3 scripts/retire_infohub_legacy_buildkit.py \
-  --record-id EXACT_REVIEWED_ID_1 \
-  --record-id EXACT_REVIEWED_ID_2
+  --record-id EXACT_REVIEWED_ROOT_ID \
+  --dependent-record-id EXACT_REVIEWED_COPY_LEAF_ID
 ```
 
 Record the emitted `record_count`, `total_bytes` and `plan_sha256`. After code
@@ -383,8 +384,8 @@ the mutation:
 
 ```bash
 python3 scripts/retire_infohub_legacy_buildkit.py \
-  --record-id EXACT_REVIEWED_ID_1 \
-  --record-id EXACT_REVIEWED_ID_2 \
+  --record-id EXACT_REVIEWED_ROOT_ID \
+  --dependent-record-id EXACT_REVIEWED_COPY_LEAF_ID \
   --execute \
   --expected-record-count 2 \
   --expected-total-bytes EXACT_DRY_RUN_BYTES \
@@ -398,9 +399,12 @@ dependency-description regexp filters. These negative boolean selectors match
 the installed Buildx behavior; equality to `false` produces a safe no-op. The
 tool retries a transient exact-ID no-op at most three times, revalidates the
 complete reviewed metadata before every attempt and then requires every exact
-ID to be absent. Stop on any changed plan or metadata; do not fall back to a
-description-only, age-only or global prune. Re-run the storage audit and
-application/Plausible identity checks after the operation.
+ID to be absent. COPY leaves must have exactly one parent in the reviewed root
+set; roles and parent IDs are plan-hashed, and leaves execute before roots. The
+tool never discovers or adds descendants automatically. Stop on any changed
+plan or metadata; do not fall back to a description-only, age-only or global
+prune. Re-run the storage audit and application/Plausible identity checks after
+the operation.
 
 The separate rollback-image retention was applied after that inventory. It
 removed twelve exact obsolete `infohub/backend:rollback-*` and

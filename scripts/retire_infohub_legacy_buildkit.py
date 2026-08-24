@@ -20,7 +20,13 @@ EXPECTED_DESCRIPTION = (
     "mount / from exec /bin/sh -c "
     "pip install --no-cache-dir -r requirements-production.txt"
 )
+DEPENDENT_DESCRIPTION = "[6/6] COPY . ."
 DESCRIPTION_SHA256 = hashlib.sha256(EXPECTED_DESCRIPTION.encode("utf-8")).hexdigest()
+DEPENDENT_DESCRIPTION_SHA256 = hashlib.sha256(
+    DEPENDENT_DESCRIPTION.encode("utf-8")
+).hexdigest()
+ROOT_ROLE = "dependency_root"
+DEPENDENT_ROLE = "copy_leaf"
 RECORD_ID_PATTERN = re.compile(r"^[a-z0-9]{20,64}$")
 SIZE_PATTERN = re.compile(r"^(\d{1,12}(?:\.\d{1,6})?)(b|kb|mb|gb|tb)$", re.IGNORECASE)
 SIZE_MULTIPLIERS = {
@@ -72,6 +78,8 @@ class ReviewedRecord:
     created_at: str
     description_sha256: str
     record_type: str
+    role: str
+    parent_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -115,6 +123,8 @@ def _load_record(
     record_id: str,
     runner: Runner,
     *,
+    role: str = ROOT_ROLE,
+    approved_root_ids: frozenset[str] = frozenset(),
     allow_missing: bool = False,
 ) -> ReviewedRecord | None:
     result = runner.run(
@@ -137,9 +147,18 @@ def _load_record(
     if not isinstance(raw, dict) or raw.get("ID") != record_id:
         raise LegacyRetirementError("Buildx returned a different record ID")
 
+    if role == ROOT_ROLE:
+        expected_description = EXPECTED_DESCRIPTION
+        description_sha256 = DESCRIPTION_SHA256
+    elif role == DEPENDENT_ROLE:
+        expected_description = DEPENDENT_DESCRIPTION
+        description_sha256 = DEPENDENT_DESCRIPTION_SHA256
+    else:  # pragma: no cover - roles are internal constants.
+        raise LegacyRetirementError("unknown reviewed record role")
+
     description = raw.get("Description")
-    if description != EXPECTED_DESCRIPTION:
-        raise LegacyRetirementError("record is not an approved legacy InfoHub dependency layer")
+    if description != expected_description:
+        raise LegacyRetirementError("record is not an approved legacy InfoHub layer")
     if raw.get("Type") != "regular":
         raise LegacyRetirementError("candidate record type is not regular")
     if raw.get("Reclaimable") is not True:
@@ -152,13 +171,28 @@ def _load_record(
         raise LegacyRetirementError("candidate record has no creation timestamp")
     if not isinstance(raw.get("Size"), str):
         raise LegacyRetirementError("candidate record has no size")
+    raw_parents = raw.get("Parents", [])
+    if not isinstance(raw_parents, list) or any(
+        not isinstance(parent_id, str) or not RECORD_ID_PATTERN.fullmatch(parent_id)
+        for parent_id in raw_parents
+    ):
+        raise LegacyRetirementError("candidate record has invalid parent IDs")
+    parent_ids = tuple(raw_parents)
+    if role == DEPENDENT_ROLE and (
+        len(parent_ids) != 1 or parent_ids[0] not in approved_root_ids
+    ):
+        raise LegacyRetirementError(
+            "dependent record must have exactly one approved dependency root"
+        )
 
     return ReviewedRecord(
         record_id=record_id,
         size_bytes=_parse_size(raw["Size"]),
         created_at=raw["CreatedAt"],
-        description_sha256=DESCRIPTION_SHA256,
+        description_sha256=description_sha256,
         record_type="regular",
+        role=role,
+        parent_ids=parent_ids,
     )
 
 
@@ -176,17 +210,34 @@ def _plan_hash(builder: str, records: Sequence[ReviewedRecord]) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
-def build_plan(record_ids: Sequence[str], runner: Runner) -> RetirementPlan:
-    if not record_ids or len(record_ids) > MAX_RECORDS:
+def build_plan(
+    record_ids: Sequence[str],
+    runner: Runner,
+    *,
+    dependent_record_ids: Sequence[str] = (),
+) -> RetirementPlan:
+    all_record_ids = [*record_ids, *dependent_record_ids]
+    if not record_ids or len(all_record_ids) > MAX_RECORDS:
         raise LegacyRetirementError(f"record count must be between 1 and {MAX_RECORDS}")
-    if len(set(record_ids)) != len(record_ids):
+    if len(set(all_record_ids)) != len(all_record_ids):
         raise LegacyRetirementError("duplicate record IDs are not allowed")
-    if any(not RECORD_ID_PATTERN.fullmatch(record_id) for record_id in record_ids):
+    if any(not RECORD_ID_PATTERN.fullmatch(record_id) for record_id in all_record_ids):
         raise LegacyRetirementError("invalid Buildx record ID")
 
+    approved_root_ids = frozenset(record_ids)
     loaded: list[ReviewedRecord] = []
+    for record_id in sorted(dependent_record_ids):
+        record = _load_record(
+            record_id,
+            runner,
+            role=DEPENDENT_ROLE,
+            approved_root_ids=approved_root_ids,
+        )
+        if record is None:  # pragma: no cover - missing is rejected above.
+            raise LegacyRetirementError("dependent record is missing")
+        loaded.append(record)
     for record_id in sorted(record_ids):
-        record = _load_record(record_id, runner)
+        record = _load_record(record_id, runner, role=ROOT_ROLE)
         if record is None:  # pragma: no cover - missing is rejected above.
             raise LegacyRetirementError("candidate record is missing")
         loaded.append(record)
@@ -200,7 +251,12 @@ def build_plan(record_ids: Sequence[str], runner: Runner) -> RetirementPlan:
     )
 
 
-def _prune_command(record_id: str) -> list[str]:
+def _prune_command(record: ReviewedRecord) -> list[str]:
+    description_filter = (
+        "description~=COPY"
+        if record.role == DEPENDENT_ROLE
+        else "description~=requirements-production[.]txt"
+    )
     return [
         "docker",
         "buildx",
@@ -208,7 +264,7 @@ def _prune_command(record_id: str) -> list[str]:
         "--builder",
         LEGACY_BUILDER,
         "--filter",
-        f"id={record_id}",
+        f"id={record.record_id}",
         "--filter",
         "inuse!=true",
         "--filter",
@@ -220,7 +276,7 @@ def _prune_command(record_id: str) -> list[str]:
         "--filter",
         "type=regular",
         "--filter",
-        "description~=requirements-production[.]txt",
+        description_filter,
         "--force",
     ]
 
@@ -241,9 +297,18 @@ def execute_plan(
     if expected_plan_sha256 != plan.plan_sha256:
         raise LegacyRetirementError("plan SHA-256 changed after review")
 
+    approved_root_ids = frozenset(
+        record.record_id for record in plan.records if record.role == ROOT_ROLE
+    )
     for record in plan.records:
         for attempt in range(1, PRUNE_ATTEMPTS + 1):
-            current = _load_record(record.record_id, runner, allow_missing=True)
+            current = _load_record(
+                record.record_id,
+                runner,
+                role=record.role,
+                approved_root_ids=approved_root_ids,
+                allow_missing=True,
+            )
             if current is None:
                 break
             if current != record:
@@ -251,8 +316,14 @@ def execute_plan(
                     f"record {record.record_id} metadata changed during retirement"
                 )
 
-            runner.run(_prune_command(record.record_id))
-            if _load_record(record.record_id, runner, allow_missing=True) is None:
+            runner.run(_prune_command(record))
+            if _load_record(
+                record.record_id,
+                runner,
+                role=record.role,
+                approved_root_ids=approved_root_ids,
+                allow_missing=True,
+            ) is None:
                 break
             if attempt == PRUNE_ATTEMPTS:
                 raise LegacyRetirementError(
@@ -273,10 +344,12 @@ def plan_summary(plan: RetirementPlan, *, execute: bool) -> dict[str, object]:
                 "id": record.record_id,
                 "size_bytes": record.size_bytes,
                 "description_sha256": record.description_sha256,
+                "role": record.role,
+                "parent_ids": list(record.parent_ids),
             }
             for record in plan.records
         ],
-        "scope": "exact_non_shared_immutable_infohub_dependency_records",
+        "scope": "exact_reviewed_non_shared_immutable_infohub_record_graph",
         "total_bytes": plan.total_bytes,
     }
 
@@ -287,7 +360,16 @@ def _parser() -> argparse.ArgumentParser:
         "--record-id",
         action="append",
         required=True,
-        help=f"Reviewed legacy BuildKit record ID; repeat up to {MAX_RECORDS} times",
+        help="Reviewed legacy dependency-root ID; repeat for every approved root",
+    )
+    parser.add_argument(
+        "--dependent-record-id",
+        action="append",
+        default=[],
+        help=(
+            "Reviewed COPY leaf whose single parent is an approved --record-id; "
+            f"combined record limit is {MAX_RECORDS}"
+        ),
     )
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--expected-record-count", type=int)
@@ -325,7 +407,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     _validate_execution_args(args, parser)
     runner = SubprocessRunner()
     try:
-        plan = build_plan(args.record_id, runner)
+        plan = build_plan(
+            args.record_id,
+            runner,
+            dependent_record_ids=args.dependent_record_id,
+        )
         if args.execute:
             execute_plan(
                 plan,

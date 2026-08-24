@@ -102,22 +102,23 @@ the restricted `INFOHUB_BUILDX_BUILDER` name.
 ### retire_infohub_legacy_buildkit.py
 
 Retire only individually reviewed, immutable, reclaimable and non-shared old
-InfoHub dependency records from the host-wide `default` Buildx builder. First
-repeat `--record-id` for every approved exact ID and save the printed count,
-total bytes and plan SHA-256:
+InfoHub dependency records from the host-wide `default` Buildx builder. Pass
+each dependency root with `--record-id` and each reviewed direct
+`[6/6] COPY . .` leaf with `--dependent-record-id`, then save the printed
+count, total bytes and plan SHA-256:
 
 ```bash
 python3 scripts/retire_infohub_legacy_buildkit.py \
-  --record-id EXACT_REVIEWED_ID_1 \
-  --record-id EXACT_REVIEWED_ID_2
+  --record-id EXACT_REVIEWED_ROOT_ID \
+  --dependent-record-id EXACT_REVIEWED_COPY_LEAF_ID
 ```
 
 Execute only the unchanged reviewed plan by supplying all three guards:
 
 ```bash
 python3 scripts/retire_infohub_legacy_buildkit.py \
-  --record-id EXACT_REVIEWED_ID_1 \
-  --record-id EXACT_REVIEWED_ID_2 \
+  --record-id EXACT_REVIEWED_ROOT_ID \
+  --dependent-record-id EXACT_REVIEWED_COPY_LEAF_ID \
   --execute \
   --expected-record-count 2 \
   --expected-total-bytes EXACT_DRY_RUN_BYTES \
@@ -130,10 +131,12 @@ description-regexp prune filters, and verifies that every target ID
 disappeared. The negative boolean selectors match the installed Buildx filter
 semantics; equality to `false` is not equivalent and produces a safe no-op. The
 tool retries a transient exact-ID no-op at most three times and revalidates the
-complete reviewed metadata before every attempt. It has no global builder,
-image or volume cleanup path. Record IDs must come from a separate read-only
-attribution; never substitute aggregate sizes or description matching for
-reviewed exact IDs.
+complete reviewed metadata before every attempt. COPY leaves must have exactly
+one parent from the reviewed root set; their role and parent IDs are included
+in the plan hash, and leaves are always processed before roots. The tool has no
+automatic graph expansion and no global builder, image or volume cleanup path.
+Record IDs must come from a separate read-only attribution; never substitute
+aggregate sizes or description matching for reviewed exact IDs.
 
 ### import_decision_facts_review_workbook.py
 
