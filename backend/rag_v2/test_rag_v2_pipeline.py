@@ -111,6 +111,33 @@ class PipelineV2RegressionTests(unittest.TestCase):
         self.assertEqual(top["document_type"], "court_decision")
         self.assertTrue(trace.source_audit["passed"])
 
+    def test_homepage_appeal_examples_route_to_normative_guidance(self):
+        cases = (
+            ("ru", "Как обжаловать решение налоговой?"),
+            ("en", "How do I appeal a tax decision?"),
+            ("ka", "როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?"),
+        )
+        for language, query in cases:
+            with self.subTest(language=language):
+                parsed = parse_query(query, language=language)
+                self.assertEqual(parsed.topic, "tax")
+                self.assertEqual(parsed.goal, "appeal_procedure")
+                self.assertIn("appeal_procedure", parsed.signals)
+                self.assertNotIn("dispute", parsed.signals)
+
+                trace = pipeline_v2.build_trace(
+                    query,
+                    language=language,
+                    disabled_channels={"semantic_search"},
+                )
+                self.assertEqual(
+                    trace.classification["question_class"],
+                    "practical_tax_guidance",
+                )
+                top = trace.reranking["top_ranked_documents"][0]
+                self.assertNotEqual(top["document_type"], "court_decision")
+                self.assertTrue(trace.source_audit["passed"])
+
     def test_english_dispute_query_is_not_downgraded_to_named_document(self):
         trace = pipeline_v2.build_trace(
             "What was the decision in dispute №19068/2/2023?", language="en"

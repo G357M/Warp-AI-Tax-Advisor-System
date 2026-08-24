@@ -20,6 +20,35 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     goal = None
     locality = None
 
+    # A generic "how do I appeal?" question asks for the statutory procedure,
+    # not for the outcome of an individual dispute.  Keep this signal separate
+    # across all supported languages so retrieval can prefer the Tax Code over
+    # fact-heavy court decisions.
+    appeal_procedure_markers = [
+        "как обжаловать",
+        "как подать жалоб",
+        "куда обжаловать",
+        "порядок обжал",
+        "срок обжал",
+        "how do i appeal",
+        "how can i appeal",
+        "how to appeal",
+        "appeal procedure",
+        "where to appeal",
+        "appeal deadline",
+        "file an appeal",
+        "როგორ გავასაჩივრ",
+        "როგორ უნდა გავასაჩივრ",
+        "სად გავასაჩივრ",
+        "გასაჩივრების წეს",
+        "გასაჩივრების ვად",
+        "საჩივარი როგორ",
+        "საჩივრის წარდგენ",
+    ]
+    is_appeal_procedure_query = any(
+        token in q for token in appeal_procedure_markers
+    )
+
     income_tax_markers = [
         "подоход",
         "ндфл",
@@ -122,6 +151,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     elif is_income_tax_query:
         topic = "tax"
 
+    if is_appeal_procedure_query and topic is None:
+        topic = "tax"
+
     if any(
         token in q for token in ["налогов", "tax code", "საგადასახადო კოდექს"]
     ) or re.search(r"\bнк(?:\s+грузии)?\b", q):
@@ -141,7 +173,10 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     article_ref = citations["articles"][0] if citations["articles"] else None
     decision_ref = document_ref if document_ref and "/" in document_ref else None
 
-    if any(token in q for token in ["как рассчиты", "как считать", "как применять", "how to calculate", "როგორ გამოითვლ", "როგორ ითვლ"]):
+    if is_appeal_procedure_query and not decision_ref:
+        goal = "appeal_procedure"
+        signals.extend(["practical", "appeal_procedure"])
+    elif any(token in q for token in ["как рассчиты", "как считать", "как применять", "how to calculate", "როგორ გამოითვლ", "როგორ ითვლ"]):
         goal = "calculation_rule"
         signals.append("practical")
     elif any(token in q for token in ["ставка", "rate", "withholding", "threshold", "limit", "განაკვეთი", "процент", "порог", "лимит", "ზღვარი"]) or topic in {"nonresident_wht", "nonresident_service_wht", "vat_registration_timing", "vat_deregistration_threshold"} or (is_income_tax_query and any(token in q for token in income_tax_rate_markers)) or (topic in {"vat", "profit_tax", "dividend_tax", "interest_tax", "royalty_tax", "small_business", "rental_income", "short_term_rental_tax", "apartment_sale_tax", "vehicle_sale_tax", "import_vat", "vat_registration_threshold", "vat_registration_timing", "vat_deregistration_threshold", "nonresident_wht", "nonresident_service_wht", "excise", "customs", "property_tax_company"} and any(token in q for token in generic_rate_question_markers)) or (topic == "property_tax" and subject == "individual" and any(token in q for token in generic_rate_question_markers)):

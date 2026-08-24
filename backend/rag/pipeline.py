@@ -58,7 +58,26 @@ class RAGPipeline:
             hints["preferred_types"].add("law")
             hints["terms"].update({"კოდექს", "изменен", "amend", "საგადასახადო კოდექსში ცვლილების", "ცვლილების შეტანის შესახებ"})
 
-        if any(token in q for token in ["დავა", "დავის", "спор", "dispute", "решение", "жалоб", "გადაწყვეტილებ", "საჩივრ"]):
+        is_appeal_procedure = any(token in q for token in [
+            "как обжаловать", "как подать жалоб", "куда обжаловать", "порядок обжал", "срок обжал",
+            "how do i appeal", "how can i appeal", "how to appeal", "appeal procedure", "where to appeal",
+            "appeal deadline", "file an appeal", "როგორ გავასაჩივრ", "როგორ უნდა გავასაჩივრ",
+            "სად გავასაჩივრ", "გასაჩივრების წეს", "გასაჩივრების ვად", "საჩივარი როგორ",
+            "საჩივრის წარდგენ",
+        ])
+        if is_appeal_procedure:
+            hints["intent"].add("appeal_procedure")
+            hints["preferred_types"].update({"law", "regulation", "guideline"})
+            hints["preferred_categories"].add("tax")
+            hints["terms"].update({
+                "საგადასახადო დავა",
+                "შემოსავლების სამსახურში წარდგენით",
+                "30 დღის ვადაში",
+                "ელექტრონული ფორმით",
+                "მუხლი 297",
+                "მუხლი 299",
+            })
+        elif any(token in q for token in ["დავა", "დავის", "спор", "dispute", "решение", "жалоб", "გადაწყვეტილებ", "საჩივრ"]):
             hints["intent"].add("dispute")
             hints["preferred_types"].add("court_decision")
             hints["preferred_categories"].add("tax_customs_dispute")
@@ -104,6 +123,19 @@ class RAGPipeline:
                 for token in ["კოდექს", "изменен", "amend", "ცვლილების შეტანის შესახებ", "დადგენილებაში ცვლილების შეტანის"]
             )
 
+        if "appeal_procedure" in hints["intent"]:
+            return doc_type in {"law", "regulation", "guideline"} and any(
+                token in haystack
+                for token in [
+                    "საგადასახადო დავა",
+                    "შემოსავლების სამსახურში წარდგენით",
+                    "30 დღის ვადაში",
+                    "ელექტრონული ფორმით",
+                    "მუხლი 297",
+                    "მუხლი 299",
+                ]
+            )
+
         if "dispute" in hints["intent"]:
             return (
                 doc_type == "court_decision"
@@ -128,7 +160,7 @@ class RAGPipeline:
         intents = hints.get("intent") or set()
         if "dispute" in intents:
             return "dispute"
-        if intents.intersection({"vat", "amendment", "property_tax", "profit_tax"}):
+        if intents.intersection({"vat", "amendment", "property_tax", "profit_tax", "appeal_procedure"}):
             return "normative"
         return "general"
 
@@ -537,6 +569,23 @@ class RAGPipeline:
                 base_score += 0.20
             elif doc_type == "guideline":
                 base_score -= 0.10
+
+        if "appeal_procedure" in hints["intent"]:
+            if doc_type == "law":
+                base_score += 0.42
+            elif doc_type in {"regulation", "guideline"}:
+                base_score += 0.12
+            elif doc_type == "court_decision":
+                base_score -= 0.70
+            if any(token in haystack for token in [
+                "საგადასახადო დავა",
+                "შემოსავლების სამსახურში წარდგენით",
+                "30 დღის ვადაში",
+                "ელექტრონული ფორმით",
+                "მუხლი 297",
+                "მუხლი 299",
+            ]):
+                base_score += 0.55
 
         if "property_tax" in hints["intent"]:
             if doc_type == "regulation":

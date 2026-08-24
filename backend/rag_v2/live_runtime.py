@@ -421,7 +421,12 @@ def _fetch_doc_chunks(
                 return [{
                     "id": f"synthetic:{doc.id}:{chunk_hint or article_ref or section_label or 'section'}",
                     "content": section_text,
-                    "metadata": _document_source_metadata(doc, title, source_url),
+                    "metadata": {
+                        **_document_source_metadata(doc, title, source_url),
+                        "article_ref": article_ref,
+                        "point_ref": point_ref,
+                        "section_label": section_label,
+                    },
                     "similarity": 1.0,
                 }]
 
@@ -511,6 +516,10 @@ def _doc_matches_rollout_class(doc: Dict[str, Any], trace) -> bool:
 def _filtered_rollout_docs(trace) -> List[Dict[str, Any]]:
     ranked = trace.reranking.get("top_ranked_documents", [])
     question_class = trace.classification.get("question_class")
+    if (trace.parsed_query or {}).get("goal") == "appeal_procedure":
+        # The exact Tax Code pointer supplies both required provisions below;
+        # unrelated semantic candidates would only dilute the procedure.
+        return ranked[:1]
     if question_class in {"local_regulation_lookup", "amendment_tracking"}:
         ranked = [doc for doc in ranked if _doc_matches_rollout_class(doc, trace)]
     if question_class == "local_regulation_lookup":
@@ -560,7 +569,25 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
         else:
             limit = 2 if doc.get("channel") in {"article_resolver", "point_resolver"} else 2
         semantic_content = metadata.get("chunk_content")
-        if semantic_content:
+        if (
+            (trace.parsed_query or {}).get("goal") == "appeal_procedure"
+            and index == 0
+            and source_url == TAX_CODE_SOURCE["url"]
+        ):
+            fetched = []
+            for exact_article in ("299", "297"):
+                fetched.extend(
+                    _fetch_doc_chunks(
+                        source_url,
+                        title,
+                        limit=1,
+                        section_label=f"მუხლი {exact_article}",
+                        article_ref=exact_article,
+                        question_class=trace.classification.get("question_class"),
+                        topic="tax",
+                    )
+                )
+        elif semantic_content:
             # The semantic channel already retrieved the exact grounding chunk.
             fetched = [{
                 "id": f"semantic:{doc.get('document_id')}:{metadata.get('chunk_index')}",
@@ -604,9 +631,9 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
                 **item.get("metadata", {}),
                 "retrieval_channel": doc.get("channel"),
                 "chunk_hint": chunk_hint,
-                "section_label": section_label,
-                "article_ref": article_ref,
-                "point_ref": point_ref,
+                "section_label": item.get("metadata", {}).get("section_label") or section_label,
+                "article_ref": item.get("metadata", {}).get("article_ref") or article_ref,
+                "point_ref": item.get("metadata", {}).get("point_ref") or point_ref,
             }
         chunks.extend(fetched)
     return chunks
@@ -895,6 +922,16 @@ def _generation_query(query: str, trace, context: str) -> str:
             f"{language_guard}"
         )
     if question_class == "practical_tax_guidance":
+        if parsed.get("goal") == "appeal_procedure":
+            return (
+                f"{query}\n\n"
+                f"Answer in {answer_lang} as plain text, briefly and strictly from Tax Code articles 297 and 299 in the context. "
+                "State the filing path, the 30-day deadline and the usual electronic form. "
+                "Mention the court option only as described in the context. Do not infer an individual dispute outcome, "
+                "do not discuss unrelated case facts, and do not append practice statistics. "
+                "Use at most 3-5 sentences and do not use markdown emphasis, bullet lists, or markdown links."
+                f" {language_guard}"
+            )
         if parsed.get("topic") == "property_tax" and parsed.get("subject") == "individual":
             return (
                 f"{query}\n\n"

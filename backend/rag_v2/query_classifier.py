@@ -51,6 +51,14 @@ def classify_query(parsed: ParsedQuery) -> QuestionClassification:
             why=["amendment markers detected"],
         )
 
+    if parsed.goal == "appeal_procedure":
+        return QuestionClassification(
+            question_class="practical_tax_guidance",
+            confidence=0.94,
+            alternatives=[{"class": "canonical_law_lookup", "score": 0.72}],
+            why=["generic appeal wording asks for statutory procedure, not a case outcome"],
+        )
+
     if parsed.locality and parsed.topic == "property_tax" and parsed.subject == "individual":
         return QuestionClassification(
             question_class="practical_tax_guidance",

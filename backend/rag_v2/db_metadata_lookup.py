@@ -153,6 +153,17 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
         if candidates:
             return candidates
 
+    # A generic appeal question needs the statutory procedure, not a sample
+    # dispute outcome. Article 299 is the canonical entry point (30-day term,
+    # electronic filing and effect of the appeal); live runtime supplements it
+    # with article 297 for the two-stage Revenue Service / Dispute Council path.
+    if parsed.goal == "appeal_procedure":
+        candidates = _canonical_tax_code_candidates(
+            "299", "db canonical tax appeal procedure lookup"
+        )
+        if candidates:
+            return candidates
+
     # Former guard topics: token-matched pointer to the answering article.
     for tokens, title_stem, article_ref in GUARD_TOPIC_POINTERS:
         if not any(t in normalized for t in tokens):
