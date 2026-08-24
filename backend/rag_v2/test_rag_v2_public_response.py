@@ -20,6 +20,7 @@ from backend.rag_v2.public_response import (
     rental_income_tax_rate_response,
     royalty_tax_rate_response,
     small_business_tax_rate_response,
+    tax_appeal_procedure_response,
     vat_rate_response,
 )
 
@@ -50,6 +51,26 @@ class PublicResponseShapeTests(unittest.TestCase):
                     parsed_query={"language": language, "normalized_query": query.lower()}
                 )
                 self.assertIn(expected, out_of_domain_response(trace))
+
+    def test_tax_appeal_procedure_is_precise_in_all_public_languages(self):
+        cases = (
+            ("ru", "со дня его вручения", "Службу доходов", "электронной форме"),
+            ("en", "after it is delivered", "Revenue Service", "filed electronically"),
+            ("ka", "მისი ჩაბარებიდან", "შემოსავლების სამსახურში", "ელექტრონული ფორმით"),
+        )
+        for language, delivery_rule, filing_body, filing_form in cases:
+            with self.subTest(language=language):
+                trace = types.SimpleNamespace(
+                    parsed_query={"language": language, "goal": "appeal_procedure"}
+                )
+                result = tax_appeal_procedure_response(trace)
+                self.assertIn("30", result)
+                self.assertIn(delivery_rule, result)
+                self.assertIn(filing_body, result)
+                self.assertIn(filing_form, result)
+                self.assertNotIn("статист", result.lower())
+                self.assertNotIn("statistics", result.lower())
+                self.assertNotIn("სტატისტ", result.lower())
 
     def test_normalize_public_response_text_removes_markdown_noise(self):
         text = "**Кратко:** см. [источник](https://example.com)\n\n\n__Важно__"

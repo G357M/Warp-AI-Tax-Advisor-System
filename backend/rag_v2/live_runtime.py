@@ -32,6 +32,7 @@ from .public_response import (
     royalty_tax_rate_response,
     small_business_legal_form_response,
     small_business_tax_rate_response,
+    tax_appeal_procedure_response,
     vat_rate_response,
 )
 
@@ -68,6 +69,7 @@ CURATED_LEGAL_BASIS = {
 }
 
 CURATED_ARTICLE_REFS = {
+    "appeal_procedure": "296, 297, 299",
     "vat_threshold": "165",
     "tour_operator_vat": "172",
     "funded_pension": "3",
@@ -998,6 +1000,10 @@ def maybe_run_live_rollout(
     # topics, the funded-pension law for pension questions).
     forced = small_business_legal_form_response(trace)
     forced_topic = None
+    if not forced:
+        forced = tax_appeal_procedure_response(trace)
+        if forced:
+            forced_topic = "appeal_procedure"
     if not forced and (os.getenv("INFOHUB_RAG_V2_AUTHORITATIVE") or "1").strip() == "1":
         fact = authoritative_tax_fact_response(trace)
         if fact:

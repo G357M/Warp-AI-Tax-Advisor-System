@@ -334,6 +334,47 @@ def out_of_scope_response(trace: Any) -> Optional[str]:
     return out_of_jurisdiction_response(trace) or out_of_domain_response(trace)
 
 
+def tax_appeal_procedure_response(trace: Any) -> Optional[str]:
+    """Deterministic public answer for the generic tax-appeal procedure.
+
+    This high-stakes procedural answer is grounded in the canonical Tax Code
+    articles 296, 297 and 299.  Keeping the wording deterministic prevents the
+    generator from combining the 30-day delivery rule, the court exception and
+    the not-sent deadline into a legally different statement.  The guard has
+    the same environment kill switch as the other authoritative answers.
+    """
+    parsed = getattr(trace, "parsed_query", None) or {}
+    if parsed.get("goal") != "appeal_procedure":
+        return None
+    if "appeal_procedure" in _disabled_guard_topics():
+        return None
+
+    answers = {
+        "ru": (
+            "Решение налогового органа можно обжаловать в течение 30 дней со дня его вручения. "
+            "В системе Министерства финансов спор обычно начинается с подачи жалобы в Службу доходов и является двухэтапным; "
+            "на любой стадии этого административного рассмотрения заявитель вправе обратиться в суд. "
+            "Жалоба, как правило, подаётся в электронной форме. Если решение не было направлено заявителю, "
+            "срок обжалования исчисляется со дня, когда он узнал о решении."
+        ),
+        "en": (
+            "A tax authority decision may be appealed within 30 days after it is delivered to the person. "
+            "Within the Ministry of Finance system, a dispute normally begins by filing a complaint with the Revenue Service and proceeds in two stages; "
+            "the complainant may go to court at any stage of that administrative process. "
+            "The complaint is generally filed electronically. If the decision was not sent to the complainant, "
+            "the appeal period runs from the day the decision became known to them."
+        ),
+        "ka": (
+            "საგადასახადო ორგანოს გადაწყვეტილება შეგიძლიათ გაასაჩივროთ მისი ჩაბარებიდან 30 დღის ვადაში. "
+            "საქართველოს ფინანსთა სამინისტროს სისტემაში დავა, როგორც წესი, იწყება საჩივრის შემოსავლების სამსახურში წარდგენით და ორეტაპიანია; "
+            "ამ ადმინისტრაციული დავის ნებისმიერ ეტაპზე მომჩივანს შეუძლია მიმართოს სასამართლოს. "
+            "საჩივარი, როგორც წესი, ელექტრონული ფორმით წარედგინება. თუ გადაწყვეტილება მომჩივანს არ გაეგზავნა, "
+            "გასაჩივრების ვადა აითვლება იმ დღიდან, როდესაც გადაწყვეტილება მისთვის ცნობილი გახდა."
+        ),
+    }
+    return answers.get(_response_language(trace), answers["ru"])
+
+
 def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
     """Authoritative answers for high-value facts that retrieval misses.
 
