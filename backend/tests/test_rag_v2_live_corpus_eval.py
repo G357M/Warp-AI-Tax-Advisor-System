@@ -70,7 +70,7 @@ class _FakePipeline:
 def test_default_live_suite_is_balanced_and_prohibits_llm_calls():
     suite = live_eval.load_suite()
 
-    assert len(suite["cases"]) == 60
+    assert len(suite["cases"]) == 63
     assert {case["language"] for case in suite["cases"]} == {"ru", "en", "ka"}
     assert suite["retrieval_profile"]["llm_calls_allowed"] is False
     assert "semantic_search" in suite["retrieval_profile"]["disabled_channels"]
@@ -91,7 +91,7 @@ def test_committed_baseline_matches_the_versioned_suite_and_is_aggregate_only():
 
     assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
     assert baseline["suite_version"] == suite["suite_version"]
-    assert baseline["passed_cases"] == baseline["cases"] == 60
+    assert baseline["passed_cases"] == baseline["cases"] == 63
     assert baseline["metrics"]["official_provision_link_rate"] == 1.0
     assert "results" not in baseline
     assert "query" not in json.dumps(baseline)

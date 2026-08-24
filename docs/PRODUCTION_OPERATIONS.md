@@ -462,14 +462,14 @@ per-language metrics and individual failures. Copy accepted reports into
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
 
-The accepted `2026-08-24.5` suite contains 60 balanced cases (20 RU, 20 EN,
-20 KA). In addition to citation variants, it covers eight practical tax topics:
+The accepted `2026-08-24.6` suite contains 63 balanced cases (21 RU, 21 EN,
+21 KA). In addition to citation variants, it covers eight practical tax topics:
 personal income tax, VAT registration, tour-operator VAT, company property tax,
 residential rental, non-resident services, individual tax residency and late
-payment interest, plus article 180 of the General Administrative Code in all
-three languages. Every statutory case identifies the expected article; the
+payment interest, plus article 180 of the General Administrative Code and
+article 623 of the Civil Code in all three languages. Every statutory case identifies the expected article; the
 evaluator separately requires a verified official provision deep-link.
-The connected-corpus run passed 60/60 with every overall and per-language
+The connected-corpus run passed 63/63 with every overall and per-language
 metric, including `official_provision_link_rate`, at 1.0. The committed
 aggregate is
 `evaluation/baselines/rag_v2_live_corpus_2026-08-24_provision-links.json`.
