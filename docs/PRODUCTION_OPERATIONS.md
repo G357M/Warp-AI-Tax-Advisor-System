@@ -358,9 +358,9 @@ The first read-only inventory on 2026-08-23 measured 54.26 GB in the legacy
 builder. Four reclaimable, non-shared records totalling 34.616 GB were old
 InfoHub `pip install --no-cache-dir -r requirements-production.txt` layers;
 another 3.811 GB matched the previous InfoHub CPU-only virtualenv/copy chain.
-This attribution is evidence for a later exact host-maintenance decision, not
-permission for automatic global prune. The independent Plausible service and
-its images, containers, networks and volumes remain outside every InfoHub
+This attribution was evidence for a separate exact host-maintenance decision,
+not permission for automatic global prune. The independent Plausible service
+and its images, containers, networks and volumes remain outside every InfoHub
 cleanup policy.
 
 ### Exact-ID legacy cache retirement
@@ -406,12 +406,20 @@ plan or metadata; do not fall back to a description-only, age-only or global
 prune. Re-run the storage audit and application/Plausible identity checks after
 the operation.
 
-The separate rollback-image retention was applied after that inventory. It
-removed twelve exact obsolete `infohub/backend:rollback-*` and
-`infohub/frontend:rollback-*` tags while retaining the newest three of each.
-Because the deleted images shared most layers, it returned about 1 GB rather
-than their summed virtual sizes. No BuildKit cache, active image, volume or
-Plausible resource was touched.
+The reviewed 2026-08-24 maintenance retired the four dependency roots and six
+direct COPY leaves in exact-ID batches. Buildx usage for the shared builder fell
+from 54,257,451,820 to 19,626,409,820 bytes and its record count from 214 to
+204; root free space rose from about 39.20 to 70.73 GB. Independent inspection
+confirmed all ten target IDs absent. Production remained at 15,140 documents /
+275,976 chunks with cache-only embeddings, while the Plausible container ID,
+start time, restart count and both networks remained unchanged. No global
+prune, image cleanup or volume cleanup was used.
+
+The separate rollback-image retention is applied after deployment batches. The
+latest 2026-08-24 pass removed eight exact obsolete
+`infohub/backend:rollback-*` / `infohub/frontend:rollback-*` tags while
+retaining the newest three of each. It did not target BuildKit cache, active
+images, volumes or Plausible resources.
 
 ## Database credential rotation
 
