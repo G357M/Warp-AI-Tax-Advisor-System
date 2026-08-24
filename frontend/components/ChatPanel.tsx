@@ -120,7 +120,9 @@ export function ChatPanel() {
                   {t(
                     data.evidence.status === 'grounded'
                       ? data.evidence.has_precise_citation
-                        ? 'chat.evidence.exact'
+                        ? data.evidence.has_official_provision_link
+                          ? 'chat.evidence.provision'
+                          : 'chat.evidence.exact'
                         : 'chat.evidence.document'
                       : data.evidence.status === 'partial'
                         ? 'chat.evidence.partial'
@@ -147,6 +149,8 @@ export function ChatPanel() {
                             documentNumber: s.metadata?.document_number,
                             datePublished: s.metadata?.date_published,
                             dateEffective: s.metadata?.date_effective,
+                            officialActUrl: s.metadata?.official_act_url,
+                            provisionLinks: s.metadata?.provision_links,
                           }
                         : {
                             title: s.title,
@@ -157,6 +161,8 @@ export function ChatPanel() {
                             documentNumber: s.document_number,
                             datePublished: s.date_published,
                             dateEffective: s.date_effective,
+                            officialActUrl: s.official_act_url,
+                            provisionLinks: s.provision_links,
                           };
                       return (
                         <SourceChip
@@ -169,6 +175,8 @@ export function ChatPanel() {
                           documentNumber={source.documentNumber}
                           datePublished={source.datePublished}
                           dateEffective={source.dateEffective}
+                          officialActUrl={source.officialActUrl}
+                          provisionLinks={source.provisionLinks}
                         />
                       );
                     })}

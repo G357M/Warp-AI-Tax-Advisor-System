@@ -10,6 +10,7 @@
  */
 import { clsx } from 'clsx';
 import { useT } from '@/lib/i18n';
+import type { ProvisionLinkInfo } from '@/lib/types';
 
 /** Known document types → dictionary keys; unknown types render as-is. */
 const TYPE_KEYS: Record<string, string> = {
@@ -30,6 +31,8 @@ interface SourceChipProps {
   documentNumber?: string | null;
   datePublished?: string | null;
   dateEffective?: string | null;
+  officialActUrl?: string | null;
+  provisionLinks?: ProvisionLinkInfo[];
   className?: string;
 }
 
@@ -42,6 +45,8 @@ export function SourceChip({
   documentNumber,
   datePublished,
   dateEffective,
+  officialActUrl,
+  provisionLinks = [],
   className,
 }: SourceChipProps) {
   const { t } = useT();
@@ -73,6 +78,45 @@ export function SourceChip({
     url && 'transition-all duration-300 hover:bg-white/5',
     className,
   );
+  if (provisionLinks.length > 0) {
+    return (
+      <div className={base} title={title}>
+        {body}
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2 text-xs">
+          {provisionLinks.map((link) => {
+            const pointNumber = link.point_ref?.includes('.')
+              ? link.point_ref.split('.').slice(1).join('.')
+              : link.point_ref;
+            const linkLabel = [
+              t('doc.article', { n: link.article_ref }),
+              pointNumber ? t('doc.point', { n: pointNumber }) : null,
+            ].filter(Boolean).join(' · ');
+            return (
+              <a
+                key={`${link.article_ref}:${link.point_ref ?? ''}`}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-primary/35 px-2.5 py-1 font-medium text-white transition-colors hover:border-primary hover:bg-primary/10"
+              >
+                {linkLabel}
+              </a>
+            );
+          })}
+          {officialActUrl && (
+            <a
+              href={officialActUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-1 py-1 text-muted-foreground transition-colors hover:text-white"
+            >
+              {t('doc.official_act')}
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
   if (url) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className={base} title={title}>

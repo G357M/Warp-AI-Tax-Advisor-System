@@ -49,6 +49,48 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         token in q for token in appeal_procedure_markers
     )
 
+    tax_residency_markers = [
+        "налоговый резидент",
+        "налоговым резидентом",
+        "резидентом грузии",
+        "резидентство грузии",
+        "183 дня",
+        "tax resident",
+        "tax residency",
+        "resident of georgia",
+        "183 days",
+        "საგადასახადო რეზიდენტ",
+        "საქართველოს რეზიდენტ",
+        "183 დღე",
+        "რეზიდენტი ვარ",
+    ]
+    is_tax_residency_query = any(token in q for token in tax_residency_markers)
+
+    late_payment_penalty_markers = [
+        "пеня за просрочку",
+        "пени за просрочку",
+        "пеня начис",
+        "пеня по налог",
+        "просрочку уплаты налог",
+        "просрочка уплаты налог",
+        "просроченный налог",
+        "late payment interest",
+        "late tax payment",
+        "overdue tax",
+        "tax arrears interest",
+        "საურავი",
+        "ვადაგადაცილებულ გადასახად",
+        "გადასახადის დაგვიანებით",
+    ]
+    is_late_payment_penalty_query = any(
+        token in q for token in late_payment_penalty_markers
+    )
+
+    is_tour_operator_vat_query = (
+        any(token in q for token in ("туропер", "tour oper", "ტუროპერ"))
+        and any(token in q for token in ("ндс", "vat", "დღგ"))
+    )
+
     # The homepage asks whether an LLC may use the "1% tax regime" without
     # naming small-business status.  Treat the legal form + regime combination
     # as an eligibility question.  Exclude property-tax wording because a 1%
@@ -143,7 +185,13 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
 
     short_term_markers = ["посуточ", "краткосрочн", "airbnb", "booking.com", "booking", "short-term rental", "short term rental", "short-term let", "short term let", "airbnb income", "მოკლევადიან გაქირავ", "მოკლე ვადით გაცემ", "booking.com-ით"]
 
-    if is_small_business_legal_form_query:
+    if is_tax_residency_query:
+        topic = "tax_residency"
+    elif is_late_payment_penalty_query:
+        topic = "late_payment_interest"
+    elif is_tour_operator_vat_query:
+        topic = "tour_operator_vat"
+    elif is_small_business_legal_form_query:
         topic = "small_business"
     elif any(token in q for token in ["импорт", "import", "იმპორტ"]) and any(token in q for token in ["ндс", "vat", "დღგ"]):
         topic = "import_vat"
@@ -197,7 +245,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         if topic is None:
             topic = "tax"
 
-    if is_small_business_legal_form_query:
+    if is_tax_residency_query:
+        subject = "individual"
+    elif is_small_business_legal_form_query:
         subject = "legal_entity"
     elif is_income_tax_query or topic in {"small_business", "rental_income", "short_term_rental_tax", "apartment_sale_tax", "vehicle_sale_tax"} or any(token in q for token in ["физическ", "физлиц", "physical person", "физическое лицо", "individual", "ფიზიკური პირ", "ип", "individual entrepreneur", "sole proprietor", "მეწარმე ფიზიკურ"]):
         subject = "individual"
@@ -212,7 +262,16 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     article_ref = citations["articles"][0] if citations["articles"] else None
     decision_ref = document_ref if document_ref and "/" in document_ref else None
 
-    if is_appeal_procedure_query and not decision_ref:
+    if is_tax_residency_query:
+        goal = "residency_status"
+        signals.extend(["normative", "tax_residency"])
+    elif is_late_payment_penalty_query:
+        goal = "penalty_rate"
+        signals.extend(["normative", "late_payment_penalty"])
+    elif is_tour_operator_vat_query:
+        goal = "exemption_status"
+        signals.extend(["normative", "tour_operator_vat_exemption"])
+    elif is_appeal_procedure_query and not decision_ref:
         goal = "appeal_procedure"
         signals.extend(["practical", "appeal_procedure"])
     elif is_small_business_legal_form_query:

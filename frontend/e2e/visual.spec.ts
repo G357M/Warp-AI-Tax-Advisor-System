@@ -127,6 +127,62 @@ test('Georgian landing page on mobile', async ({ page }) => {
   await expect(page.locator('main')).toHaveScreenshot('home-ka-mobile.png');
 });
 
+test('grounded answer exposes a direct official article link', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.route('**/api/v1/public/query', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        response: 'Стандартная ставка НДС в Грузии — 18%.',
+        sources: [
+          {
+            title: 'საქართველოს საგადასახადო კოდექსი',
+            document_type: 'law',
+            url: 'https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0',
+            relevance: 1,
+            article_ref: '166',
+            official_act_url: 'https://matsne.gov.ge/ka/document/view/1043717',
+            provision_links: [
+              {
+                article_ref: '166',
+                point_ref: null,
+                url: 'https://matsne.gov.ge/ka/document/view/1043717#part_553',
+              },
+            ],
+          },
+        ],
+        evidence: {
+          status: 'grounded',
+          basis: 'authoritative',
+          coverage: 'exact_provision',
+          question_class: 'canonical_law_lookup',
+          source_count: 1,
+          official_sources_only: true,
+          has_precise_citation: true,
+          has_official_provision_link: true,
+          generated_at: '2026-08-24T00:00:00+00:00',
+        },
+        conversation_id: '00000000-0000-0000-0000-000000000000',
+        retrieved_count: 1,
+      }),
+    }),
+  );
+  await openStable(page, '/', 'ru');
+  await page.getByRole('button', { name: 'Какая ставка НДС в Грузии?' }).click();
+
+  const provision = page.getByRole('link', { name: 'ст. 166', exact: true });
+  await expect(provision).toHaveAttribute(
+    'href',
+    'https://matsne.gov.ge/ka/document/view/1043717#part_553',
+  );
+  await expect(page.getByRole('link', { name: 'Официальный акт', exact: true })).toHaveAttribute(
+    'href',
+    'https://matsne.gov.ge/ka/document/view/1043717',
+  );
+  await expect(page.getByText('доступна прямая ссылка')).toBeVisible();
+});
+
 test('Georgian mobile navigation', async ({ page }) => {
   await page.setViewportSize(MOBILE);
   await openStable(page, '/', 'ka');

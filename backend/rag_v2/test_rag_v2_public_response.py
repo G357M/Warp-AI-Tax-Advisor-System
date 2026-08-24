@@ -5,6 +5,7 @@ from backend.rag_v2.faq_tax_matrix import TAX_FAQ_MATRIX
 from backend.rag_v2.public_response import (
     compress_canonical_section_text,
     compress_rollout_context_text,
+    authoritative_tax_fact_response,
     direct_tax_faq_response,
     dividend_tax_rate_response,
     finalize_rollout_response,
@@ -27,6 +28,29 @@ from backend.rag_v2.public_response import (
 
 
 class PublicResponseShapeTests(unittest.TestCase):
+    def test_residency_and_late_payment_answers_name_exact_articles_in_all_languages(self):
+        cases = (
+            ("ru", "residency_status", "tax_residency", "183", "34"),
+            ("en", "residency_status", "tax_residency", "183", "34"),
+            ("ka", "residency_status", "tax_residency", "183", "34"),
+            ("ru", "penalty_rate", "late_payment_interest", "0,05%", "272"),
+            ("en", "penalty_rate", "late_payment_interest", "0.05%", "272"),
+            ("ka", "penalty_rate", "late_payment_interest", "0,05%", "272"),
+        )
+        for language, goal, topic, value, article in cases:
+            with self.subTest(language=language, goal=goal):
+                trace = types.SimpleNamespace(
+                    parsed_query={
+                        "language": language,
+                        "normalized_query": "",
+                        "goal": goal,
+                    }
+                )
+                actual_topic, answer = authoritative_tax_fact_response(trace)
+                self.assertEqual(actual_topic, topic)
+                self.assertIn(value, answer)
+                self.assertIn(article, answer)
+
     def test_out_of_jurisdiction_response_supports_all_public_languages(self):
         cases = (
             ("ru", "Какая ставка налога в США?", "Грузии"),

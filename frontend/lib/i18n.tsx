@@ -143,6 +143,11 @@ const DICT: Record<string, Entry> = {
     ka: 'საფუძველი: ოფიციალური დოკუმენტის ზუსტი ნორმა',
     en: 'Basis: an exact provision in an official document',
   },
+  'chat.evidence.provision': {
+    ru: 'Основание: конкретная статья официального акта — доступна прямая ссылка',
+    ka: 'საფუძველი: ოფიციალური აქტის კონკრეტული მუხლი — ხელმისაწვდომია პირდაპირი ბმული',
+    en: 'Basis: a specific article of the official act with a direct link',
+  },
   'chat.evidence.document': {
     ru: 'Основание: официальные документы',
     ka: 'საფუძველი: ოფიციალური დოკუმენტები',
@@ -176,6 +181,7 @@ const DICT: Record<string, Entry> = {
   'doc.number': { ru: '№ {n}', ka: '№ {n}', en: 'No. {n}' },
   'doc.effective': { ru: 'действует с {d}', ka: 'მოქმედებს {d}-დან', en: 'effective {d}' },
   'doc.published': { ru: 'опубликован {d}', ka: 'გამოქვეყნდა {d}', en: 'published {d}' },
+  'doc.official_act': { ru: 'Официальный акт', ka: 'ოფიციალური აქტი', en: 'Official act' },
   'chat.ex1': { ru: 'Какая ставка НДС в Грузии?', ka: 'რა არის დღგ-ის განაკვეთი საქართველოში?', en: 'What is the VAT rate in Georgia?' },
   'chat.ex2': { ru: 'Может ли ООО применять налог 1%?', ka: 'შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?', en: 'Can an LLC use the 1% tax regime?' },
   'chat.ex3': { ru: 'Как обжаловать решение налоговой?', ka: 'როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?', en: 'How do I appeal a tax decision?' },

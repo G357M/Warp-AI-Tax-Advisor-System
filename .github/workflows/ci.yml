@@ -56,6 +56,7 @@ jobs:
           scripts/export_decision_facts_expert_review.py
           scripts/import_decision_facts_review_workbook.py
           scripts/link_decision_chains.py
+          scripts/prepare_duplicate_expert_prefill.py
           scripts/repair_decision_fact_normalization.py
           scripts/validate_decision_facts_expert_review.py
           scripts/verify_infohub_duplicate_candidates.py
@@ -76,6 +77,8 @@ jobs:
           tests/test_nightly_maintenance.py
           tests/test_nightly_quality_gates.py
           tests/test_rag_v2_live_corpus_eval.py
+          tests/test_official_provisions.py
+          tests/test_source_audit_currentness.py
           tests/test_answer_safety_eval.py
           tests/test_decision_chain_reporting.py
           tests/test_decision_fact_contract.py
@@ -92,6 +95,7 @@ jobs:
           tests/test_evidence_contract.py
           tests/test_integration.py
           tests/test_infohub_duplicate_verification.py
+          tests/test_duplicate_expert_prefill.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
 

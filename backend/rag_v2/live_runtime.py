@@ -71,6 +71,8 @@ CURATED_LEGAL_BASIS = {
 CURATED_ARTICLE_REFS = {
     "appeal_procedure": "296, 297, 299",
     "small_business_legal_form": "88, 90",
+    "tax_residency": "34",
+    "late_payment_interest": "272",
     "vat_threshold": "165",
     "tour_operator_vat": "172",
     "funded_pension": "3",

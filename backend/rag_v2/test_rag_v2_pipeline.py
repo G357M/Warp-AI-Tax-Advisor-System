@@ -160,6 +160,26 @@ class PipelineV2RegressionTests(unittest.TestCase):
                 self.assertEqual(top["metadata"].get("article_ref"), "88")
                 self.assertTrue(trace.source_audit["passed"])
 
+    def test_residency_and_late_payment_queries_resolve_exact_articles_in_all_languages(self):
+        cases = (
+            ("ru", "Когда физлицо становится налоговым резидентом Грузии?", "tax_residency", "residency_status", "34"),
+            ("en", "When does an individual become a tax resident of Georgia?", "tax_residency", "residency_status", "34"),
+            ("ka", "როდის ითვლება ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად?", "tax_residency", "residency_status", "34"),
+            ("ru", "Какая пеня начисляется за просрочку уплаты налога в Грузии?", "late_payment_interest", "penalty_rate", "272"),
+            ("en", "What late payment interest applies to overdue tax in Georgia?", "late_payment_interest", "penalty_rate", "272"),
+            ("ka", "რა საურავი ერიცხება ვადაგადაცილებულ გადასახადს საქართველოში?", "late_payment_interest", "penalty_rate", "272"),
+        )
+        for language, query, topic, goal, article_ref in cases:
+            with self.subTest(language=language, goal=goal):
+                trace = pipeline_v2.build_trace(query, language=language)
+                top = trace.reranking["top_ranked_documents"][0]
+                self.assertEqual(trace.parsed_query["topic"], topic)
+                self.assertEqual(trace.parsed_query["goal"], goal)
+                self.assertEqual(trace.classification["question_class"], "canonical_law_lookup")
+                self.assertEqual(trace.candidate_generation["channels_used"], ["metadata_search"])
+                self.assertEqual(top["metadata"].get("article_ref"), article_ref)
+                self.assertTrue(trace.source_audit["passed"])
+
     def test_llc_property_tax_is_not_misrouted_to_small_business(self):
         cases = (
             ("ru", "Какая ставка налога на имущество для ООО - 1%?"),

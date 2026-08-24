@@ -217,7 +217,12 @@ class PipelineV2:
                 "exact_doc_resolver": 110,
                 "citation_resolver": 105,
             }
-        if parsed.goal == "small_business_eligibility":
+        if parsed.goal in {
+            "small_business_eligibility",
+            "residency_status",
+            "penalty_rate",
+            "exemption_status",
+        }:
             # A verified statutory pointer exists, so semantic retrieval would
             # only add latency and can select a generic tax-benefit article.
             profile["enabled_channels"] = ["metadata_search"]

@@ -7,6 +7,13 @@ from .models import ParsedQuery, CandidateDocument
 from .faq_tax_matrix import CANONICAL_RATE_ARTICLES
 
 
+CANONICAL_GOAL_ARTICLES = {
+    "residency_status": "34",
+    "penalty_rate": "272",
+    "exemption_status": "172",
+}
+
+
 def _score_fixture(parsed: ParsedQuery, doc: Dict[str, object]) -> tuple[float, List[str]]:
     score = 0.0
     why: List[str] = []
@@ -56,8 +63,12 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
         doc_goals = set(doc.get("goals", []))
         has_topic_match = bool(parsed.topic and parsed.topic in doc_topics)
         has_goal_match = bool(parsed.goal and parsed.goal in doc_goals)
+        has_canonical_goal_match = bool(
+            parsed.goal in CANONICAL_GOAL_ARTICLES
+            and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
+        )
 
-        if not has_topic_match and not has_goal_match:
+        if not has_topic_match and not has_goal_match and not has_canonical_goal_match:
             continue
         if score <= 0:
             continue
@@ -78,6 +89,14 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
         ):
             article_ref = CANONICAL_RATE_ARTICLES[parsed.topic]
             metadata.update({"article_ref": article_ref, "section_label": f"მუხლი {article_ref}"})
+        elif (
+            parsed.goal in CANONICAL_GOAL_ARTICLES
+            and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
+        ):
+            article_ref = CANONICAL_GOAL_ARTICLES[parsed.goal]
+            metadata.update(
+                {"article_ref": article_ref, "section_label": f"მუხლი {article_ref}"}
+            )
         elif (
             parsed.goal == "small_business_eligibility"
             and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."

@@ -81,6 +81,12 @@ class QueryRequest(BaseModel):
     conversation_id: Optional[UUID] = None
 
 
+class ProvisionLinkInfo(BaseModel):
+    article_ref: str
+    point_ref: Optional[str] = None
+    url: str
+
+
 class SourceInfo(BaseModel):
     document_id: Optional[UUID] = None
     title: str
@@ -97,6 +103,11 @@ class SourceInfo(BaseModel):
     document_status: Optional[str] = None
     authority: Optional[str] = None
     retrieval_channel: Optional[str] = None
+    official_act_url: Optional[str] = None
+    provision_links: List[ProvisionLinkInfo] = Field(default_factory=list)
+    provision_registry_version: Optional[str] = None
+    provision_registry_verified_at: Optional[str] = None
+    provision_publication_url: Optional[str] = None
 
 
 class EvidenceInfo(BaseModel):
@@ -107,6 +118,7 @@ class EvidenceInfo(BaseModel):
     source_count: int = 0
     official_sources_only: bool = False
     has_precise_citation: bool = False
+    has_official_provision_link: bool = False
     generated_at: str
 
 

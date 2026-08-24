@@ -188,6 +188,11 @@ def process_public_query(query_data: PublicQueryRequest):
                     "document_status": source.get("document_status"),
                     "authority": source.get("authority"),
                     "retrieval_channel": source.get("retrieval_channel"),
+                    "official_act_url": source.get("official_act_url"),
+                    "provision_links": source.get("provision_links") or [],
+                    "provision_registry_version": source.get("provision_registry_version"),
+                    "provision_registry_verified_at": source.get("provision_registry_verified_at"),
+                    "provision_publication_url": source.get("provision_publication_url"),
                 }
             ))
 

@@ -403,6 +403,62 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
 
     has_vat = any(t in q for t in ("ндс", "vat", "დღგ"))
 
+    # Individual tax residency (Tax Code art. 34). The rule is framed as a
+    # whole-tax-year status and deliberately keeps the statutory exceptions
+    # visible instead of presenting the day count as the only legal test.
+    if parsed.get("goal") == "residency_status":
+        return "tax_residency", pick({
+            "ru": (
+                "Физическое лицо считается налоговым резидентом Грузии за весь текущий "
+                "налоговый год, если оно фактически находилось в Грузии 183 дня или более "
+                "в любом непрерывном 12-месячном периоде, заканчивающемся в этом налоговом "
+                "году (Налоговый кодекс Грузии, статья 34). В статье также предусмотрены "
+                "специальные правила и исключения, поэтому для конкретной ситуации нужно "
+                "проверить их и применимое соглашение об избежании двойного налогообложения."
+            ),
+            "en": (
+                "An individual is treated as a Georgian tax resident for the whole current "
+                "tax year if they were physically present in Georgia for 183 days or more "
+                "during any continuous 12-month period ending in that tax year (Georgian "
+                "Tax Code, Article 34). The article also contains special rules and "
+                "exceptions, so the facts and any applicable double-tax treaty must be "
+                "checked for an individual case."
+            ),
+            "ka": (
+                "ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად ითვლება მთელი მიმდინარე "
+                "საგადასახადო წლის განმავლობაში, თუ იგი საქართველოში ფაქტობრივად იმყოფებოდა "
+                "183 დღე ან მეტი ნებისმიერი უწყვეტი 12-თვიანი პერიოდის განმავლობაში, რომელიც "
+                "ამ საგადასახადო წელს სრულდება (საქართველოს საგადასახადო კოდექსი, მუხლი 34). "
+                "მუხლი ასევე შეიცავს სპეციალურ წესებსა და გამონაკლისებს, ამიტომ კონკრეტულ "
+                "შემთხვევაში უნდა შემოწმდეს ფაქტები და ორმაგი დაბეგვრის შესაბამისი შეთანხმება."
+            ),
+        })
+
+    # Late-payment surcharge (Tax Code art. 272, especially points 3-4).
+    if parsed.get("goal") == "penalty_rate":
+        return "late_payment_interest", pick({
+            "ru": (
+                "За каждый день просрочки уплаты налога начисляется пеня в размере 0,05% "
+                "неуплаченной суммы; по общему правилу начисление начинается со дня, "
+                "следующего за установленным сроком уплаты (Налоговый кодекс Грузии, "
+                "статья 272, пункты 3–4). В самой статье предусмотрены исключения, которые "
+                "нужно проверить применительно к конкретному обязательству."
+            ),
+            "en": (
+                "Late-payment interest accrues at 0.05% of the unpaid tax for each overdue "
+                "day and, as a general rule, starts on the day after the statutory payment "
+                "deadline (Georgian Tax Code, Article 272, points 3–4). The article contains "
+                "exceptions that must be checked for the specific tax obligation."
+            ),
+            "ka": (
+                "გადასახადის გადახდის ვადის გადაცილების ყოველი დღისთვის საურავი შეადგენს "
+                "გადაუხდელი გადასახადის 0,05%-ს და, საერთო წესით, დარიცხვა იწყება გადახდის "
+                "ვადის მომდევნო დღიდან (საქართველოს საგადასახადო კოდექსი, მუხლი 272, "
+                "პუნქტები 3–4). ამავე მუხლით გათვალისწინებული გამონაკლისები უნდა შემოწმდეს "
+                "კონკრეტული საგადასახადო ვალდებულებისთვის."
+            ),
+        })
+
     # Tour operator VAT exemption (Tax Code art. 172)
     if ("туропер" in q or "tour oper" in q or "ტუროპერ" in q
             or ((("турист" in q) or ("tourist" in q) or ("ტურист" in q)) and has_vat)):

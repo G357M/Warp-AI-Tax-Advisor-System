@@ -21,6 +21,7 @@ def audit_sources(parsed: ParsedQuery, classification: QuestionClassification, r
         "subject_consistency": True,
         "named_document_directness": True,
         "no_dispute_noise": True,
+        "current_source_consistency": True,
     }
     warnings = []
 
@@ -54,6 +55,17 @@ def audit_sources(parsed: ParsedQuery, classification: QuestionClassification, r
             checks["no_dispute_noise"] = False
             warnings.append("practical guidance question surfaced dispute material as primary source")
 
+    if classification.question_class in {
+        "canonical_law_lookup",
+        "practical_tax_guidance",
+        "local_regulation_lookup",
+        "amendment_tracking",
+    }:
+        metadata = primary.get("metadata", {}) if primary else {}
+        if primary and metadata.get("is_current") is False:
+            checks["current_source_consistency"] = False
+            warnings.append("primary legal source is not marked current")
+
     if classification.question_class == "local_regulation_lookup":
         if primary and primary.get("document_type") != "regulation":
             checks["source_type_consistency"] = False
@@ -68,7 +80,6 @@ def audit_sources(parsed: ParsedQuery, classification: QuestionClassification, r
             warnings.append("amendment-tracking query did not surface law/regulation as primary source")
         elif primary and metadata.get("is_current") is False:
             checks["source_type_consistency"] = False
-            warnings.append("amendment-tracking primary source is not marked current")
 
     passed = all(checks.values())
 

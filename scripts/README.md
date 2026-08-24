@@ -152,3 +152,22 @@ python3 backend/scripts/import_decision_facts_review_workbook.py \
   --workbook /restricted/duplicate_groups.working.xlsx \
   --review-type duplicate-groups
 ```
+
+### prepare_duplicate_expert_prefill.py
+
+Create a new expert-review CSV with technical InfoHub evidence copied into only
+blank `evidence_locator` and `notes` cells. The command is dry-run-first,
+SHA-pinned and overwrite-safe. It preserves completed rows and existing expert
+content and cannot create a duplicate verdict, canonical selection, exclusion,
+confidence or reviewer attribution.
+
+```bash
+python3 backend/scripts/prepare_duplicate_expert_prefill.py \
+  --bundle /restricted/review_bundle.json \
+  --technical-report /restricted/technical_verification.json \
+  --review-csv /restricted/duplicate_groups.reviewed.csv
+```
+
+Use every SHA, row count, prefilled-row count and output SHA printed by the
+plan with `--execute`; always write to a new filename. The result remains an
+expert worksheet, not a legal conclusion or database-change instruction.

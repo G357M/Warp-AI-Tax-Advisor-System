@@ -22,6 +22,7 @@ DEFAULT_SUITE_PATH = BACKEND_ROOT / "evaluation" / "rag_v2_live_corpus_set.json"
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from rag_v2.db_utils import db_status, run_query  # noqa: E402
+from rag_v2.official_provisions import enrich_source, has_official_provision_link  # noqa: E402
 from rag_v2.pipeline_v2 import pipeline_v2  # noqa: E402
 
 
@@ -29,6 +30,7 @@ METRIC_NAMES = (
     "classification_accuracy",
     "top1_contract_recall",
     "source_audit_rate",
+    "official_provision_link_rate",
     "min_language_contract_recall",
 )
 
@@ -164,11 +166,27 @@ def evaluate(
         source_audit_ok = bool(trace.source_audit.get("passed")) == bool(
             case["expected_source_audit"]
         )
+        provision_link_expected = bool(case.get("expected_official_provision_link"))
+        enriched_source = enrich_source(
+            {
+                "url": top.get("source_url"),
+                "source_url": top.get("source_url"),
+                "article_ref": (top.get("metadata") or {}).get("article_ref"),
+                "point_ref": (top.get("metadata") or {}).get("point_ref"),
+            }
+        )
+        provision_link_ok = (
+            has_official_provision_link(enriched_source)
+            if provision_link_expected
+            else True
+        )
         failures = list(top_failures)
         if not classification_ok:
             failures.insert(0, "classification")
         if not source_audit_ok:
             failures.append("source_audit")
+        if not provision_link_ok:
+            failures.append("official_provision_link")
 
         results.append(
             {
@@ -178,6 +196,8 @@ def evaluate(
                 "classification_ok": classification_ok,
                 "top1_contract_ok": top1_ok,
                 "source_audit_ok": source_audit_ok,
+                "provision_link_expected": provision_link_expected,
+                "provision_link_ok": provision_link_ok,
                 "success": not failures,
                 "failures": failures,
                 "actual": {
@@ -198,6 +218,10 @@ def evaluate(
                     },
                     "source_audit_passed": trace.source_audit.get("passed"),
                     "source_audit_warnings": trace.source_audit.get("warnings") or [],
+                    "official_provision_urls": [
+                        link["url"]
+                        for link in enriched_source.get("provision_links") or []
+                    ],
                 },
             }
         )
@@ -211,6 +235,14 @@ def evaluate(
         ),
         "source_audit_rate": _ratio(
             sum(item["source_audit_ok"] for item in results), len(results)
+        ),
+        "official_provision_link_rate": _ratio(
+            sum(
+                item["provision_link_ok"]
+                for item in results
+                if item["provision_link_expected"]
+            ),
+            sum(item["provision_link_expected"] for item in results),
         ),
     }
     language_metrics = {}
@@ -226,6 +258,14 @@ def evaluate(
             ),
             "source_audit_rate": _ratio(
                 sum(item["source_audit_ok"] for item in selected), len(selected)
+            ),
+            "official_provision_link_rate": _ratio(
+                sum(
+                    item["provision_link_ok"]
+                    for item in selected
+                    if item["provision_link_expected"]
+                ),
+                sum(item["provision_link_expected"] for item in selected),
             ),
         }
     metrics["min_language_contract_recall"] = min(

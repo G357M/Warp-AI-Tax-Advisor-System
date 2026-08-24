@@ -3,6 +3,7 @@ from pathlib import Path
 
 from api.evidence import attach_evidence
 from api.schemas import EvidenceInfo, SourceInfo
+from rag_v2.faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL
 
 
 def _source(**overrides):
@@ -10,7 +11,7 @@ def _source(**overrides):
         "document_id": "0a86a8b3-e0e6-4f89-8b35-6dd3909911f8",
         "title": "საქართველოს საგადასახადო კოდექსი",
         "document_type": "law",
-        "url": "https://infohub.rs.ge/ka/workspace/document/example",
+        "url": CANONICAL_TAX_CODE_SOURCE_URL,
     }
     source.update(overrides)
     return source
@@ -31,6 +32,10 @@ def test_official_article_source_is_exactly_grounded():
     assert evidence["coverage"] == "exact_provision"
     assert evidence["official_sources_only"] is True
     assert evidence["has_precise_citation"] is True
+    assert evidence["has_official_provision_link"] is True
+    assert result["sources"][0]["provision_links"][0]["url"].endswith(
+        "1043717#part_550"
+    )
     datetime.fromisoformat(evidence["generated_at"])
 
 
@@ -40,6 +45,7 @@ def test_official_document_without_article_is_document_level_grounding():
     assert evidence["status"] == "grounded"
     assert evidence["coverage"] == "official_documents"
     assert evidence["has_precise_citation"] is False
+    assert evidence["has_official_provision_link"] is False
 
 
 def test_non_official_source_is_only_partial():
@@ -103,7 +109,7 @@ def test_api_models_accept_curated_source_without_document_id():
     source = SourceInfo(
         title="საქართველოს საგადასახადო კოდექსი",
         document_type="law",
-        url="https://infohub.rs.ge/ka/workspace/document/example",
+        url=CANONICAL_TAX_CODE_SOURCE_URL,
         relevance=1.0,
         article_ref="165",
     )
@@ -113,3 +119,4 @@ def test_api_models_accept_curated_source_without_document_id():
 
     assert source.document_id is None
     assert evidence.status == "grounded"
+    assert evidence.has_official_provision_link is True

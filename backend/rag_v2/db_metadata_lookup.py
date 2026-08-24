@@ -38,6 +38,11 @@ CANONICAL_TAX_CODE_TITLE_STEMS = ["საგადასახადო კო�
 # rate article (vat -> 166 is the 18% rate; the 100k threshold lives in 165).
 # A pointer, not a curated answer: the text still comes from the law chunk.
 CANONICAL_THRESHOLD_ARTICLES: Dict[str, str] = {"vat": "165"}
+CANONICAL_GOAL_ARTICLES: Dict[str, str] = {
+    "residency_status": "34",
+    "penalty_rate": "272",
+    "exemption_status": "172",
+}
 THRESHOLD_QUERY_TOKENS = (
     "регистр", "оборот", "порог", "registr", "threshold", "turnover", "რეგისტრ", "ბრუნვ",
 )
@@ -149,6 +154,14 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
     if parsed.topic in CANONICAL_THRESHOLD_ARTICLES and any(t in normalized for t in THRESHOLD_QUERY_TOKENS):
         candidates = _canonical_tax_code_candidates(
             CANONICAL_THRESHOLD_ARTICLES[parsed.topic], "db canonical tax code threshold lookup"
+        )
+        if candidates:
+            return candidates
+
+    if parsed.goal in CANONICAL_GOAL_ARTICLES:
+        candidates = _canonical_tax_code_candidates(
+            CANONICAL_GOAL_ARTICLES[parsed.goal],
+            "db canonical practical-tax article lookup",
         )
         if candidates:
             return candidates

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from rag_v2.faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL
 from scripts import evaluate_rag_v2_live_corpus as live_eval
 
 
@@ -26,6 +27,7 @@ def _balanced_suite():
                     "metadata": {"article_ref": "168"},
                 },
                 "expected_source_audit": True,
+                "expected_official_provision_link": True,
             }
         )
     return {
@@ -54,6 +56,7 @@ class _FakePipeline:
                         "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43",
                         "title": "Tax Code article 168",
                         "document_type": "law",
+                        "source_url": CANONICAL_TAX_CODE_SOURCE_URL,
                         "channel": "article_resolver",
                         "final_score": 1.0,
                         "metadata": {"article_ref": "168"},
@@ -67,7 +70,7 @@ class _FakePipeline:
 def test_default_live_suite_is_balanced_and_prohibits_llm_calls():
     suite = live_eval.load_suite()
 
-    assert len(suite["cases"]) == 33
+    assert len(suite["cases"]) == 57
     assert {case["language"] for case in suite["cases"]} == {"ru", "en", "ka"}
     assert suite["retrieval_profile"]["llm_calls_allowed"] is False
     assert "semantic_search" in suite["retrieval_profile"]["disabled_channels"]
@@ -82,13 +85,14 @@ def test_committed_baseline_matches_the_versioned_suite_and_is_aggregate_only():
         live_eval.BACKEND_ROOT.parent
         / "evaluation"
         / "baselines"
-        / "rag_v2_live_corpus_2026-08-24_235384a.json"
+        / "rag_v2_live_corpus_2026-08-24_provision-links.json"
     )
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
 
     assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
     assert baseline["suite_version"] == suite["suite_version"]
-    assert baseline["passed_cases"] == baseline["cases"] == 33
+    assert baseline["passed_cases"] == baseline["cases"] == 57
+    assert baseline["metrics"]["official_provision_link_rate"] == 1.0
     assert "results" not in baseline
     assert "query" not in json.dumps(baseline)
 

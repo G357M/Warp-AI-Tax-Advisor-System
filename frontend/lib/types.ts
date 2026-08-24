@@ -5,6 +5,12 @@ export interface Message {
   timestamp: Date
 }
 
+export interface ProvisionLinkInfo {
+  article_ref: string;
+  point_ref?: string | null;
+  url: string;
+}
+
 export interface AIResponse {
   answer: string
   sources?: Array<{
@@ -30,6 +36,11 @@ export interface SourceInfo {
     document_status?: string | null;
     authority?: string | null;
     retrieval_channel?: string | null;
+    official_act_url?: string | null;
+    provision_links?: ProvisionLinkInfo[];
+    provision_registry_version?: string | null;
+    provision_registry_verified_at?: string | null;
+    provision_publication_url?: string | null;
   };
 }
 
@@ -49,6 +60,11 @@ export interface DirectSourceInfo {
   document_status?: string | null;
   authority?: string | null;
   retrieval_channel?: string | null;
+  official_act_url?: string | null;
+  provision_links?: ProvisionLinkInfo[];
+  provision_registry_version?: string | null;
+  provision_registry_verified_at?: string | null;
+  provision_publication_url?: string | null;
 }
 
 export interface EvidenceInfo {
@@ -59,5 +75,6 @@ export interface EvidenceInfo {
   source_count: number;
   official_sources_only: boolean;
   has_precise_citation: boolean;
+  has_official_provision_link: boolean;
   generated_at: string;
 }

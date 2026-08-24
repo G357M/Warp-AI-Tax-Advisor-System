@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-24.3",
+  "suite_version": "2026-08-24.4",
   "description": "Balanced RU/EN/KA live-corpus locator contracts. Semantic retrieval is disabled so the suite performs no translation or answer-generation LLM calls.",
   "retrieval_profile": {
     "disabled_channels": ["semantic_search"],
@@ -10,6 +10,7 @@
     "classification_accuracy": 1.0,
     "top1_contract_recall": 1.0,
     "source_audit_rate": 1.0,
+    "official_provision_link_rate": 1.0,
     "min_language_contract_recall": 1.0
   },
   "cases": [
@@ -276,6 +277,102 @@
       "expected_class": "canonical_law_lookup",
       "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "88", "is_current": true}},
       "expected_source_audit": true
+    },
+    {
+      "id": "income_tax_ru", "language": "ru", "query": "Какой подоходный налог в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "income_tax_en", "language": "en", "query": "What is the personal income tax rate in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "income_tax_ka", "language": "ka", "query": "რა არის საშემოსავლო გადასახადის განაკვეთი საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "vat_threshold_ru", "language": "ru", "query": "Какой порог регистрации по НДС в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "165", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "vat_threshold_en", "language": "en", "query": "What is the VAT registration threshold in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "165", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "vat_threshold_ka", "language": "ka", "query": "რა არის დღგ-ის რეგისტრაციის ზღვარი საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "165", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tour_operator_vat_ru", "language": "ru", "query": "Освобождены ли услуги туроператора от НДС в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "172", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tour_operator_vat_en", "language": "en", "query": "Are tour operator services exempt from VAT in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "172", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tour_operator_vat_ka", "language": "ka", "query": "გათავისუფლებულია თუ არა ტუროპერატორის მომსახურება დღგ-ისგან საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "172", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "company_property_tax_ru", "language": "ru", "query": "Какой налог на имущество для компании в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "202", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "company_property_tax_en", "language": "en", "query": "What is the property tax for a company in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "202", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "company_property_tax_ka", "language": "ka", "query": "კომპანიისთვის ქონების გადასახადი რამდენია საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "202", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "rental_income_ru", "language": "ru", "query": "Сколько налог на аренду жилья в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "rental_income_en", "language": "en", "query": "What tax applies to residential rental income in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "rental_income_ka", "language": "ka", "query": "რა გადასახადია ბინის გაქირავებაზე საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "81", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "nonresident_services_ru", "language": "ru", "query": "Какой налог у источника на услуги нерезидента в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "134", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "nonresident_services_en", "language": "en", "query": "What withholding tax applies to non-resident services in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "134", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "nonresident_services_ka", "language": "ka", "query": "არარეზიდენტის მომსახურებაზე რა შეკავება მოქმედებს საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "134", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tax_residency_ru", "language": "ru", "query": "Когда физлицо становится налоговым резидентом Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "34", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tax_residency_en", "language": "en", "query": "When does an individual become a tax resident of Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "34", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "tax_residency_ka", "language": "ka", "query": "როდის ითვლება ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "34", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "late_payment_interest_ru", "language": "ru", "query": "Какая пеня начисляется за просрочку уплаты налога в Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "272", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "late_payment_interest_en", "language": "en", "query": "What late payment interest applies to overdue tax in Georgia?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "272", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "late_payment_interest_ka", "language": "ka", "query": "რა საურავი ერიცხება ვადაგადაცილებულ გადასახადს საქართველოში?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "metadata_search", "document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43", "metadata": {"article_ref": "272", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
     }
   ]
 }

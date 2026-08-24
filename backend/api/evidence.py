@@ -12,6 +12,10 @@ from typing import Any, Dict
 from urllib.parse import urlparse
 
 from rag_v2.public_response import is_pure_refusal
+from rag_v2.official_provisions import (
+    enrich_sources,
+    has_official_provision_link,
+)
 
 OFFICIAL_SOURCE_HOSTS = {
     "infohub.rs.ge",
@@ -47,9 +51,10 @@ def attach_evidence(result: Dict[str, Any]) -> Dict[str, Any]:
         rag_meta["grounded_no_evidence"] = True
         result["_rag_v2"] = rag_meta
 
-    sources = [
+    sources = enrich_sources([
         source for source in (result.get("sources") or []) if isinstance(source, dict)
-    ]
+    ])
+    result["sources"] = sources
     rag_meta = result.get("_rag_v2") or {}
     mode = str(rag_meta.get("mode") or "legacy")
     question_class = rag_meta.get("question_class")
@@ -61,6 +66,7 @@ def attach_evidence(result: Dict[str, Any]) -> Dict[str, Any]:
         or source.get("document_number")
         for source in sources
     )
+    official_provision = any(has_official_provision_link(source) for source in sources)
     official_only = bool(sources) and all(
         _is_official_source(source) for source in sources
     )
@@ -83,13 +89,14 @@ def attach_evidence(result: Dict[str, Any]) -> Dict[str, Any]:
         "basis": basis,
         "coverage": (
             "exact_provision"
-            if precise
+            if official_provision
             else ("official_documents" if sources else "none")
         ),
         "question_class": question_class,
         "source_count": len(sources),
         "official_sources_only": official_only,
         "has_precise_citation": precise,
+        "has_official_provision_link": official_provision,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     return result

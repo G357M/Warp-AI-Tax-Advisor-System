@@ -462,11 +462,16 @@ per-language metrics and individual failures. Copy accepted reports into
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
 
-The accepted `2026-08-24.1` suite contains 27 balanced cases (9 RU, 9 EN,
-9 KA). It includes six citation-variant regressions added after the parser
-hardening on production commit `67273a2`; the connected-corpus run passed 27/27
-with every overall and per-language metric at 1.0. The committed aggregate is
-`evaluation/baselines/rag_v2_live_corpus_2026-08-24_67273a2.json`.
+The accepted `2026-08-24.4` suite contains 57 balanced cases (19 RU, 19 EN,
+19 KA). In addition to citation variants, it covers eight practical tax topics:
+personal income tax, VAT registration, tour-operator VAT, company property tax,
+residential rental, non-resident services, individual tax residency and late
+payment interest. Every statutory case identifies the expected article; the
+evaluator now separately requires a verified official provision deep-link.
+The connected-corpus run passed 57/57 with every overall and per-language
+metric, including `official_provision_link_rate`, at 1.0. The committed
+aggregate is
+`evaluation/baselines/rag_v2_live_corpus_2026-08-24_provision-links.json`.
 
 The nightly runner executes this live-corpus check and the decision-facts
 quality contract after post-ingest maintenance. Both are read-only and prohibit
@@ -800,6 +805,49 @@ The verifier cannot edit the expert worksheet, produce a legal verdict, create
 a correction manifest or write/delete database rows. To verify every class,
 omit both `--candidate-class` arguments and repeat the dry-run/exact-execute
 pair into a different output directory.
+
+Transfer the technical evidence into a new expert-review CSV without manually
+copying rows. The prefill tool may fill only blank `evidence_locator` and
+`notes` cells on `pending` rows. It preserves every existing expert value and
+every completed row; it cannot set `duplicate_verdict`, choose a legal
+canonical document, populate exclusions, confidence or reviewer fields, or
+change `review_state`.
+
+First run the deterministic plan against the exact technical report and, when
+available, the latest reviewer CSV:
+
+```bash
+REVIEW_DIR=".state/decision-facts-full-expert-review/REVIEW_ID"
+VERIFY_DIR=".state/infohub-duplicate-verification/VERIFY_ID"
+python3 backend/scripts/prepare_duplicate_expert_prefill.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --technical-report "$VERIFY_DIR/technical_verification.json" \
+  --review-csv "$REVIEW_DIR/duplicate_groups.reviewed-v2.csv"
+```
+
+Create a new mode-`0600` file only with every exact value printed by the plan:
+
+```bash
+python3 backend/scripts/prepare_duplicate_expert_prefill.py \
+  --bundle "$REVIEW_DIR/review_bundle.json" \
+  --technical-report "$VERIFY_DIR/technical_verification.json" \
+  --review-csv "$REVIEW_DIR/duplicate_groups.reviewed-v2.csv" \
+  --output "$REVIEW_DIR/duplicate_groups.technical-prefill-v1.csv" \
+  --execute \
+  --expected-bundle-sha256 BUNDLE_SHA256 \
+  --expected-report-sha256 TECHNICAL_REPORT_SHA256 \
+  --expected-review-sha256 REVIEW_CSV_SHA256 \
+  --expected-rows DUPLICATE_GROUPS \
+  --expected-prefilled-rows PREFILLED_ROWS \
+  --expected-output-sha256 OUTPUT_SHA256
+```
+
+The tool verifies that the report was produced from the same protected bundle,
+that all technical suggestions refer only to members of their own group, and
+that the report prohibits legal verdicts, automatic exclusions and database
+writes. Validate the new CSV with
+`validate_decision_facts_expert_review.py`; a prefilled row remains pending
+until the legal expert completes the review fields.
 
 Existing deterministic normalization defects can be inspected without writes:
 
