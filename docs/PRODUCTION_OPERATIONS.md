@@ -415,8 +415,8 @@ confirmed all ten target IDs absent. Production remained at 15,140 documents /
 start time, restart count and both networks remained unchanged. No global
 prune, image cleanup or volume cleanup was used.
 
-The separate rollback-image retention is applied after deployment batches. The
-latest 2026-08-24 pass removed eight exact obsolete
+The separate rollback-image retention is applied after deployment batches. A
+2026-08-24 pass removed eight exact obsolete
 `infohub/backend:rollback-*` / `infohub/frontend:rollback-*` tags while
 retaining the newest three of each. It did not target BuildKit cache, active
 images, volumes or Plausible resources.
