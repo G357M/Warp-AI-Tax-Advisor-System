@@ -164,6 +164,15 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
         if candidates:
             return candidates
 
+    # Article 88 answers who may receive small-business status. Article 90
+    # supplies the 1% rate, but eligibility is the controlling rule for an LLC.
+    if parsed.goal == "small_business_eligibility":
+        candidates = _canonical_tax_code_candidates(
+            "88", "db canonical small-business eligibility lookup"
+        )
+        if candidates:
+            return candidates
+
     # Former guard topics: token-matched pointer to the answering article.
     for tokens, title_stem, article_ref in GUARD_TOPIC_POINTERS:
         if not any(t in normalized for t in tokens):

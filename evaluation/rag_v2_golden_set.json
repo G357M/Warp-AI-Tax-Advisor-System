@@ -128,6 +128,42 @@
       "require_precise_citation": true
     },
     {
+      "id": "small_business_llc_ru",
+      "language": "ru",
+      "query": "Может ли ООО применять налог 1%?",
+      "expected_class": "canonical_law_lookup",
+      "expected_document_type": "law",
+      "expected_channel": "metadata_search",
+      "expected_document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43",
+      "expected_article_ref": "88",
+      "expected_source_audit": true,
+      "require_precise_citation": true
+    },
+    {
+      "id": "small_business_llc_en",
+      "language": "en",
+      "query": "Can an LLC use the 1% tax regime?",
+      "expected_class": "canonical_law_lookup",
+      "expected_document_type": "law",
+      "expected_channel": "metadata_search",
+      "expected_document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43",
+      "expected_article_ref": "88",
+      "expected_source_audit": true,
+      "require_precise_citation": true
+    },
+    {
+      "id": "small_business_llc_ka",
+      "language": "ka",
+      "query": "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+      "expected_class": "canonical_law_lookup",
+      "expected_document_type": "law",
+      "expected_channel": "metadata_search",
+      "expected_document_id": "7413ae69-672c-4c48-b3d5-8c04b09dfb43",
+      "expected_article_ref": "88",
+      "expected_source_audit": true,
+      "require_precise_citation": true
+    },
+    {
       "id": "named_document_1432_ru",
       "language": "ru",
       "query": "Что в документе N1432?",

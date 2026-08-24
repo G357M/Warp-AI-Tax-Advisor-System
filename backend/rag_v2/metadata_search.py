@@ -78,6 +78,11 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
         ):
             article_ref = CANONICAL_RATE_ARTICLES[parsed.topic]
             metadata.update({"article_ref": article_ref, "section_label": f"მუხლი {article_ref}"})
+        elif (
+            parsed.goal == "small_business_eligibility"
+            and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
+        ):
+            metadata.update({"article_ref": "88", "section_label": "მუხლი 88"})
 
         scored.append(
             CandidateDocument(

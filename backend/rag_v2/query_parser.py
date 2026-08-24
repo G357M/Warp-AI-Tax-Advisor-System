@@ -49,6 +49,41 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         token in q for token in appeal_procedure_markers
     )
 
+    # The homepage asks whether an LLC may use the "1% tax regime" without
+    # naming small-business status.  Treat the legal form + regime combination
+    # as an eligibility question.  Exclude property-tax wording because a 1%
+    # company property-tax question belongs to a different Tax Code provision.
+    legal_entity_markers = [
+        "ооо", "о.о.о", "llc", "ltd", "шпс", "შპს", "компани", "company",
+        "юридическ", "legal entity", "საწარმო",
+    ]
+    one_percent_regime_markers = [
+        "1%", "1 %", "1%-იან", "1 %-იან", "1 percent", "one percent",
+    ]
+    small_business_regime_markers = [
+        "малого бизнес", "малый бизнес", "small business", "მცირე ბიზნეს",
+    ]
+    eligibility_markers = [
+        "может ли", "может применять", "применять", "использовать", "режим",
+        "can ", "can an", "use", "regime", "eligible",
+        "შეუძლია", "გამოიყენ", "რეჟიმ",
+    ]
+    property_tax_markers = [
+        "налог на имущество", "имущественный налог", "имуществ", "property tax",
+        "ქონების გადასახად",
+    ]
+    is_small_business_legal_form_query = (
+        any(token in q for token in legal_entity_markers)
+        and (
+            any(token in q for token in small_business_regime_markers)
+            or (
+                any(token in q for token in one_percent_regime_markers)
+                and any(token in q for token in eligibility_markers)
+            )
+        )
+        and not any(token in q for token in property_tax_markers)
+    )
+
     income_tax_markers = [
         "подоход",
         "ндфл",
@@ -108,7 +143,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
 
     short_term_markers = ["посуточ", "краткосрочн", "airbnb", "booking.com", "booking", "short-term rental", "short term rental", "short-term let", "short term let", "airbnb income", "მოკლევადიან გაქირავ", "მოკლე ვადით გაცემ", "booking.com-ით"]
 
-    if any(token in q for token in ["импорт", "import", "იმპორტ"]) and any(token in q for token in ["ндс", "vat", "დღგ"]):
+    if is_small_business_legal_form_query:
+        topic = "small_business"
+    elif any(token in q for token in ["импорт", "import", "იმპორტ"]) and any(token in q for token in ["ндс", "vat", "დღგ"]):
         topic = "import_vat"
     elif any(token in q for token in short_term_markers):
         topic = "short_term_rental_tax"
@@ -160,9 +197,11 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         if topic is None:
             topic = "tax"
 
-    if is_income_tax_query or topic in {"small_business", "rental_income", "short_term_rental_tax", "apartment_sale_tax", "vehicle_sale_tax"} or any(token in q for token in ["физическ", "физлиц", "physical person", "физическое лицо", "individual", "ფიზიკური პირ", "ип", "individual entrepreneur", "sole proprietor", "მეწარმე ფიზიკურ"]):
+    if is_small_business_legal_form_query:
+        subject = "legal_entity"
+    elif is_income_tax_query or topic in {"small_business", "rental_income", "short_term_rental_tax", "apartment_sale_tax", "vehicle_sale_tax"} or any(token in q for token in ["физическ", "физлиц", "physical person", "физическое лицо", "individual", "ფიზიკური პირ", "ип", "individual entrepreneur", "sole proprietor", "მეწარმე ფიზიკურ"]):
         subject = "individual"
-    elif topic == "property_tax_company" or any(token in q for token in ["юрлиц", "компан", "company", "юридическ"]):
+    elif topic == "property_tax_company" or any(token in q for token in legal_entity_markers):
         subject = "legal_entity"
     elif topic in {"nonresident_wht", "nonresident_service_wht"} or any(token in q for token in ["нерезидент", "non-resident", "non-residents", "არარეზიდენტ"]):
         subject = "non_resident"
@@ -176,6 +215,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     if is_appeal_procedure_query and not decision_ref:
         goal = "appeal_procedure"
         signals.extend(["practical", "appeal_procedure"])
+    elif is_small_business_legal_form_query:
+        goal = "small_business_eligibility"
+        signals.extend(["normative", "small_business_legal_form"])
     elif any(token in q for token in ["как рассчиты", "как считать", "как применять", "how to calculate", "როგორ გამოითვლ", "როგორ ითვლ"]):
         goal = "calculation_rule"
         signals.append("practical")

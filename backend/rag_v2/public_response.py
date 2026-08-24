@@ -454,37 +454,38 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
 def small_business_legal_form_response(trace: Any) -> Optional[str]:
     """Authoritative guard: an LLC (ООО/შპს) cannot use the 1% small-business regime.
 
-    Only an individual entrepreneur qualifies; an LLC is taxed under the Estonian
-    profit-tax model (15% on distribution). The query parser does not reliably tag
-    the legal form for this question, so match on the normalized query text.
+    Tax Code article 88 limits the status to an entrepreneur natural person;
+    article 90 supplies the regime's 1% rate. Match on normalized query text as
+    a defense in depth even though the parser also tags the eligibility intent.
     """
     parsed = getattr(trace, "parsed_query", None) or {}
     q = str(parsed.get("normalized_query") or "").lower()
+    goal = str(parsed.get("goal") or "")
     legal_form = any(tok in q for tok in (
         "ооо", "о.о.о", "llc", "ltd", "шпс", "შპს", "компани", "company",
         "юридическ", "legal entity", "საწარმო",
     ))
-    small_biz = any(tok in q for tok in (
-        "1%", "1 %", "малого бизнеса", "малый бизнес", "small business", "მცირე ბიზნეს",
+    explicit_small_biz = any(tok in q for tok in (
+        "малого бизнеса", "малый бизнес", "small business", "მცირე ბიზნეს",
     ))
-    if not (legal_form and small_biz):
+    if not (
+        legal_form
+        and (goal == "small_business_eligibility" or explicit_small_biz)
+    ):
         return None
     answers = {
         "ru": (
             "Нет. Режим малого бизнеса со ставкой 1% доступен только индивидуальному "
             "предпринимателю (физлицу-предпринимателю). ООО (общество с ограниченной "
-            "ответственностью) применять его не может. Прибыль ООО облагается по эстонской "
-            "модели — 15% при распределении прибыли."
+            "ответственностью) применять его не может."
         ),
         "en": (
             "No. The 1% small business regime is available only to an individual entrepreneur. "
-            "An LLC cannot use it. An LLC's profit is taxed under the Estonian model at 15% "
-            "upon distribution of profit."
+            "An LLC cannot use it."
         ),
         "ka": (
             "არა. მცირე ბიზნესის 1%-იანი რეჟიმი ხელმისაწვდომია მხოლოდ ინდივიდუალური "
-            "მეწარმისთვის (ფიზიკური პირისთვის). შპს ამ რეჟიმს ვერ გამოიყენებს. შპს-ის მოგება "
-            "იბეგრება ე.წ. ესტონური მოდელით — 15% მოგების განაწილებისას."
+            "მეწარმისთვის (ფიზიკური პირისთვის). შპს ამ რეჟიმს ვერ გამოიყენებს."
         ),
     }
     return answers.get(_response_language(trace), answers["ru"])

@@ -138,6 +138,41 @@ class PipelineV2RegressionTests(unittest.TestCase):
                 self.assertNotEqual(top["document_type"], "court_decision")
                 self.assertTrue(trace.source_audit["passed"])
 
+    def test_homepage_llc_examples_resolve_article_88_without_semantic_search(self):
+        cases = (
+            ("ru", "Может ли ООО применять налог 1%?"),
+            ("en", "Can an LLC use the 1% tax regime?"),
+            ("ka", "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?"),
+        )
+        for language, query in cases:
+            with self.subTest(language=language):
+                trace = pipeline_v2.build_trace(query, language=language)
+                top = trace.reranking["top_ranked_documents"][0]
+                self.assertEqual(trace.parsed_query["topic"], "small_business")
+                self.assertEqual(trace.parsed_query["subject"], "legal_entity")
+                self.assertEqual(
+                    trace.parsed_query["goal"], "small_business_eligibility"
+                )
+                self.assertEqual(
+                    trace.candidate_generation["channels_used"], ["metadata_search"]
+                )
+                self.assertEqual(top["document_id"], "7413ae69-672c-4c48-b3d5-8c04b09dfb43")
+                self.assertEqual(top["metadata"].get("article_ref"), "88")
+                self.assertTrue(trace.source_audit["passed"])
+
+    def test_llc_property_tax_is_not_misrouted_to_small_business(self):
+        cases = (
+            ("ru", "Какая ставка налога на имущество для ООО - 1%?"),
+            ("en", "Is the LLC property tax rate 1%?"),
+            ("ka", "შპს-ს ქონების გადასახადის განაკვეთი 1%-ია?"),
+        )
+        for language, query in cases:
+            with self.subTest(language=language):
+                parsed = parse_query(query, language=language)
+                self.assertEqual(parsed.topic, "property_tax")
+                self.assertEqual(parsed.subject, "legal_entity")
+                self.assertNotEqual(parsed.goal, "small_business_eligibility")
+
     def test_english_dispute_query_is_not_downgraded_to_named_document(self):
         trace = pipeline_v2.build_trace(
             "What was the decision in dispute №19068/2/2023?", language="en"

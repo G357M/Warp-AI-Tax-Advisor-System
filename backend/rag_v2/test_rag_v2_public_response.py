@@ -19,6 +19,7 @@ from backend.rag_v2.public_response import (
     profit_tax_rate_response,
     rental_income_tax_rate_response,
     royalty_tax_rate_response,
+    small_business_legal_form_response,
     small_business_tax_rate_response,
     tax_appeal_procedure_response,
     vat_rate_response,
@@ -256,6 +257,44 @@ class PublicResponseShapeTests(unittest.TestCase):
         result = small_business_tax_rate_response(trace)
         self.assertIn("1%", result)
         self.assertIn("3%", result)
+
+    def test_homepage_llc_response_is_narrow_and_multilingual(self):
+        cases = (
+            ("ru", "Может ли ООО применять налог 1%?", "ООО", "индивидуальному"),
+            ("en", "Can an LLC use the 1% tax regime?", "LLC", "individual"),
+            ("ka", "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?", "შპს", "ინდივიდუალური"),
+        )
+        for language, query, legal_form, eligible_person in cases:
+            with self.subTest(language=language):
+                trace = types.SimpleNamespace(
+                    parsed_query={
+                        "language": language,
+                        "normalized_query": query.lower(),
+                        "goal": "small_business_eligibility",
+                    }
+                )
+                result = small_business_legal_form_response(trace)
+                self.assertIn("1%", result)
+                self.assertIn(legal_form, result)
+                self.assertIn(eligible_person, result)
+                self.assertNotIn("15%", result)
+
+    def test_llc_property_tax_does_not_trigger_small_business_guard(self):
+        cases = (
+            ("ru", "Какая ставка налога на имущество для ООО - 1%?"),
+            ("en", "Is the LLC property tax rate 1%?"),
+            ("ka", "შპს-ს ქონების გადასახადის განაკვეთი 1%-ია?"),
+        )
+        for language, query in cases:
+            with self.subTest(language=language):
+                trace = types.SimpleNamespace(
+                    parsed_query={
+                        "language": language,
+                        "normalized_query": query.lower(),
+                        "goal": "rate_lookup",
+                    }
+                )
+                self.assertIsNone(small_business_legal_form_response(trace))
 
     def test_vat_rate_response_ru_is_direct(self):
         trace = types.SimpleNamespace(

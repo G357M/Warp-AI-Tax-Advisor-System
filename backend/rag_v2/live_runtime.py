@@ -70,6 +70,7 @@ CURATED_LEGAL_BASIS = {
 
 CURATED_ARTICLE_REFS = {
     "appeal_procedure": "296, 297, 299",
+    "small_business_legal_form": "88, 90",
     "vat_threshold": "165",
     "tour_operator_vat": "172",
     "funded_pension": "3",
@@ -999,7 +1000,7 @@ def maybe_run_live_rollout(
     # They cite the legal-basis document verified in the corpus (Tax Code for most
     # topics, the funded-pension law for pension questions).
     forced = small_business_legal_form_response(trace)
-    forced_topic = None
+    forced_topic = "small_business_legal_form" if forced else None
     if not forced:
         forced = tax_appeal_procedure_response(trace)
         if forced:
