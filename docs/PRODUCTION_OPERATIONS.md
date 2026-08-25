@@ -500,9 +500,21 @@ article anchor.
 The API scraper emits one aggregate `INFOHUB_INGEST_SUMMARY=` JSON line after a
 run. For each source species it distinguishes catalog totals and pages from
 `known`, `unseen`, `ingested`, `skipped_short`, `detail_failures` and
-`processing_errors`. An unseen card is not counted as ingested until `store()`
+`processing_errors`. It also reports `deferred_short` and
+`short_cache_errors`. An unseen card is not counted as ingested until `store()`
 returns a document. This is important for the Bill catalog, where InfoHub may
 publish UUIDs whose detail payload has no body or attachment.
+
+Unchanged cards previously rejected for having less than 100 characters use a
+seven-day retry cache in the existing persistent Redis volume. The key contains
+only a SHA-256 identity and the value is a SHA-256 fingerprint of the official
+list record; it stores no title, URL or document content. A changed list record
+bypasses the deferral immediately, while an unchanged record is retried when
+the TTL expires. A successful ingest deletes its cache entry. Redis is strictly
+an optimization: the first connection/read/write failure disables deferral for
+the rest of that scraper process, increments `short_cache_errors`, and fails
+open to normal detail retrieval. This cache never creates a document or changes
+the legal corpus count.
 
 `GET /api/v1/public/health` also exposes:
 

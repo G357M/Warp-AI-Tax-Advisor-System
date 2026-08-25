@@ -80,6 +80,10 @@ infohub.rs.ge / infohubapi.rs.ge
   catalog totals across runs and alerts when a source grows without a corpus
   insert, becomes unavailable, decreases unexpectedly or returns processing
   errors; transient failures cannot overwrite its last good baseline;
+- unchanged sub-100-character source cards are fingerprinted in the existing
+  persistent Redis volume and deferred for at most seven days; changed cards
+  bypass the cache immediately and any Redis error fails open to normal detail
+  retrieval;
 - origin TLS certificate → valid through `2026-11-17`
 - provider-level Hetzner restore → passed from automatic backup image
   `423119703` created at `2026-08-22T18:28:06Z`;

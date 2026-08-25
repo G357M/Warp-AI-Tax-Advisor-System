@@ -30,6 +30,7 @@ import urllib.request
 import urllib.error
 from typing import Dict, List, Optional
 
+import redis
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
@@ -43,18 +44,127 @@ logger = logging.getLogger(__name__)
 
 API_BASE = "https://infohubapi.rs.ge/api"
 SPECIES = ["NewDocument", "LegislativeNews", "Bill"]
+SHORT_CONTENT_RETRY_SECONDS = 7 * 24 * 60 * 60
+SHORT_CONTENT_CACHE_PREFIX = "infohub:scraper:short-content:v1"
+
+
+class ShortContentRetryCache:
+    """Bound repeated detail fetches for unchanged, unusably short cards.
+
+    Redis is only an optimization. Any cache error disables it for the rest of
+    the process and the scraper continues with normal detail retrieval.
+    """
+
+    def __init__(
+        self,
+        *,
+        client=None,
+        retry_seconds: int = SHORT_CONTENT_RETRY_SECONDS,
+        enabled: Optional[bool] = None,
+    ):
+        if retry_seconds <= 0:
+            raise ValueError("short-content retry interval must be positive")
+        self._client = client
+        self.retry_seconds = retry_seconds
+        self.available = settings.CACHE_ENABLED if enabled is None else enabled
+        self.error_count = 0
+
+    @staticmethod
+    def fingerprint(item: dict) -> str:
+        payload = json.dumps(
+            item,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _redis(self):
+        if self._client is None:
+            self._client = redis.from_url(
+                settings.REDIS_URL,
+                decode_responses=True,
+                encoding="utf-8",
+                socket_connect_timeout=2,
+                socket_timeout=2,
+            )
+        return self._client
+
+    def _key(self, language: str, species: str, unique_key: str) -> str:
+        identity = f"{language}\0{species}\0{unique_key}".encode("utf-8")
+        return f"{SHORT_CONTENT_CACHE_PREFIX}:{hashlib.sha256(identity).hexdigest()}"
+
+    def _fail_open(self, operation: str, error: Exception) -> None:
+        self.error_count += 1
+        self.available = False
+        logger.warning(
+            "Short-content retry cache %s failed; continuing without deferral: %s",
+            operation,
+            error,
+        )
+
+    def should_defer(
+        self,
+        language: str,
+        species: str,
+        unique_key: str,
+        fingerprint: str,
+    ) -> bool:
+        if not self.available:
+            return False
+        try:
+            return self._redis().get(
+                self._key(language, species, unique_key)
+            ) == fingerprint
+        except Exception as error:  # Redis is optional for scraper correctness.
+            self._fail_open("read", error)
+            return False
+
+    def mark_short(
+        self,
+        language: str,
+        species: str,
+        unique_key: str,
+        fingerprint: str,
+    ) -> None:
+        if not self.available:
+            return
+        try:
+            self._redis().set(
+                self._key(language, species, unique_key),
+                fingerprint,
+                ex=self.retry_seconds,
+            )
+        except Exception as error:  # Redis is optional for scraper correctness.
+            self._fail_open("write", error)
+
+    def clear(self, language: str, species: str, unique_key: str) -> None:
+        if not self.available:
+            return
+        try:
+            self._redis().delete(self._key(language, species, unique_key))
+        except Exception as error:  # Redis is optional for scraper correctness.
+            self._fail_open("delete", error)
 
 
 class InfoHubAPIScraper:
     """Scrape documents from the infohub.rs.ge public JSON API."""
 
-    def __init__(self, language: str = "ka", page_size: int = 50, delay: Optional[float] = None):
+    def __init__(
+        self,
+        language: str = "ka",
+        page_size: int = 50,
+        delay: Optional[float] = None,
+        short_retry_cache: Optional[ShortContentRetryCache] = None,
+    ):
         self.language = language
         self.page_size = page_size
         self.delay = settings.SCRAPER_DELAY if delay is None else delay
         self.documents_scraped = 0
         self.pages_visited = 0
         self.species_stats: Dict[str, Dict[str, int]] = {}
+        self.short_retry_cache = short_retry_cache or ShortContentRetryCache()
 
     # ---- HTTP ---------------------------------------------------------------
     def _get(self, url: str) -> Optional[dict]:
@@ -221,10 +331,13 @@ class InfoHubAPIScraper:
                 "unseen": 0,
                 "ingested": 0,
                 "skipped_short": 0,
+                "deferred_short": 0,
+                "short_cache_errors": 0,
                 "detail_failures": 0,
                 "processing_errors": 0,
             }
             self.species_stats[species] = stats
+            cache_errors_before = self.short_retry_cache.error_count
             skip = 0
             while self.documents_scraped < max_docs:
                 items, total = self.fetch_page(species, skip)
@@ -235,6 +348,7 @@ class InfoHubAPIScraper:
                 unseen_on_page = 0
                 ingested_on_page = 0
                 skipped_on_page = 0
+                deferred_on_page = 0
                 for item in items:
                     if self.documents_scraped >= max_docs:
                         break
@@ -249,6 +363,16 @@ class InfoHubAPIScraper:
                             continue  # already ingested — skip (no detail fetch)
                         unseen_on_page += 1
                         stats["unseen"] += 1
+                        item_fingerprint = self.short_retry_cache.fingerprint(item)
+                        if self.short_retry_cache.should_defer(
+                            self.language,
+                            species,
+                            uid,
+                            item_fingerprint,
+                        ):
+                            deferred_on_page += 1
+                            stats["deferred_short"] += 1
+                            continue
                         detail = self.fetch_details(uid)
                         if not detail:
                             stats["detail_failures"] += 1
@@ -257,9 +381,20 @@ class InfoHubAPIScraper:
                         if stored is None:
                             skipped_on_page += 1
                             stats["skipped_short"] += 1
+                            self.short_retry_cache.mark_short(
+                                self.language,
+                                species,
+                                uid,
+                                item_fingerprint,
+                            )
                         else:
                             ingested_on_page += 1
                             stats["ingested"] += 1
+                            self.short_retry_cache.clear(
+                                self.language,
+                                species,
+                                uid,
+                            )
                         if self.delay:
                             time.sleep(self.delay)
                     except Exception as e:
@@ -271,6 +406,7 @@ class InfoHubAPIScraper:
                 logger.info(
                     f"[{species}] skip={skip}/{total} | unseen: {unseen_on_page} "
                     f"| ingested: {ingested_on_page} | skipped short: {skipped_on_page} "
+                    f"| deferred short: {deferred_on_page} "
                     f"| total ingested: {self.documents_scraped}"
                 )
                 if unseen_on_page == 0:
@@ -279,6 +415,9 @@ class InfoHubAPIScraper:
                 skip += self.page_size
                 if skip >= total:
                     break
+            stats["short_cache_errors"] = (
+                self.short_retry_cache.error_count - cache_errors_before
+            )
             if self.documents_scraped >= max_docs:
                 break
         return {
