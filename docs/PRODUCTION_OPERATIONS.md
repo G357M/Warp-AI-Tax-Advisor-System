@@ -518,6 +518,15 @@ disables deferral for the rest of that scraper process, increments
 `short_cache_errors`, and fails open to normal detail retrieval. This cache
 never creates a document or changes the legal corpus count.
 
+The runner reads the before/after vector totals directly from PostgreSQL and
+does not import the eager `rag` package merely for observability. Therefore a
+fully known or deferred run does not initialize the embedding model or LLM
+client. The query preserves the existing metric: only rows with a non-null
+value in the active `embedding` / `embedding_v2` column are counted. Storage of
+a genuinely new document still imports the normal embedding pipeline at the
+point where vectors are required. A count-query failure remains fail-soft and
+is reported as a warning, matching the previous runner behavior.
+
 `GET /api/v1/public/health` also exposes:
 
 ```text

@@ -10,12 +10,15 @@ import sys
 import logging
 import argparse
 import json
+import os
 from pathlib import Path
+
+from sqlalchemy import text
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core.database import SessionLocal
 from scraper.infohub_api_scraper import InfoHubAPIScraper, SPECIES
-from rag.vector_store import vector_store
 
 LOG_FILE = Path(__file__).parent.parent / "logs" / "scraper.log"
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -29,6 +32,29 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+def _active_embedding_column() -> str:
+    """Return the fixed pgvector column selected by the runtime."""
+    use_v2 = (os.getenv("INFOHUB_EMBEDDING_V2") or "").strip() == "1"
+    return "embedding_v2" if use_v2 else "embedding"
+
+
+def _get_vector_count() -> int:
+    """Count populated vectors without importing the eager ``rag`` package."""
+    column = _active_embedding_column()
+    assert column in ("embedding", "embedding_v2")
+    db = SessionLocal()
+    try:
+        result = db.execute(
+            text(f"SELECT COUNT(*) FROM document_chunks WHERE {column} IS NOT NULL")
+        )
+        return int(result.scalar() or 0)
+    except Exception as error:
+        logger.warning("Could not read vector count: %s", error)
+        return 0
+    finally:
+        db.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Scrape infohub.rs.ge via its JSON API")
     parser.add_argument("--max-docs", type=int, default=200, help="Max NEW documents to ingest this run")
@@ -37,7 +63,7 @@ def main():
     parser.add_argument("--page-size", type=int, default=50)
     args = parser.parse_args()
 
-    before = vector_store.get_count() if vector_store.client else 0
+    before = _get_vector_count()
     logger.info("=" * 60)
     logger.info(f"InfoHub API scrape start | lang={args.language} | max_docs={args.max_docs}")
     logger.info(f"Vector store count before: {before}")
@@ -48,7 +74,7 @@ def main():
         max_docs=args.max_docs,
     )
 
-    after = vector_store.get_count() if vector_store.client else 0
+    after = _get_vector_count()
     logger.info("=" * 60)
     logger.info(f"Done. New documents: {result['documents_scraped']} | pages: {result['pages_visited']}")
     logger.info(f"Vector store count after: {after} (was {before})")
