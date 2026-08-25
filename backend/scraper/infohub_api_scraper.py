@@ -45,7 +45,25 @@ logger = logging.getLogger(__name__)
 API_BASE = "https://infohubapi.rs.ge/api"
 SPECIES = ["NewDocument", "LegislativeNews", "Bill"]
 SHORT_CONTENT_RETRY_SECONDS = 7 * 24 * 60 * 60
-SHORT_CONTENT_CACHE_PREFIX = "infohub:scraper:short-content:v1"
+SHORT_CONTENT_CACHE_PREFIX = "infohub:scraper:short-content:v2"
+SHORT_CONTENT_FINGERPRINT_FIELDS = (
+    "uniqueKey",
+    "id",
+    "species",
+    "receiptDate",
+    "documentNumber",
+    "registrationNumber",
+    "type",
+    "baseType",
+    "name",
+    "additionalDescription",
+    "published",
+    "billStatus",
+    "author",
+    "nameLink",
+    "createDate",
+    "updateDate",
+)
 
 
 class ShortContentRetryCache:
@@ -71,8 +89,15 @@ class ShortContentRetryCache:
 
     @staticmethod
     def fingerprint(item: dict) -> str:
+        # `views` changes when a detail page is opened and `mustRead` can be
+        # session-specific. Neither indicates a legal/content update. Pin the
+        # fields that can materially describe or locate the official record;
+        # unknown future fields remain covered by the bounded weekly retry.
+        stable_item = {
+            field: item.get(field) for field in SHORT_CONTENT_FINGERPRINT_FIELDS
+        }
         payload = json.dumps(
-            item,
+            stable_item,
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),

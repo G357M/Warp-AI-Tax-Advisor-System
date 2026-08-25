@@ -191,11 +191,13 @@ def test_retry_cache_uses_fingerprint_ttl_and_changed_card_rechecks():
     unique_key = "candidate-uuid-123"
     original = {"uniqueKey": unique_key, "name": "Draft"}
     changed = {"uniqueKey": unique_key, "name": "Draft with text"}
+    viewed = {**original, "views": 999, "mustRead": True}
     original_fingerprint = cache.fingerprint(original)
 
     cache.mark_short("ka", "Bill", unique_key, original_fingerprint)
 
     assert cache.should_defer("ka", "Bill", unique_key, original_fingerprint)
+    assert cache.fingerprint(viewed) == original_fingerprint
     assert not cache.should_defer(
         "ka", "Bill", unique_key, cache.fingerprint(changed)
     )
