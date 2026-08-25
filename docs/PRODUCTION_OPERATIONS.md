@@ -519,6 +519,23 @@ are non-zero, cron did not complete, or the ingestion timestamp exceeds the
 agreed freshness window. The 2026-08-24 evidence and interpretation are stored
 in `docs/INGESTION_FRESHNESS_AUDIT_2026-08-24.md`.
 
+After every valid scraper summary, the host-level
+`scripts/audit_ingestion_freshness.py` compares each official `source_total`
+with the previous valid run stored in the mode-600 aggregate-only state file:
+
+```text
+/root/infohub/.state/infohub_ingestion_freshness.json
+```
+
+It emits one `INFOHUB_INGEST_FRESHNESS=` line and returns non-zero when an
+official catalog grows while `ingested` remains zero, when the catalog becomes
+unavailable or decreases unexpectedly, or when detail/storage processing
+errors are non-zero. The nightly wrapper passes only that bounded aggregate to
+the existing Telegram quality-alert path and preserves the primary scraper
+exit code. A transient unavailable/decreased total never replaces the last
+good baseline. The first valid deployment run creates a non-alerting baseline;
+document titles, URLs and text are never persisted by this audit.
+
 The four rolling operational files are:
 
 ```text

@@ -82,6 +82,32 @@ NEW_DOCS="${NEW_DOCS:-?}"
 # Alert (Telegram) on failure, or on too many consecutive 0-new runs.
 bash "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
 
+# Compare the official per-species catalog totals with the prior valid run.
+# This catches the specific silent-stall case where InfoHub grows but no
+# document reaches the corpus.  The state and alert contain aggregate counts
+# only; a warning never replaces the primary scraper exit code.
+INGEST_SUMMARY_LINE="$(grep '^INFOHUB_INGEST_SUMMARY=' "$LOG_FILE" | tail -1 || true)"
+if [ -n "$INGEST_SUMMARY_LINE" ]; then
+    FRESHNESS_EXIT=0
+    FRESHNESS_OUT="$(python3 "$SCRIPT_DIR/scripts/audit_ingestion_freshness.py" \
+        --summary-line "$INGEST_SUMMARY_LINE" \
+        --state-file "$SCRIPT_DIR/.state/infohub_ingestion_freshness.json" \
+        2>>"$LOG_FILE")" || FRESHNESS_EXIT=$?
+    printf '%s\n' "$FRESHNESS_OUT" | tee -a "$LOG_FILE"
+    FRESHNESS_SUMMARY="$(printf '%s\n' "$FRESHNESS_OUT" \
+        | grep '^INFOHUB_INGEST_FRESHNESS=' | tail -1 || true)"
+    if [ -z "$FRESHNESS_SUMMARY" ]; then
+        FRESHNESS_EXIT=2
+        FRESHNESS_SUMMARY='INFOHUB_INGEST_FRESHNESS={"schema_version":1,"status":"error","violations":["summary_missing"]}'
+    fi
+    bash "$SCRIPT_DIR/quality_gate_alert.sh" \
+        "$FRESHNESS_EXIT" "ingestion freshness audit" "$FRESHNESS_SUMMARY" \
+        2>&1 | tee -a "$LOG_FILE" || true
+else
+    echo "[nightly] WARN: freshness audit skipped because ingest summary is missing; primary scraper alert owns this failure." \
+        | tee -a "$LOG_FILE"
+fi
+
 # Extract structured facts from newly ingested dispute decisions (incremental;
 # --new-only keeps the nightly run off the v1->v2 upgrade backlog, which is a
 # separate manual backfill). Non-fatal on error.

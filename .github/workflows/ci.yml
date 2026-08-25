@@ -61,6 +61,7 @@ jobs:
           scripts/repair_decision_fact_normalization.py
           scripts/validate_decision_facts_expert_review.py
           scripts/verify_infohub_duplicate_candidates.py
+          ../scripts/audit_ingestion_freshness.py
           ../scripts/audit_production_storage.py
           ../scripts/manage_infohub_buildkit.py
           ../scripts/retire_infohub_legacy_buildkit.py
@@ -82,6 +83,7 @@ jobs:
           tests/test_official_provision_registry_builder.py
           tests/test_named_legal_acts.py
           tests/test_infohub_api_scraper_stats.py
+          tests/test_ingestion_freshness_audit.py
           tests/test_source_audit_currentness.py
           tests/test_answer_safety_eval.py
           tests/test_decision_chain_reporting.py

@@ -76,6 +76,10 @@ infohub.rs.ge / infohubapi.rs.ge
 - public health exposes `last_document_ingested_at`, `documents_last_24h` and
   `documents_last_7d`, so a stable total can be distinguished from a stopped
   ingestion pipeline;
+- the nightly aggregate-only freshness audit compares official per-species
+  catalog totals across runs and alerts when a source grows without a corpus
+  insert, becomes unavailable, decreases unexpectedly or returns processing
+  errors; transient failures cannot overwrite its last good baseline;
 - origin TLS certificate → valid through `2026-11-17`
 - provider-level Hetzner restore → passed from automatic backup image
   `423119703` created at `2026-08-22T18:28:06Z`;
