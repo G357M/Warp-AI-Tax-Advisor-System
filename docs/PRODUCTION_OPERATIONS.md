@@ -598,21 +598,21 @@ primary scraper exit code.
 
 ## Bounded public exact-provision canary
 
-Inspect the three-case RU/EN/KA plan first. Dry-run performs no HTTP request:
+Inspect the nine-case balanced RU/EN/KA plan first. Dry-run performs no HTTP request:
 
 ```bash
 cd /root/infohub
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py
 ```
 
-Execute only with the exact versioned three-request ceiling and keep the full
+Execute only with the exact versioned nine-request ceiling and keep the full
 report in protected operational state:
 
 ```bash
 install -d -m 0700 .state/public-provision-canary/manual
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py \
   --execute \
-  --max-public-requests 3 \
+  --max-public-requests 9 \
   --commit "$(git rev-parse HEAD)" \
   --output /tmp/public_provision_canary_report.json \
   --baseline-output /tmp/public_provision_canary_baseline.json
@@ -626,15 +626,19 @@ chmod 0600 .state/public-provision-canary/manual/report.json \
 
 Execute mode accepts only the backend loopback
 `http://127.0.0.1:8000/api/v1/public/query` route. It validates the final public
-HTTP/Pydantic shape: response language and article reference, exact-provision
-evidence, canonical Matsne `#part_173` deep-link and the separate verified
-publication-28 URL. The accepted `2026-08-26.1` production run for commit
-`ceb7ac7` passed 3/3 with all seven metrics at 1.0 and used exactly 3/3 public
-requests. The full report contains queries, answers and sources and must remain
-mode `0600`; only
-`evaluation/baselines/public_provision_canary_2026-08-26_ceb7ac7.json` is safe
-for Git. The canary may invoke the provider, so it is manual and must not be
-added to the nightly no-LLM quality gates.
+HTTP/Pydantic shape: response language and explicit article reference,
+exact-provision evidence, canonical Matsne article deep-link and the separate
+verified publication URL. The suite covers Labour Code article 47, Tax Code
+article 168 and the RU/EN/KA homepage tax-appeal question grounded in Tax Code
+article 299. The deterministic appeal response cites articles 296, 297 and 299,
+while the public source exposes their individual registry-backed links. The
+accepted `2026-08-26.2` production run for commit `401ec58` passed 9/9 with all
+seven metrics at 1.0 and used exactly 9/9 public requests. The full report
+contains queries, answers and sources and must remain mode `0600`; only
+`evaluation/baselines/public_provision_canary_2026-08-26_401ec58.json` is safe
+for Git. The earlier `ceb7ac7` three-case aggregate is retained as history. The
+canary may invoke the provider, so it is manual and must not be added to the
+nightly no-LLM quality gates.
 
 ## Bounded live answer-safety evaluation
 

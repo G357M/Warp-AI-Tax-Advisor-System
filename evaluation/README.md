@@ -27,7 +27,7 @@
 | `rag_v2_contract_gate.py` | Машинный quality gate без сети, LLM и production-БД |
 | `../backend/evaluation/rag_v2_live_corpus_set.json` | 23 ожидания на каждый язык RU/EN/KA для подключённого боевого корпуса |
 | `../backend/scripts/evaluate_rag_v2_live_corpus.py` | Read-only live evaluator с corpus fingerprint и историческим JSON-отчётом |
-| `../backend/evaluation/public_provision_canary_set.json` | Три bounded RU/EN/KA контракта конечного публичного ответа по точной статье |
+| `../backend/evaluation/public_provision_canary_set.json` | Девять bounded RU/EN/KA контрактов конечного публичного ответа по трём точным нормам |
 | `../backend/scripts/evaluate_public_provision_canary.py` | Ручной loopback HTTP canary с exact request ceiling и проверкой Matsne deep-link |
 | `baselines/` | Безопасные агрегированные снимки метрик, привязанные к production commit и состоянию корпуса; query/document rows не сохраняются в Git |
 
