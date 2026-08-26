@@ -79,6 +79,58 @@ def test_entrepreneurs_law_registry_uses_verified_structured_anchors():
     )
 
 
+def test_labour_code_registry_is_complete_and_verified():
+    registries = {
+        registry["registry_id"]: registry
+        for registry in load_official_provision_registries()
+    }
+    registry = registries["labour_code"]
+
+    assert len(registry["article_anchors"]) == 90
+    assert registry["article_anchors"]["1"] == "part_4"
+    assert registry["article_anchors"]["3-1"] == "part_112"
+    assert registry["article_anchors"]["24"] == "part_141"
+    assert registry["article_anchors"]["47"] == "part_173"
+    assert registry["article_anchors"]["52-4"] == "part_236"
+    assert registry["article_anchors"]["87"] == "part_229"
+    assert "75" not in registry["article_anchors"]
+    assert "76" not in registry["article_anchors"]
+
+
+def test_labour_code_article_gets_exact_official_link():
+    source = enrich_source(
+        {
+            "title": "საქართველოს შრომის კოდექსი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/c16095a8-2c94-4024-8d25-561192e0ceb7",
+            "article_ref": "47",
+        }
+    )
+
+    assert source["official_act_url"] == "https://matsne.gov.ge/ka/document/view/1155567"
+    assert source["provision_links"] == [
+        {
+            "article_ref": "47",
+            "point_ref": None,
+            "url": "https://matsne.gov.ge/ka/document/view/1155567#part_173",
+        }
+    ]
+    assert source["provision_publication_url"].endswith("?publication=28")
+    assert has_official_provision_link(source) is True
+
+
+def test_accounting_reporting_audit_law_stays_document_level_without_stable_anchors():
+    source = enrich_source(
+        {
+            "title": "ბუღალტრული აღრიცხვის, ანგარიშგებისა და აუდიტის შესახებ საქართველოს კანონი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/a27cc1df-c40a-4970-9b07-047790624251",
+            "article_ref": "6",
+        }
+    )
+
+    assert "provision_links" not in source
+    assert has_official_provision_link(source) is False
+
+
 def test_entrepreneurs_law_article_gets_exact_structured_official_link():
     source = enrich_source(
         {

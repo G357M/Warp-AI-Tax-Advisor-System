@@ -25,6 +25,10 @@ ENTREPRENEURS_LAW_SOURCE = (
     "https://infohub.rs.ge/ka/workspace/document/"
     "1f5a284f-9bf6-4109-afde-63d3afaeb09e"
 )
+LABOUR_CODE_SOURCE = (
+    "https://infohub.rs.ge/ka/workspace/document/"
+    "c16095a8-2c94-4024-8d25-561192e0ceb7"
+)
 
 
 @pytest.mark.parametrize(
@@ -125,6 +129,34 @@ def test_named_entrepreneurs_law_article_resolves_in_all_languages(query, langua
     assert source["provision_links"][0]["url"].endswith(
         "#DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
     )
+    assert has_official_provision_link(source) is True
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 47 Трудового кодекса Грузии?", "ru"),
+        ("What does Article 47 of the Labour Code of Georgia provide?", "en"),
+        ("რას ადგენს საქართველოს შრომის კოდექსის 47-ე მუხლი?", "ka"),
+    ],
+)
+def test_named_labour_code_article_resolves_in_all_languages(query, language):
+    parsed = parse_query(query, language=language)
+    candidates = resolve_article(parsed)
+
+    assert parsed.article_ref == "47"
+    assert len(candidates) == 1
+    assert candidates[0].source_url == LABOUR_CODE_SOURCE
+    assert candidates[0].metadata["article_ref"] == "47"
+    assert candidates[0].metadata["section_label"] == "მუხლი 47"
+
+    source = enrich_source(
+        {
+            "url": candidates[0].source_url,
+            "article_ref": candidates[0].metadata["article_ref"],
+        }
+    )
+    assert source["provision_links"][0]["url"].endswith("#part_173")
     assert has_official_provision_link(source) is True
 
 
@@ -255,6 +287,28 @@ def test_pipeline_prefers_named_entrepreneurs_law_article(query, language):
     assert top["document_id"] == "74d06788-7c76-420d-bb6c-0a79874dbc9e"
     assert top["channel"] == "article_resolver"
     assert top["metadata"]["article_ref"] == "208"
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 47 Трудового кодекса Грузии?", "ru"),
+        ("What does Article 47 of the Labour Code of Georgia provide?", "en"),
+        ("რას ადგენს საქართველოს შრომის კოდექსის 47-ე მუხლი?", "ka"),
+    ],
+)
+def test_pipeline_prefers_named_labour_code_article(query, language):
+    trace = pipeline_v2.build_trace(
+        query,
+        language=language,
+        disabled_channels={"semantic_search"},
+    )
+    top = trace.reranking["top_ranked_documents"][0]
+
+    assert trace.classification["question_class"] == "canonical_law_lookup"
+    assert top["document_id"] == "a24ab0d4-4124-414e-aa99-b526839abdd3"
+    assert top["channel"] == "article_resolver"
+    assert top["metadata"]["article_ref"] == "47"
 
 
 def test_pipeline_prefers_order_996_and_keeps_article_locator():

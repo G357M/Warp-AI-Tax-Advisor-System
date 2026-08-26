@@ -62,6 +62,30 @@ ENTREPRENEURS_LAW: dict[str, Any] = {
 }
 
 
+LABOUR_CODE: dict[str, Any] = {
+    "aliases": (
+        "трудовой кодекс грузии",
+        "трудового кодекса грузии",
+        "трудовом кодексе грузии",
+        "трудовой кодекс",
+        "трудового кодекса",
+        "labour code of georgia",
+        "labor code of georgia",
+        "georgian labour code",
+        "georgian labor code",
+        "labour code",
+        "labor code",
+        "საქართველოს შრომის კოდექს",
+        "შრომის კოდექს",
+    ),
+    "document_id": "a24ab0d4-4124-414e-aa99-b526839abdd3",
+    "title": "საქართველოს შრომის კოდექსი",
+    "document_type": "law",
+    "source_url": "https://infohub.rs.ge/ka/workspace/document/c16095a8-2c94-4024-8d25-561192e0ceb7",
+    "topics": ["employment_law", "employment_contracts", "termination"],
+}
+
+
 ORDER_996: dict[str, Any] = {
     "document_id": "54d15b6c-e8a1-465a-bc56-8c20498588b8",
     "title": "გადასახადების ადმინისტრირების შესახებ.",
@@ -79,6 +103,8 @@ def match_named_article_act(parsed: ParsedQuery) -> Optional[dict[str, Any]]:
         return CIVIL_CODE
     if any(alias in query for alias in ENTREPRENEURS_LAW["aliases"]):
         return ENTREPRENEURS_LAW
+    if any(alias in query for alias in LABOUR_CODE["aliases"]):
+        return LABOUR_CODE
     return None
 
 

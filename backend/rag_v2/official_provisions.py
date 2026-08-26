@@ -25,6 +25,7 @@ REGISTRY_PATHS = (
     Path(__file__).with_name("official_general_administrative_code_provisions.json"),
     Path(__file__).with_name("official_civil_code_provisions.json"),
     Path(__file__).with_name("official_entrepreneurs_law_provisions.json"),
+    Path(__file__).with_name("official_labour_code_provisions.json"),
 )
 # Backwards-compatible name used by earlier tests and operational tooling.
 REGISTRY_PATH = REGISTRY_PATHS[0]
