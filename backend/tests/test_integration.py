@@ -25,25 +25,37 @@ rag_pipeline_module.rag_pipeline = SimpleNamespace(
         AssertionError("RAG must be mocked by the test")
     )
 )
-rag_v2_package = ModuleType("rag_v2")
-rag_v2_package.__path__ = []
 shadow_module = ModuleType("rag_v2.shadow_runtime")
 shadow_module.maybe_run_shadow = lambda **_kwargs: None
 live_module = ModuleType("rag_v2.live_runtime")
 live_module.maybe_run_live_rollout = lambda **_kwargs: None
 public_response_module = ModuleType("rag_v2.public_response")
 public_response_module.is_pure_refusal = lambda _text: False
-sys.modules["rag"] = rag_package
-sys.modules["rag.pipeline"] = rag_pipeline_module
-sys.modules["rag_v2"] = rag_v2_package
-sys.modules["rag_v2.shadow_runtime"] = shadow_module
-sys.modules["rag_v2.live_runtime"] = live_module
-sys.modules["rag_v2.public_response"] = public_response_module
+_stubbed_rag_modules = {
+    "rag": rag_package,
+    "rag.pipeline": rag_pipeline_module,
+    "rag_v2.shadow_runtime": shadow_module,
+    "rag_v2.live_runtime": live_module,
+    "rag_v2.public_response": public_response_module,
+}
+_missing_module = object()
+_original_rag_modules = {
+    name: sys.modules.get(name, _missing_module) for name in _stubbed_rag_modules
+}
+sys.modules.update(_stubbed_rag_modules)
 
 from api.routes import account, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
 from models import AuthActionToken, Conversation, Message, Payment, Subscription, User
+
+# The imported API modules retain the lightweight boundaries above. Restore the
+# process module registry so later-collected tests load the real RAG v2 package.
+for _name, _module in _original_rag_modules.items():
+    if _module is _missing_module:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _module
 
 
 app = FastAPI()
