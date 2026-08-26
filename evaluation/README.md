@@ -5,8 +5,8 @@
 > classification accuracy, top-1 locator recall, source-audit accuracy и exact
 > citation rate. Gate не использует LLM или production-БД и дополняет, но не
 > заменяет live-corpus harness. Отдельный набор
-> `backend/evaluation/rag_v2_live_corpus_set.json` содержит 21 сбалансированный
-> RU/EN/KA контракт для реальной БД, а
+> `backend/evaluation/rag_v2_live_corpus_set.json` содержит 22 сбалансированных
+> контракта на каждый язык RU/EN/KA для реальной БД, а
 > `backend/scripts/evaluate_rag_v2_live_corpus.py` сохраняет commit, fingerprint
 > корпуса, общие и поязыковые метрики. В этом профиле `semantic_search`
 > принудительно отключён, поэтому прогон не вызывает LLM и ничего не пишет в БД.
@@ -25,7 +25,7 @@
 | `results_raw.json` | Сырые ответы системы на все 26 вопросов + источники |
 | `rag_v2_golden_set.json` | Версионируемые RU/EN/KA routing/citation ожидания для offline CI |
 | `rag_v2_contract_gate.py` | Машинный quality gate без сети, LLM и production-БД |
-| `../backend/evaluation/rag_v2_live_corpus_set.json` | 21 RU/EN/KA ожидание для подключённого боевого корпуса |
+| `../backend/evaluation/rag_v2_live_corpus_set.json` | 22 ожидания на каждый язык RU/EN/KA для подключённого боевого корпуса |
 | `../backend/scripts/evaluate_rag_v2_live_corpus.py` | Read-only live evaluator с corpus fingerprint и историческим JSON-отчётом |
 | `baselines/` | Безопасные агрегированные снимки метрик, привязанные к production commit и состоянию корпуса; query/document rows не сохраняются в Git |
 
