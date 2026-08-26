@@ -462,18 +462,18 @@ per-language metrics and individual failures. Copy accepted reports into
 queries and document-level results. Keep the full report as an operational
 artifact and do not silently replace a failed baseline.
 
-The accepted `2026-08-26.1` suite contains 66 balanced cases (22 RU, 22 EN,
-22 KA). In addition to citation variants, it covers eight practical tax topics:
+The accepted `2026-08-26.2` suite contains 69 balanced cases (23 RU, 23 EN,
+23 KA). In addition to citation variants, it covers eight practical tax topics:
 personal income tax, VAT registration, tour-operator VAT, company property tax,
 residential rental, non-resident services, individual tax residency and late
 payment interest, plus article 180 of the General Administrative Code,
-article 623 of the Civil Code and article 208 of the Law on Entrepreneurs in
-all three languages. Every statutory case identifies the expected article; the
+article 623 of the Civil Code, article 208 of the Law on Entrepreneurs and
+article 47 of the Labour Code in all three languages. Every statutory case identifies the expected article; the
 evaluator separately requires a verified official provision deep-link.
-The connected-corpus run passed 66/66 with every overall and per-language
+The connected-corpus run passed 69/69 with every overall and per-language
 metric, including `official_provision_link_rate`, at 1.0. The committed
 aggregate is
-`evaluation/baselines/rag_v2_live_corpus_2026-08-26_entrepreneurs-law.json`.
+`evaluation/baselines/rag_v2_live_corpus_2026-08-26_labour-code.json`.
 
 The nightly runner executes this live-corpus check and the decision-facts
 quality contract after post-ingest maintenance. Both are read-only and prohibit
@@ -485,19 +485,23 @@ a quality-gate alert but does not replace the primary scraper exit code.
 
 Exact-provision coverage is registry-backed. The Tax Code registry is pinned to
 Matsne publication 245, the General Administrative Code registry to publication
-45, the Civil Code registry to publication 140 and the Law on Entrepreneurs
-registry to publication 13. They expose only one-to-one article anchors
+45, the Civil Code registry to publication 140, the Law on Entrepreneurs
+registry to publication 13 and the Labour Code registry to publication 28.
+They expose only one-to-one article anchors
 observed in the official document tree. The reproducible
 builder excludes future nodes and every article in an ambiguous shared-anchor
 block; for example, removed Tax Code articles 207–237 share `part_511` and must
 not be presented as exact provision links. Civil Code article 623 is verified
 as `part_745`; Law on Entrepreneurs article 208 is verified as
-`DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;`. Both legacy `part_N` and the new
+`DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;`; Labour Code article 47 is verified
+as `part_173`. Both legacy `part_N` and the new
 structured Matsne fragment format are accepted by a strict allowlist. A source from another act stays document-level unless a
 separately reviewed registry exists. In particular, Finance Minister Order No. 996 preserves an
 explicit requested article for retrieval, but must not claim an official
 provision deep-link while its public consolidated publication exposes no stable
-article anchor.
+article anchor. The same document-level boundary applies to publication 18 of
+the Law on Accounting, Reporting and Audit because its current official Matsne
+tree exposes no article-level anchors.
 
 ### Ingestion freshness observability
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-26.1",
+  "suite_version": "2026-08-26.2",
   "description": "Balanced RU/EN/KA live-corpus locator contracts. Semantic retrieval is disabled so the suite performs no translation or answer-generation LLM calls.",
   "retrieval_profile": {
     "disabled_channels": ["semantic_search"],
@@ -409,6 +409,18 @@
     {
       "id": "entrepreneurs_law_article_208_ka", "language": "ka", "query": "რას ადგენს „მეწარმეთა შესახებ“ საქართველოს კანონის 208-ე მუხლი?", "expected_class": "canonical_law_lookup",
       "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "74d06788-7c76-420d-bb6c-0a79874dbc9e", "metadata": {"article_ref": "208", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "labour_code_article_47_ru", "language": "ru", "query": "Что устанавливает статья 47 Трудового кодекса Грузии?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "a24ab0d4-4124-414e-aa99-b526839abdd3", "metadata": {"article_ref": "47", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "labour_code_article_47_en", "language": "en", "query": "What does Article 47 of the Labour Code of Georgia provide?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "a24ab0d4-4124-414e-aa99-b526839abdd3", "metadata": {"article_ref": "47", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
+    },
+    {
+      "id": "labour_code_article_47_ka", "language": "ka", "query": "რას ადგენს საქართველოს შრომის კოდექსის 47-ე მუხლი?", "expected_class": "canonical_law_lookup",
+      "expected_top": {"document_type": "law", "channel": "article_resolver", "document_id": "a24ab0d4-4124-414e-aa99-b526839abdd3", "metadata": {"article_ref": "47", "is_current": true}}, "expected_source_audit": true, "expected_official_provision_link": true
     }
   ]
 }
