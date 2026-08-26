@@ -35,3 +35,44 @@ def test_registry_builder_excludes_future_and_ambiguous_fragments():
     assert anchors == {"1": "part_1", "18-1": "part_2"}
     assert future_count == 1
     assert ambiguous_count == 2
+
+
+def test_registry_builder_accepts_strict_structured_matsne_anchor():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {
+                "Title": "მუხლი 208. ინტერესთა კონფლიქტი",
+                "Anchor": "DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;",
+            }
+        ],
+    }
+
+    anchors, future_count, ambiguous_count = extract_article_anchors(tree)
+
+    assert anchors == {
+        "208": "DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
+    }
+    assert future_count == 0
+    assert ambiguous_count == 0
+
+
+def test_registry_builder_rejects_malformed_structured_matsne_anchor():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {
+                "Title": "მუხლი 208. ინტერესთა კონფლიქტი",
+                "Anchor": "DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;javascript",
+            }
+        ],
+    }
+
+    try:
+        extract_article_anchors(tree)
+    except ValueError as exc:
+        assert "invalid anchor for article 208" in str(exc)
+    else:
+        raise AssertionError("malformed structured anchor must fail closed")

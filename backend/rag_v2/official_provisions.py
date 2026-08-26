@@ -24,12 +24,16 @@ REGISTRY_PATHS = (
     Path(__file__).with_name("official_tax_code_provisions.json"),
     Path(__file__).with_name("official_general_administrative_code_provisions.json"),
     Path(__file__).with_name("official_civil_code_provisions.json"),
+    Path(__file__).with_name("official_entrepreneurs_law_provisions.json"),
 )
 # Backwards-compatible name used by earlier tests and operational tooling.
 REGISTRY_PATH = REGISTRY_PATHS[0]
 _ARTICLE_TOKEN = re.compile(r"\d+(?:(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+)|(?:-\d+))?")
 _SUPERSCRIPT_TRANSLATION = str.maketrans("¹²³⁴⁵⁶⁷⁸⁹⁰", "1234567890")
 _OFFICIAL_HOSTS = {"matsne.gov.ge", "www.matsne.gov.ge"}
+_OFFICIAL_PROVISION_ANCHOR = re.compile(
+    r"(?:part_\d+|DOCUMENT:\d+;PART:\d+;CHAPTER:\d+;ARTICLE:\d+(?:_\d+)?;)"
+)
 
 
 def _load_registry(path: Path) -> dict[str, Any]:
@@ -55,7 +59,7 @@ def _load_registry(path: Path) -> dict[str, Any]:
     for article, anchor in anchors.items():
         if not re.fullmatch(r"\d+(?:-\d+)?", str(article)):
             raise ValueError(f"invalid provision article key: {article}")
-        if not re.fullmatch(r"part_\d+", str(anchor)):
+        if not _OFFICIAL_PROVISION_ANCHOR.fullmatch(str(anchor)):
             raise ValueError(f"invalid provision anchor: {anchor}")
     if len(set(anchors.values())) != len(anchors):
         raise ValueError("official-provision anchors must identify one article each")
@@ -206,7 +210,7 @@ def is_official_provision_link(link: dict[str, Any]) -> bool:
             and not parsed.password
             and parsed.port is None
             and parsed.path.startswith("/ka/document/view/")
-            and bool(re.fullmatch(r"part_\d+", parsed.fragment))
+            and bool(_OFFICIAL_PROVISION_ANCHOR.fullmatch(parsed.fragment))
             and bool(str(link.get("article_ref") or "").strip())
         )
     except ValueError:

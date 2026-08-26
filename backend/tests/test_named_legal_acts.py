@@ -21,6 +21,10 @@ CIVIL_CODE_SOURCE = (
     "https://infohub.rs.ge/ka/workspace/document/"
     "1aa5b5a8-f2d6-4858-b2dc-642a4068bf98"
 )
+ENTREPRENEURS_LAW_SOURCE = (
+    "https://infohub.rs.ge/ka/workspace/document/"
+    "1f5a284f-9bf6-4109-afde-63d3afaeb09e"
+)
 
 
 @pytest.mark.parametrize(
@@ -91,6 +95,36 @@ def test_named_civil_code_article_resolves_in_all_languages(query, language):
         }
     )
     assert source["provision_links"][0]["url"].endswith("#part_745")
+    assert has_official_provision_link(source) is True
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 208 Закона Грузии о предпринимателях?", "ru"),
+        ("What does Article 208 of the Law of Georgia on Entrepreneurs provide?", "en"),
+        ("რას ადგენს „მეწარმეთა შესახებ“ საქართველოს კანონის 208-ე მუხლი?", "ka"),
+    ],
+)
+def test_named_entrepreneurs_law_article_resolves_in_all_languages(query, language):
+    parsed = parse_query(query, language=language)
+    candidates = resolve_article(parsed)
+
+    assert parsed.article_ref == "208"
+    assert len(candidates) == 1
+    assert candidates[0].source_url == ENTREPRENEURS_LAW_SOURCE
+    assert candidates[0].metadata["article_ref"] == "208"
+    assert candidates[0].metadata["section_label"] == "მუხლი 208"
+
+    source = enrich_source(
+        {
+            "url": candidates[0].source_url,
+            "article_ref": candidates[0].metadata["article_ref"],
+        }
+    )
+    assert source["provision_links"][0]["url"].endswith(
+        "#DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
+    )
     assert has_official_provision_link(source) is True
 
 
@@ -199,6 +233,28 @@ def test_pipeline_prefers_named_civil_code_article(query, language):
     assert top["document_id"] == "2d2f2e3c-78ce-49f1-94a6-b2580c0da1ef"
     assert top["channel"] == "article_resolver"
     assert top["metadata"]["article_ref"] == "623"
+
+
+@pytest.mark.parametrize(
+    ("query", "language"),
+    [
+        ("Что устанавливает статья 208 Закона Грузии о предпринимателях?", "ru"),
+        ("What does Article 208 of the Law of Georgia on Entrepreneurs provide?", "en"),
+        ("რას ადგენს „მეწარმეთა შესახებ“ საქართველოს კანონის 208-ე მუხლი?", "ka"),
+    ],
+)
+def test_pipeline_prefers_named_entrepreneurs_law_article(query, language):
+    trace = pipeline_v2.build_trace(
+        query,
+        language=language,
+        disabled_channels={"semantic_search"},
+    )
+    top = trace.reranking["top_ranked_documents"][0]
+
+    assert trace.classification["question_class"] == "canonical_law_lookup"
+    assert top["document_id"] == "74d06788-7c76-420d-bb6c-0a79874dbc9e"
+    assert top["channel"] == "article_resolver"
+    assert top["metadata"]["article_ref"] == "208"
 
 
 def test_pipeline_prefers_order_996_and_keeps_article_locator():

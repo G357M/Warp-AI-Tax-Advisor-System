@@ -42,6 +42,26 @@ CIVIL_CODE: dict[str, Any] = {
 }
 
 
+ENTREPRENEURS_LAW: dict[str, Any] = {
+    "aliases": (
+        "закон грузии о предпринимателях",
+        "закона грузии о предпринимателях",
+        "законе грузии о предпринимателях",
+        "закон о предпринимателях",
+        "закона о предпринимателях",
+        "law of georgia on entrepreneurs",
+        "law on entrepreneurs",
+        "entrepreneurs law",
+        "მეწარმეთა შესახებ",
+    ),
+    "document_id": "74d06788-7c76-420d-bb6c-0a79874dbc9e",
+    "title": "მეწარმეთა შესახებ საქართველოს კანონი",
+    "document_type": "law",
+    "source_url": "https://infohub.rs.ge/ka/workspace/document/1f5a284f-9bf6-4109-afde-63d3afaeb09e",
+    "topics": ["company_law", "corporate_governance", "conflict_of_interest"],
+}
+
+
 ORDER_996: dict[str, Any] = {
     "document_id": "54d15b6c-e8a1-465a-bc56-8c20498588b8",
     "title": "გადასახადების ადმინისტრირების შესახებ.",
@@ -57,6 +77,8 @@ def match_named_article_act(parsed: ParsedQuery) -> Optional[dict[str, Any]]:
         return GENERAL_ADMINISTRATIVE_CODE
     if any(alias in query for alias in CIVIL_CODE["aliases"]):
         return CIVIL_CODE
+    if any(alias in query for alias in ENTREPRENEURS_LAW["aliases"]):
+        return ENTREPRENEURS_LAW
     return None
 
 

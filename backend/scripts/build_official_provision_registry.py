@@ -27,7 +27,9 @@ _ARTICLE_START = re.compile(
 _SUP_TAG = re.compile(r"<sup\b[^>]*>(.*?)</sup>", re.IGNORECASE | re.DOTALL)
 _TAG = re.compile(r"<[^>]+>")
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-_ANCHOR = re.compile(r"part_\d+")
+_ANCHOR = re.compile(
+    r"(?:part_\d+|DOCUMENT:\d+;PART:\d+;CHAPTER:\d+;ARTICLE:\d+(?:_\d+)?;)"
+)
 _ZERO_WIDTH = str.maketrans("", "", "\u200b\u200c\u200d\ufeff")
 _SUPERSCRIPT_TRANSLATION = str.maketrans("¹²³⁴⁵⁶⁷⁸⁹⁰", "1234567890")
 

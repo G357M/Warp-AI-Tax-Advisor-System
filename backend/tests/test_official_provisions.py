@@ -2,6 +2,7 @@ from rag_v2.faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL
 from rag_v2.official_provisions import (
     enrich_source,
     has_official_provision_link,
+    is_official_provision_link,
     load_official_provision_registries,
     load_tax_code_registry,
 )
@@ -54,6 +55,72 @@ def test_civil_code_registry_is_complete_and_verified():
     assert registry["article_anchors"]["623"] == "part_745"
     assert registry["article_anchors"]["624-1"] == "part_1838"
     assert registry["article_anchors"]["882-1"] == "part_1870"
+
+
+def test_entrepreneurs_law_registry_uses_verified_structured_anchors():
+    registries = {
+        registry["registry_id"]: registry
+        for registry in load_official_provision_registries()
+    }
+    registry = registries["entrepreneurs_law"]
+
+    assert len(registry["article_anchors"]) == 256
+    assert registry["article_anchors"]["1"] == (
+        "DOCUMENT:1;PART:1;CHAPTER:1;ARTICLE:1;"
+    )
+    assert registry["article_anchors"]["34-1"] == (
+        "DOCUMENT:1;PART:1;CHAPTER:5;ARTICLE:34_1;"
+    )
+    assert registry["article_anchors"]["208"] == (
+        "DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
+    )
+    assert registry["article_anchors"]["255"] == (
+        "DOCUMENT:1;PART:2;CHAPTER:16;ARTICLE:255;"
+    )
+
+
+def test_entrepreneurs_law_article_gets_exact_structured_official_link():
+    source = enrich_source(
+        {
+            "title": "მეწარმეთა შესახებ საქართველოს კანონი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/1f5a284f-9bf6-4109-afde-63d3afaeb09e",
+            "article_ref": "208",
+        }
+    )
+
+    assert source["official_act_url"] == "https://matsne.gov.ge/ka/document/view/5230186"
+    assert source["provision_links"] == [
+        {
+            "article_ref": "208",
+            "point_ref": None,
+            "url": (
+                "https://matsne.gov.ge/ka/document/view/5230186"
+                "#DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
+            ),
+        }
+    ]
+    assert source["provision_publication_url"].endswith("?publication=13")
+    assert has_official_provision_link(source) is True
+
+
+def test_malformed_structured_official_link_is_rejected():
+    valid = {
+        "article_ref": "208",
+        "url": (
+            "https://matsne.gov.ge/ka/document/view/5230186"
+            "#DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;"
+        ),
+    }
+    malformed = {
+        "article_ref": "208",
+        "url": (
+            "https://matsne.gov.ge/ka/document/view/5230186"
+            "#DOCUMENT:1;PART:2;CHAPTER:14;ARTICLE:208;javascript"
+        ),
+    }
+
+    assert is_official_provision_link(valid) is True
+    assert is_official_provision_link(malformed) is False
 
 
 def test_civil_code_article_gets_exact_official_link():
