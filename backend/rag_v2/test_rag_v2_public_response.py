@@ -79,11 +79,29 @@ class PublicResponseShapeTests(unittest.TestCase):
 
     def test_tax_appeal_procedure_is_precise_in_all_public_languages(self):
         cases = (
-            ("ru", "со дня его вручения", "Службу доходов", "электронной форме"),
-            ("en", "after it is delivered", "Revenue Service", "filed electronically"),
-            ("ka", "მისი ჩაბარებიდან", "შემოსავლების სამსახურში", "ელექტრონული ფორმით"),
+            (
+                "ru",
+                "со дня его вручения",
+                "Службу доходов",
+                "электронной форме",
+                "Источник: Налоговый кодекс Грузии, статьи 296, 297 и 299.",
+            ),
+            (
+                "en",
+                "after it is delivered",
+                "Revenue Service",
+                "filed electronically",
+                "Source: Tax Code of Georgia, Articles 296, 297 and 299.",
+            ),
+            (
+                "ka",
+                "მისი ჩაბარებიდან",
+                "შემოსავლების სამსახურში",
+                "ელექტრონული ფორმით",
+                "წყარო: საქართველოს საგადასახადო კოდექსი, მუხლები 296, 297 და 299.",
+            ),
         )
-        for language, delivery_rule, filing_body, filing_form in cases:
+        for language, delivery_rule, filing_body, filing_form, citation in cases:
             with self.subTest(language=language):
                 trace = types.SimpleNamespace(
                     parsed_query={"language": language, "goal": "appeal_procedure"}
@@ -93,6 +111,7 @@ class PublicResponseShapeTests(unittest.TestCase):
                 self.assertIn(delivery_rule, result)
                 self.assertIn(filing_body, result)
                 self.assertIn(filing_form, result)
+                self.assertIn(citation, result)
                 self.assertNotIn("статист", result.lower())
                 self.assertNotIn("statistics", result.lower())
                 self.assertNotIn("სტატისტ", result.lower())

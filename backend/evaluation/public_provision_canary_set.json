@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-26.1",
-  "description": "Bounded RU/EN/KA public-response contracts for an exact official Labour Code provision link.",
+  "suite_version": "2026-08-26.2",
+  "description": "Bounded RU/EN/KA public-response contracts for exact official Labour Code and Tax Code provision links.",
   "execution_profile": {
-    "max_public_requests": 3,
+    "max_public_requests": 9,
     "postgresql_writes_allowed": false,
     "redis_translation_cache_writes_allowed": true,
     "full_report_must_remain_operational": true
@@ -73,6 +73,120 @@
         "article_ref": "47",
         "url": "https://matsne.gov.ge/ka/document/view/1155567#part_173",
         "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1155567?publication=28"
+      }
+    },
+    {
+      "id": "tax_code_article_168_ru",
+      "language": "ru",
+      "query": "Что устанавливает статья 168 Налогового кодекса Грузии?",
+      "required_response_all": ["168"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "168",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_556",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_code_article_168_en",
+      "language": "en",
+      "query": "What does Article 168 of the Tax Code of Georgia provide?",
+      "required_response_all": ["168"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "168",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_556",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_code_article_168_ka",
+      "language": "ka",
+      "query": "რას ადგენს საქართველოს საგადასახადო კოდექსის 168-ე მუხლი?",
+      "required_response_all": ["168"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "168",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_556",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_appeal_article_299_ru",
+      "language": "ru",
+      "query": "Как обжаловать решение налоговой?",
+      "required_response_all": ["299"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "299",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_378",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_appeal_article_299_en",
+      "language": "en",
+      "query": "How do I appeal a tax decision?",
+      "required_response_all": ["299"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "299",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_378",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_appeal_article_299_ka",
+      "language": "ka",
+      "query": "როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?",
+      "required_response_all": ["299"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "299",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_378",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
       }
     }
   ]

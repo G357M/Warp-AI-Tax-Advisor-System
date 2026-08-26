@@ -355,21 +355,24 @@ def tax_appeal_procedure_response(trace: Any) -> Optional[str]:
             "В системе Министерства финансов спор обычно начинается с подачи жалобы в Службу доходов и является двухэтапным; "
             "на любой стадии этого административного рассмотрения заявитель вправе обратиться в суд. "
             "Жалоба, как правило, подаётся в электронной форме. Если решение не было направлено заявителю, "
-            "срок обжалования исчисляется со дня, когда он узнал о решении."
+            "срок обжалования исчисляется со дня, когда он узнал о решении.\n\n"
+            "Источник: Налоговый кодекс Грузии, статьи 296, 297 и 299."
         ),
         "en": (
             "A tax authority decision may be appealed within 30 days after it is delivered to the person. "
             "Within the Ministry of Finance system, a dispute normally begins by filing a complaint with the Revenue Service and proceeds in two stages; "
             "the complainant may go to court at any stage of that administrative process. "
             "The complaint is generally filed electronically. If the decision was not sent to the complainant, "
-            "the appeal period runs from the day the decision became known to them."
+            "the appeal period runs from the day the decision became known to them.\n\n"
+            "Source: Tax Code of Georgia, Articles 296, 297 and 299."
         ),
         "ka": (
             "საგადასახადო ორგანოს გადაწყვეტილება შეგიძლიათ გაასაჩივროთ მისი ჩაბარებიდან 30 დღის ვადაში. "
             "საქართველოს ფინანსთა სამინისტროს სისტემაში დავა, როგორც წესი, იწყება საჩივრის შემოსავლების სამსახურში წარდგენით და ორეტაპიანია; "
             "ამ ადმინისტრაციული დავის ნებისმიერ ეტაპზე მომჩივანს შეუძლია მიმართოს სასამართლოს. "
             "საჩივარი, როგორც წესი, ელექტრონული ფორმით წარედგინება. თუ გადაწყვეტილება მომჩივანს არ გაეგზავნა, "
-            "გასაჩივრების ვადა აითვლება იმ დღიდან, როდესაც გადაწყვეტილება მისთვის ცნობილი გახდა."
+            "გასაჩივრების ვადა აითვლება იმ დღიდან, როდესაც გადაწყვეტილება მისთვის ცნობილი გახდა.\n\n"
+            "წყარო: საქართველოს საგადასახადო კოდექსი, მუხლები 296, 297 და 299."
         ),
     }
     return answers.get(_response_language(trace), answers["ru"])

@@ -97,8 +97,15 @@ def load_suite(path: Path = DEFAULT_SUITE_PATH) -> dict[str, Any]:
         language: sum(case.get("language") == language for case in cases)
         for language in ("ru", "en", "ka")
     }
-    if counts != {"ru": 1, "en": 1, "ka": 1}:
-        raise ValueError("public provision canary must contain one RU/EN/KA case")
+    if (
+        not counts["ru"]
+        or len(set(counts.values())) != 1
+        or sum(counts.values()) != len(cases)
+    ):
+        raise ValueError(
+            "public provision canary must contain a balanced non-empty "
+            "RU/EN/KA case set"
+        )
     if max_requests != len(cases):
         raise ValueError("max_public_requests must equal the versioned case count")
 
