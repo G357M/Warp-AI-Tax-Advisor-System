@@ -18,7 +18,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -105,6 +105,7 @@ def load_suite(path: Path = DEFAULT_SUITE_PATH) -> dict[str, Any]:
     for case in cases:
         provision = case.get("official_provision") or {}
         parsed = urlparse(str(provision.get("url") or ""))
+        publication = urlparse(str(provision.get("verified_publication_url") or ""))
         if (
             not case.get("query")
             or not case.get("required_response_all")
@@ -112,6 +113,10 @@ def load_suite(path: Path = DEFAULT_SUITE_PATH) -> dict[str, Any]:
             or parsed.scheme != "https"
             or parsed.hostname != "matsne.gov.ge"
             or not parsed.fragment
+            or publication.scheme != "https"
+            or publication.hostname != "matsne.gov.ge"
+            or publication.fragment
+            or not parse_qs(publication.query).get("publication")
         ):
             raise ValueError(f"invalid public provision contract: {case.get('id')}")
     return payload
@@ -170,15 +175,26 @@ def _post_json(url: str, payload: dict[str, Any], timeout: float) -> dict[str, A
         }
 
 
-def _provision_links(sources: Any) -> list[dict[str, Any]]:
-    links: list[dict[str, Any]] = []
-    for source in sources if isinstance(sources, list) else []:
-        if not isinstance(source, dict):
-            continue
-        metadata = source.get("metadata") or {}
-        candidates = metadata.get("provision_links") or source.get("provision_links") or []
-        links.extend(item for item in candidates if isinstance(item, dict))
-    return links
+def _source_matches_provision(
+    source: dict[str, Any], expected: dict[str, Any]
+) -> bool:
+    metadata = source.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        return False
+    if (
+        metadata.get("provision_publication_url")
+        != expected["verified_publication_url"]
+    ):
+        return False
+    candidates = (
+        metadata.get("provision_links") or source.get("provision_links") or []
+    )
+    return any(
+        isinstance(link, dict)
+        and str(link.get("article_ref")) == expected["article_ref"]
+        and link.get("url") == expected["url"]
+        for link in candidates
+    )
 
 
 def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
@@ -209,9 +225,9 @@ def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]
         and len(sources) >= expected_evidence["min_source_count"]
     )
     official_provision_link_ok = any(
-        str(link.get("article_ref")) == expected_provision["article_ref"]
-        and link.get("url") == expected_provision["url"]
-        for link in _provision_links(sources)
+        isinstance(source, dict)
+        and _source_matches_provision(source, expected_provision)
+        for source in sources
     )
     language_ok = response_language_ok(case["language"], answer)
 

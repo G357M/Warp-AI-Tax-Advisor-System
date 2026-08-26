@@ -15,7 +15,7 @@ def _public_body(language: str, *, url: str | None = None):
     }
     provision_url = url or (
         "https://matsne.gov.ge/ka/document/view/1155567"
-        "?publication=28#part_173"
+        "#part_173"
     )
     return {
         "response": answers[language],
@@ -28,6 +28,10 @@ def _public_body(language: str, *, url: str | None = None):
                     "provision_links": [
                         {"article_ref": "47", "point_ref": None, "url": provision_url}
                     ],
+                    "provision_publication_url": (
+                        "https://matsne.gov.ge/ka/document/view/1155567"
+                        "?publication=28"
+                    ),
                 },
             }
         ],
