@@ -1,5 +1,7 @@
 """Contracts for the bounded public exact-provision canary."""
 
+import hashlib
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -54,6 +56,37 @@ def test_default_suite_is_balanced_and_request_bounded():
     assert {case["language"] for case in suite["cases"]} == {"ru", "en", "ka"}
     assert suite["execution_profile"]["max_public_requests"] == 3
     assert suite["execution_profile"]["postgresql_writes_allowed"] is False
+
+
+def test_committed_baseline_matches_suite_and_contains_no_public_payloads():
+    suite = canary.load_suite()
+    suite_bytes = json.dumps(
+        suite, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        canary.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "public_provision_canary_2026-08-26_ceb7ac7.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    def nested_keys(value):
+        if isinstance(value, dict):
+            return set(value) | set().union(
+                *(nested_keys(item) for item in value.values()), set()
+            )
+        if isinstance(value, list):
+            return set().union(*(nested_keys(item) for item in value), set())
+        return set()
+
+    assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
+    assert baseline["suite_version"] == suite["suite_version"]
+    assert baseline["passed_cases"] == baseline["cases"] == 3
+    assert baseline["request_budget"] == {"limit": 3, "actual": 3}
+    assert all(value == 1.0 for value in baseline["metrics"].values())
+    assert "results" not in baseline
+    assert {"query", "response", "sources"}.isdisjoint(nested_keys(baseline))
 
 
 def test_exact_public_provision_and_language_contracts_pass():

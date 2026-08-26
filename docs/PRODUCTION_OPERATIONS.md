@@ -596,6 +596,46 @@ This command exits non-zero when either gate or its artifact handling fails.
 The nightly wrapper records the same failure and alerts, but preserves the
 primary scraper exit code.
 
+## Bounded public exact-provision canary
+
+Inspect the three-case RU/EN/KA plan first. Dry-run performs no HTTP request:
+
+```bash
+cd /root/infohub
+docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py
+```
+
+Execute only with the exact versioned three-request ceiling and keep the full
+report in protected operational state:
+
+```bash
+install -d -m 0700 .state/public-provision-canary/manual
+docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py \
+  --execute \
+  --max-public-requests 3 \
+  --commit "$(git rev-parse HEAD)" \
+  --output /tmp/public_provision_canary_report.json \
+  --baseline-output /tmp/public_provision_canary_baseline.json
+docker cp infohub-backend:/tmp/public_provision_canary_report.json \
+  .state/public-provision-canary/manual/report.json
+docker cp infohub-backend:/tmp/public_provision_canary_baseline.json \
+  .state/public-provision-canary/manual/baseline.json
+chmod 0600 .state/public-provision-canary/manual/report.json \
+  .state/public-provision-canary/manual/baseline.json
+```
+
+Execute mode accepts only the backend loopback
+`http://127.0.0.1:8000/api/v1/public/query` route. It validates the final public
+HTTP/Pydantic shape: response language and article reference, exact-provision
+evidence, canonical Matsne `#part_173` deep-link and the separate verified
+publication-28 URL. The accepted `2026-08-26.1` production run for commit
+`ceb7ac7` passed 3/3 with all seven metrics at 1.0 and used exactly 3/3 public
+requests. The full report contains queries, answers and sources and must remain
+mode `0600`; only
+`evaluation/baselines/public_provision_canary_2026-08-26_ceb7ac7.json` is safe
+for Git. The canary may invoke the provider, so it is manual and must not be
+added to the nightly no-LLM quality gates.
+
 ## Bounded live answer-safety evaluation
 
 Inspect the versioned execution plan first; this does not connect to the corpus
