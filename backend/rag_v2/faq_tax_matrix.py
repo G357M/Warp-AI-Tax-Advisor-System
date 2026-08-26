@@ -1,25 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, List, Optional
+
+from .legal_answer_contracts import (
+    LegalAnswerContract,
+    build_contract_cases,
+)
 
 
 CANONICAL_TAX_CODE_SOURCE_URL = "https://infohub.rs.ge/ka/workspace/document/800cbef0-32bf-4f06-94fe-8afd2bf144a0"
 CANONICAL_TAX_CODE_TITLE = "საქართველოს საგადასახადო კოდექსი."
 
 
-@dataclass(frozen=True)
-class TaxFaqEntry:
-    slug: str
-    topic: str
-    article_ref: str
-    question_class: str
-    response_kind: str
-    sample_queries: Dict[str, str]
-    response_by_lang: Dict[str, str]
-    note: str = ""
-    subject: Optional[str] = None
-    smoke_contains: Optional[Dict[str, List[str]]] = None
+TaxFaqEntry = LegalAnswerContract
 
 
 TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
@@ -221,7 +214,7 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
     TaxFaqEntry(
         slug="vat-deregistration-threshold",
         topic="vat_deregistration_threshold",
-        article_ref="1651",
+        article_ref="165-1",
         question_class="canonical_law_lookup",
         response_kind="threshold_with_condition",
         note="A person may request VAT deregistration if the last 12 months' taxable operations do not exceed GEL 100,000 and at least one year has passed since the last VAT registration.",
@@ -452,3 +445,7 @@ def get_tax_faq_entry(topic: Optional[str]) -> Optional[TaxFaqEntry]:
         if entry.topic == topic:
             return entry
     return None
+
+
+def build_tax_answer_contract_cases() -> List[Dict[str, object]]:
+    return build_contract_cases(TAX_FAQ_MATRIX)

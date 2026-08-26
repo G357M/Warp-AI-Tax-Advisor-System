@@ -229,7 +229,7 @@ def direct_tax_faq_response(trace: Any) -> Optional[str]:
         return None
     if entry.subject and parsed.get("subject") not in {None, entry.subject}:
         return None
-    return entry.response_by_lang.get(_response_language(trace)) or entry.response_by_lang.get("ru")
+    return entry.response(_response_language(trace))
 
 
 def interest_tax_rate_response(trace: Any) -> Optional[str]:
@@ -258,7 +258,7 @@ def import_vat_response(trace: Any) -> Optional[str]:
     entry = get_tax_faq_entry("import_vat")
     if not entry:
         return None
-    return entry.response_by_lang.get(_response_language(trace)) or entry.response_by_lang.get("ru")
+    return entry.response(_response_language(trace))
 
 
 def nonresident_withholding_tax_response(trace: Any) -> Optional[str]:
@@ -595,6 +595,11 @@ def individual_property_tax_rate_response(trace: Any) -> Optional[str]:
 
     locality = str(parsed.get("locality") or "").strip()
     lang = _response_language(trace)
+    contract = get_tax_faq_entry("property_tax")
+    if contract is None:
+        return None
+    if not locality:
+        return contract.response(lang)
 
     ru_labels = {
         "dmanisi": "Дманиси",
@@ -617,26 +622,27 @@ def individual_property_tax_rate_response(trace: Any) -> Optional[str]:
 
     if lang == "en":
         locality_text = f" in {en_labels.get(locality, locality)}" if locality else ""
-        return (
+        response = (
             f"For an individual, property tax{locality_text} should not be described as a fixed 1% rate, because that rate applies to companies. "
             "For individuals, the tax depends on the previous calendar year's family income, and the rate can range from 0% to 0.8%. "
             "If you need the exact amount, it should be calculated separately based on income and the type of property."
         )
-    if lang == "ka":
+    elif lang == "ka":
         locality_text = f" {ka_labels.get(locality, locality)}" if locality else ""
-        return (
+        response = (
             f"ფიზიკური პირისთვის ქონების გადასახადი{locality_text} ფიქსირებული 1%-იანი განაკვეთით არ განისაზღვრება, რადგან ასეთი განაკვეთი ორგანიზაციებს ეხება. "
             "ფიზიკური პირებისთვის გადასახადი დამოკიდებულია წინა კალენდარული წლის ოჯახის შემოსავალზე და განაკვეთი შეიძლება იყოს 0%-დან 0.8%-მდე. "
             "ზუსტი თანხის დასადგენად საჭიროა ცალკე გამოთვლა შემოსავლისა და ქონების ტიპის მიხედვით."
         )
-
-    locality_text = f" в {ru_labels.get(locality, locality)}" if locality else ""
-    return (
-        f"Для физлица налог на имущество{locality_text} не следует описывать фиксированной ставкой 1%, "
-        "потому что такая ставка относится к организациям. Для физических лиц налог зависит от дохода за "
-        "предыдущий календарный год, а ставка может варьироваться от 0% до 0.8%. Если нужен точный расчёт, "
-        "его нужно считать отдельно по доходу семьи и виду имущества."
-    )
+    else:
+        locality_text = f" в {ru_labels.get(locality, locality)}" if locality else ""
+        response = (
+            f"Для физлица налог на имущество{locality_text} не следует описывать фиксированной ставкой 1%, "
+            "потому что такая ставка относится к организациям. Для физических лиц налог зависит от дохода за "
+            "предыдущий календарный год, а ставка может варьироваться от 0% до 0.8%. Если нужен точный расчёт, "
+            "его нужно считать отдельно по доходу семьи и виду имущества."
+        )
+    return f"{response}\n\n{contract.citation(lang)}"
 
 
 def _trim_to_boundary(text: str, limit: int) -> str:

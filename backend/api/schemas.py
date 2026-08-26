@@ -103,6 +103,8 @@ class SourceInfo(BaseModel):
     document_status: Optional[str] = None
     authority: Optional[str] = None
     retrieval_channel: Optional[str] = None
+    provision_registry_id: Optional[str] = None
+    provision_act_title: Optional[str] = None
     official_act_url: Optional[str] = None
     provision_links: List[ProvisionLinkInfo] = Field(default_factory=list)
     provision_registry_version: Optional[str] = None

@@ -366,7 +366,11 @@ class PublicResponseShapeTests(unittest.TestCase):
             parsed_query={"language": "ru", "topic": "vat", "goal": "rate_lookup"},
         )
         result = vat_rate_response(trace)
-        self.assertEqual(result, "Стандартная ставка НДС в Грузии — 18%.")
+        self.assertEqual(
+            result,
+            "Стандартная ставка НДС в Грузии — 18%.\n\n"
+            "Источник: Налоговый кодекс Грузии, статья 166.",
+        )
 
     def test_profit_tax_rate_response_en_is_direct(self):
         trace = types.SimpleNamespace(
@@ -442,7 +446,7 @@ class PublicResponseShapeTests(unittest.TestCase):
                         result = individual_property_tax_rate_response(trace)
                     else:
                         result = direct_tax_faq_response(trace)
-                    self.assertEqual(result, entry.response_by_lang[lang])
+                    self.assertEqual(result, entry.response(lang))
 
     def test_nonresident_service_wht_response_mentions_possible_vat_separately(self):
         trace = types.SimpleNamespace(

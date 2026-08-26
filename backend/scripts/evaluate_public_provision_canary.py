@@ -74,6 +74,11 @@ def _validate_loopback_url(value: str) -> str:
 
 def load_suite(path: Path = DEFAULT_SUITE_PATH) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    return validate_suite_payload(payload)
+
+
+def validate_suite_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate a static or generated canary suite without filesystem I/O."""
     if payload.get("schema_version") != 1:
         raise ValueError("unsupported public provision canary schema_version")
     if not payload.get("suite_version"):

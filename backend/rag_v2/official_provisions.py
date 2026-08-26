@@ -187,6 +187,8 @@ def enrich_source(source: dict[str, Any]) -> dict[str, Any]:
 
     enriched.update(
         {
+            "provision_registry_id": registry["registry_id"],
+            "provision_act_title": registry["act_title"],
             "official_act_url": registry["matsne_document_url"],
             "provision_links": links,
             "provision_registry_version": registry["registry_version"],

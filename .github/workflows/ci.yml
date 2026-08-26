@@ -50,6 +50,8 @@ jobs:
           decision_fact_contract.py
           scripts/add_auth_recovery.py
           scripts/audit_production_readiness.py
+          scripts/audit_legal_answer_contracts.py
+          scripts/build_legal_answer_contract_canary.py
           scripts/build_official_provision_registry.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
@@ -104,6 +106,7 @@ jobs:
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
           tests/test_integration.py
+          tests/test_legal_answer_contracts.py
           tests/test_infohub_duplicate_verification.py
           tests/test_duplicate_expert_prefill.py
           -q -p no:cacheprovider
@@ -124,6 +127,11 @@ jobs:
 
       - name: Validate bounded public provision canary plan
         run: python scripts/evaluate_public_provision_canary.py
+
+      - name: Validate generated legal answer contracts
+        run: |
+          python scripts/audit_legal_answer_contracts.py
+          python scripts/build_legal_answer_contract_canary.py
 
       - name: Validate read-only decision-facts quality plan
         run: python scripts/evaluate_decision_facts_quality.py

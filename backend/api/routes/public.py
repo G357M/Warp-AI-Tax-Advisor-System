@@ -9,6 +9,7 @@ from typing import Optional, List, Dict, Any
 
 from rag.pipeline import rag_pipeline
 from api.evidence import attach_evidence
+from rag_v2.legal_answer_contracts import ensure_exact_provision_citations
 from rag_v2.shadow_runtime import maybe_run_shadow
 from rag_v2.live_runtime import maybe_run_live_rollout
 from api.schemas import EvidenceInfo
@@ -189,6 +190,7 @@ def process_public_query(query_data: PublicQueryRequest):
             extra={"surface": "public"},
         )
         result = attach_evidence(result)
+        result = ensure_exact_provision_citations(result, query_data.language)
 
         # Format sources for public response
         formatted_sources = []
@@ -209,6 +211,8 @@ def process_public_query(query_data: PublicQueryRequest):
                     "document_status": source.get("document_status"),
                     "authority": source.get("authority"),
                     "retrieval_channel": source.get("retrieval_channel"),
+                    "provision_registry_id": source.get("provision_registry_id"),
+                    "provision_act_title": source.get("provision_act_title"),
                     "official_act_url": source.get("official_act_url"),
                     "provision_links": source.get("provision_links") or [],
                     "provision_registry_version": source.get("provision_registry_version"),

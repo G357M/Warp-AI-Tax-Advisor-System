@@ -15,6 +15,7 @@ from core.time_utils import utc_now
 from models import User, Conversation, Message
 from api.schemas import ConversationResponse, QueryRequest, QueryResponse, SourceInfo
 from api.evidence import attach_evidence
+from rag_v2.legal_answer_contracts import ensure_exact_provision_citations
 from rag.pipeline import rag_pipeline
 from rag_v2.shadow_runtime import maybe_run_shadow
 from rag_v2.live_runtime import maybe_run_live_rollout
@@ -107,6 +108,7 @@ def process_query(
             extra={"surface": "authenticated", "conversation_id": str(conversation.id)},
         )
         result = attach_evidence(result)
+        result = ensure_exact_provision_citations(result, query_data.language)
 
         db.add(Message(
             conversation_id=conversation.id,

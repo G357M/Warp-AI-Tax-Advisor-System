@@ -368,7 +368,7 @@ class PipelineV2RegressionTests(unittest.TestCase):
         trace = pipeline_v2.build_trace("Какой порог для отмены регистрации по НДС в Грузии?")
         top = trace.reranking["top_ranked_documents"][0]
         self.assertEqual(top["title"], "საქართველოს საგადასახადო კოდექსი.")
-        self.assertEqual(top["metadata"].get("article_ref"), "1651")
+        self.assertEqual(top["metadata"].get("article_ref"), "165-1")
 
     def test_property_tax_company_query_prefers_tax_code_article_202(self):
         trace = pipeline_v2.build_trace("Какой налог на имущество для компании в Грузии?")
