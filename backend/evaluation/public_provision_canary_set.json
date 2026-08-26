@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
-  "suite_version": "2026-08-26.2",
-  "description": "Bounded RU/EN/KA public-response contracts for exact official Labour Code and Tax Code provision links.",
+  "suite_version": "2026-08-26.3",
+  "description": "Bounded RU/EN/KA public-response contracts for exact official Labour Code and Tax Code provision links, including deterministic tax guidance.",
   "execution_profile": {
-    "max_public_requests": 9,
+    "max_public_requests": 21,
+    "request_interval_seconds": 8.0,
     "postgresql_writes_allowed": false,
     "redis_translation_cache_writes_allowed": true,
     "full_report_must_remain_operational": true
@@ -186,6 +187,234 @@
       "official_provision": {
         "article_ref": "299",
         "url": "https://matsne.gov.ge/ka/document/view/1043717#part_378",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "vat_rate_article_166_ru",
+      "language": "ru",
+      "query": "Сколько процентов НДС в Грузии?",
+      "required_response_all": ["18", "166"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "166",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_553",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "vat_rate_article_166_en",
+      "language": "en",
+      "query": "What is the VAT rate in Georgia?",
+      "required_response_all": ["18", "166"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "166",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_553",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "vat_rate_article_166_ka",
+      "language": "ka",
+      "query": "რამდენი პროცენტია დღგ საქართველოში?",
+      "required_response_all": ["18", "166"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "166",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_553",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "small_business_articles_88_90_ru",
+      "language": "ru",
+      "query": "Может ли ООО применять налог 1%?",
+      "required_response_all": ["1%", "88", "90"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "88",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_108",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "small_business_articles_88_90_en",
+      "language": "en",
+      "query": "Can an LLC use the 1% tax regime?",
+      "required_response_all": ["1%", "88", "90"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "88",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_108",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "small_business_articles_88_90_ka",
+      "language": "ka",
+      "query": "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+      "required_response_all": ["1%", "88", "90"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "88",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_108",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_residency_article_34_ru",
+      "language": "ru",
+      "query": "Когда физлицо становится налоговым резидентом Грузии?",
+      "required_response_all": ["183", "34"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "34",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_41",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_residency_article_34_en",
+      "language": "en",
+      "query": "When does an individual become a tax resident of Georgia?",
+      "required_response_all": ["183", "34"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "34",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_41",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "tax_residency_article_34_ka",
+      "language": "ka",
+      "query": "როდის ითვლება ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად?",
+      "required_response_all": ["183", "34"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "34",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_41",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "late_payment_article_272_ru",
+      "language": "ru",
+      "query": "Какая пеня начисляется за просрочку уплаты налога в Грузии?",
+      "required_response_all": ["0,05", "272"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "272",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_345",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "late_payment_article_272_en",
+      "language": "en",
+      "query": "What late payment interest applies to overdue tax in Georgia?",
+      "required_response_all": ["0.05", "272"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "272",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_345",
+        "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
+      }
+    },
+    {
+      "id": "late_payment_article_272_ka",
+      "language": "ka",
+      "query": "რა საურავი ერიცხება ვადაგადაცილებულ გადასახადს საქართველოში?",
+      "required_response_all": ["0,05", "272"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "272",
+        "url": "https://matsne.gov.ge/ka/document/view/1043717#part_345",
         "verified_publication_url": "https://matsne.gov.ge/ka/document/view/1043717?publication=245"
       }
     }

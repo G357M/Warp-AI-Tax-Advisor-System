@@ -303,11 +303,29 @@ class PublicResponseShapeTests(unittest.TestCase):
 
     def test_homepage_llc_response_is_narrow_and_multilingual(self):
         cases = (
-            ("ru", "Может ли ООО применять налог 1%?", "ООО", "индивидуальному"),
-            ("en", "Can an LLC use the 1% tax regime?", "LLC", "individual"),
-            ("ka", "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?", "შპს", "ინდივიდუალური"),
+            (
+                "ru",
+                "Может ли ООО применять налог 1%?",
+                "ООО",
+                "индивидуальному",
+                "Источник:",
+            ),
+            (
+                "en",
+                "Can an LLC use the 1% tax regime?",
+                "LLC",
+                "individual",
+                "Source:",
+            ),
+            (
+                "ka",
+                "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+                "შპს",
+                "ინდივიდუალური",
+                "წყარო:",
+            ),
         )
-        for language, query, legal_form, eligible_person in cases:
+        for language, query, legal_form, eligible_person, source_label in cases:
             with self.subTest(language=language):
                 trace = types.SimpleNamespace(
                     parsed_query={
@@ -320,6 +338,9 @@ class PublicResponseShapeTests(unittest.TestCase):
                 self.assertIn("1%", result)
                 self.assertIn(legal_form, result)
                 self.assertIn(eligible_person, result)
+                self.assertIn("88", result)
+                self.assertIn("90", result)
+                self.assertIn(source_label, result)
                 self.assertNotIn("15%", result)
 
     def test_llc_property_tax_does_not_trigger_small_business_guard(self):

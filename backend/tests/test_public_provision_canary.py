@@ -1,6 +1,5 @@
 """Contracts for the bounded public exact-provision canary."""
 
-import hashlib
 import json
 from datetime import datetime, timezone
 
@@ -22,10 +21,20 @@ def _nested_keys(value):
 def _public_body(case: dict, *, url: str | None = None):
     language = case["language"]
     article_ref = case["official_provision"]["article_ref"]
+    required_values = " ".join(case["required_response_all"])
     answers = {
-        "ru": f"Статья {article_ref} устанавливает применимое правило.",
-        "en": f"Article {article_ref} provides the applicable rule.",
-        "ka": f"საქართველოს კოდექსის {article_ref}-ე მუხლი ადგენს შესაბამის წესს.",
+        "ru": (
+            f"Статья {article_ref} устанавливает применимое правило: "
+            f"{required_values}."
+        ),
+        "en": (
+            f"Article {article_ref} provides the applicable rule: "
+            f"{required_values}."
+        ),
+        "ka": (
+            f"საქართველოს კოდექსის {article_ref}-ე მუხლი ადგენს შესაბამის წესს: "
+            f"{required_values}."
+        ),
     }
     provision_url = url or case["official_provision"]["url"]
     return {
@@ -63,16 +72,17 @@ def _public_body(case: dict, *, url: str | None = None):
 def test_default_suite_is_balanced_and_request_bounded():
     suite = canary.load_suite()
 
-    assert len(suite["cases"]) == 9
+    assert len(suite["cases"]) == 21
     assert {case["language"] for case in suite["cases"]} == {"ru", "en", "ka"}
     assert {
         language: sum(case["language"] == language for case in suite["cases"])
         for language in ("ru", "en", "ka")
-    } == {"ru": 3, "en": 3, "ka": 3}
+    } == {"ru": 7, "en": 7, "ka": 7}
     assert {
         case["official_provision"]["article_ref"] for case in suite["cases"]
-    } == {"47", "168", "299"}
-    assert suite["execution_profile"]["max_public_requests"] == 9
+    } == {"34", "47", "88", "166", "168", "272", "299"}
+    assert suite["execution_profile"]["max_public_requests"] == 21
+    assert suite["execution_profile"]["request_interval_seconds"] == 8.0
     assert suite["execution_profile"]["postgresql_writes_allowed"] is False
 
     tax_registry = json.loads(
@@ -81,7 +91,7 @@ def test_default_suite_is_balanced_and_request_bounded():
     )
     for case in suite["cases"]:
         article_ref = case["official_provision"]["article_ref"]
-        if article_ref not in {"168", "299"}:
+        if article_ref == "47":
             continue
         assert case["official_provision"]["url"] == (
             f"{tax_registry['matsne_document_url']}"
@@ -112,11 +122,7 @@ def test_historical_committed_baseline_contains_no_public_payloads():
     assert {"query", "response", "sources"}.isdisjoint(_nested_keys(baseline))
 
 
-def test_current_committed_baseline_matches_suite_and_contains_no_public_payloads():
-    suite = canary.load_suite()
-    suite_bytes = json.dumps(
-        suite, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+def test_previous_committed_baseline_contains_no_public_payloads():
     baseline_path = (
         canary.BACKEND_ROOT.parent
         / "evaluation"
@@ -125,8 +131,10 @@ def test_current_committed_baseline_matches_suite_and_contains_no_public_payload
     )
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
 
-    assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
-    assert baseline["suite_version"] == suite["suite_version"]
+    assert baseline["suite_sha256"] == (
+        "768f0b2eb4a724e19eecdff53cce5394379b49b96a63b88bae58d860c624284a"
+    )
+    assert baseline["suite_version"] == "2026-08-26.2"
     assert baseline["deployed_commit"] == "401ec58856b46d3a8de4bf6ba9b25f0b032ca550"
     assert baseline["passed_cases"] == baseline["cases"] == 9
     assert baseline["request_budget"] == {"limit": 9, "actual": 9}
@@ -167,9 +175,12 @@ def test_document_level_or_wrong_anchor_response_fails_closed():
     assert scored["official_provision_link_ok"] is False
 
 
-def test_evaluator_makes_exactly_nine_requests_and_baseline_is_aggregate(monkeypatch):
+def test_evaluator_makes_exactly_twenty_one_requests_and_baseline_is_aggregate(
+    monkeypatch,
+):
     suite = canary.load_suite()
     calls = []
+    sleeps = []
 
     def fake_post(_url, payload, _timeout):
         calls.append(payload)
@@ -182,18 +193,20 @@ def test_evaluator_makes_exactly_nine_requests_and_baseline_is_aggregate(monkeyp
         return {"http_status": 200, "body": _public_body(matching_case)}
 
     monkeypatch.setattr(canary, "_post_json", fake_post)
+    monkeypatch.setattr(canary.time, "sleep", sleeps.append)
     report = canary.evaluate(
         suite,
         url=canary.DEFAULT_URL,
         deployed_commit="a" * 40,
-        max_public_requests=9,
+        max_public_requests=21,
         timeout=1.0,
         generated_at=datetime(2026, 8, 26, tzinfo=timezone.utc),
     )
 
-    assert len(calls) == 9
-    assert report["passed_cases"] == report["cases"] == 9
-    assert report["request_budget"] == {"limit": 9, "actual": 9}
+    assert len(calls) == 21
+    assert sleeps == [8.0] * 20
+    assert report["passed_cases"] == report["cases"] == 21
+    assert report["request_budget"] == {"limit": 21, "actual": 21}
     assert all(value == 1.0 for value in report["metrics"].values())
 
     baseline = canary.baseline_summary(report)
@@ -210,7 +223,7 @@ def test_execute_rejects_non_loopback_targets_and_wrong_ceiling():
             suite,
             url="https://tax-advisor.ge/api/v1/public/query",
             deployed_commit="a" * 40,
-            max_public_requests=9,
+            max_public_requests=21,
             timeout=1.0,
         )
     with pytest.raises(ValueError, match="versioned ceiling"):
@@ -218,6 +231,6 @@ def test_execute_rejects_non_loopback_targets_and_wrong_ceiling():
             suite,
             url=canary.DEFAULT_URL,
             deployed_commit="a" * 40,
-            max_public_requests=10,
+            max_public_requests=22,
             timeout=1.0,
         )

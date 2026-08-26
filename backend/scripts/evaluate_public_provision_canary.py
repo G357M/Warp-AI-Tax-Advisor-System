@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -84,6 +85,12 @@ def load_suite(path: Path = DEFAULT_SUITE_PATH) -> dict[str, Any]:
     max_requests = profile.get("max_public_requests")
     if not isinstance(max_requests, int) or max_requests <= 0:
         raise ValueError("execution_profile.max_public_requests must be positive")
+    request_interval = profile.get("request_interval_seconds")
+    if not isinstance(request_interval, (int, float)) or request_interval < 8.0:
+        raise ValueError(
+            "execution_profile.request_interval_seconds must respect the "
+            "10/minute guest rate limit with operational headroom"
+        )
     if profile.get("postgresql_writes_allowed") is not False:
         raise ValueError("public provision canary must prohibit PostgreSQL writes")
     if profile.get("full_report_must_remain_operational") is not True:
@@ -291,6 +298,8 @@ def evaluate(
             timeout,
         )
         results.append(score_case(case, result))
+        if requests_made < max_public_requests:
+            time.sleep(suite["execution_profile"]["request_interval_seconds"])
 
     metrics = {
         "case_success_rate": _ratio(
@@ -393,6 +402,8 @@ def main() -> int:
             "cases": len(suite["cases"]),
             "languages": ["ru", "en", "ka"],
             "required_max_public_requests": required_limit,
+            "request_interval_seconds": suite["execution_profile"]
+            ["request_interval_seconds"],
             "endpoint": "/api/v1/public/query",
             "postgresql_writes_allowed": False,
             "status": "dry_run",
