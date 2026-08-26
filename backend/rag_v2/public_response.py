@@ -16,6 +16,17 @@ def _disabled_guard_topics() -> set:
     return {t.strip() for t in raw.split(",") if t.strip()}
 
 
+def _disabled_legal_answer_contracts() -> set[str]:
+    """Independent kill switch for expert-verified answer contracts.
+
+    ``INFOHUB_DISABLED_GUARDS`` controls the older broad text guards.  Keeping
+    a separate namespace prevents a retired legacy guard from silently
+    disabling the exact parser-backed contract that replaced it.
+    """
+    raw = os.getenv("INFOHUB_DISABLED_LEGAL_ANSWER_CONTRACTS", "")
+    return {topic.strip() for topic in raw.split(",") if topic.strip()}
+
+
 def _response_language(trace: Any) -> str:
     parsed = getattr(trace, "parsed_query", None) or {}
     language = str(parsed.get("language") or "ru").strip().lower()
@@ -223,7 +234,7 @@ def direct_tax_faq_response(trace: Any) -> Optional[str]:
     entry = get_tax_faq_entry(topic)
     if not entry:
         return None
-    disabled = _disabled_guard_topics()
+    disabled = _disabled_legal_answer_contracts()
     if entry.topic in disabled or entry.slug in disabled:
         return None
     if classification.get("question_class") != entry.question_class:

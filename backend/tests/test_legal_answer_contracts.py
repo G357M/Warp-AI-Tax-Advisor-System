@@ -169,6 +169,20 @@ def test_contract_router_has_per_topic_kill_switch(monkeypatch):
         classification=classify_query(parsed).model_dump(),
     )
 
-    monkeypatch.setenv("INFOHUB_DISABLED_GUARDS", contract.topic)
+    monkeypatch.setenv("INFOHUB_DISABLED_LEGAL_ANSWER_CONTRACTS", contract.topic)
 
     assert direct_tax_faq_response(trace) is None
+
+
+def test_legacy_guard_kill_switch_does_not_disable_verified_contract(monkeypatch):
+    contract = next(item for item in TAX_FAQ_MATRIX if item.topic == "property_tax")
+    language = "ru"
+    parsed = parse_query(contract.sample_queries[language], language=language)
+    trace = SimpleNamespace(
+        parsed_query=parsed.model_dump(),
+        classification=classify_query(parsed).model_dump(),
+    )
+
+    monkeypatch.setenv("INFOHUB_DISABLED_GUARDS", contract.topic)
+
+    assert direct_tax_faq_response(trace) == contract.response(language)
