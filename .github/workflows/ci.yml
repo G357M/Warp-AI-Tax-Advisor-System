@@ -222,6 +222,8 @@ jobs:
           scripts/rotate_database_password.sh
           scripts/prune_infohub_rollbacks.sh
           scripts/test_database_restore.sh
+          scripts/configure_ingestion_schedule.sh
+          backend/scripts/setup_cron.sh
           run_scraper.sh
           run_quality_gates.sh
           scraper_alert.sh

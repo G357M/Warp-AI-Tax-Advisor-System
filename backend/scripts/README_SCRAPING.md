@@ -40,15 +40,10 @@ ssh root@46.224.145.5
 cd /root/infohub
 ```
 
-#### Копировать скрипты на сервер
+#### Обновить скрипты на сервере
 
-```bash
-# На локальной машине (Windows)
-scp backend/scripts/populate_vector_db.py root@46.224.145.5:/root/infohub/backend/scripts/
-scp backend/scripts/setup_cron.sh root@46.224.145.5:/root/infohub/backend/scripts/
-```
-
-Или через Git:
+Используйте только проверенный Git/deploy-путь; `setup_cron.sh` больше не
+создаёт и не перезаписывает ingestion runner.
 
 ```bash
 # На сервере
@@ -60,15 +55,15 @@ git pull origin main
 
 ```bash
 # На сервере
-cd /root/infohub/backend/scripts
-chmod +x setup_cron.sh
-./setup_cron.sh
+cd /root/infohub
+bash scripts/configure_ingestion_schedule.sh --dry-run
+bash scripts/configure_ingestion_schedule.sh --apply
 ```
 
-Это создаст:
-- `/root/infohub/run_scraper.sh` - обёртка для запуска scraper
-- Cron job, запускающийся каждый день в 3:00 AM
-- Директорию `/root/infohub/logs/` для логов
+Скрипт сохраняет unrelated cron entries и mode-600 backup предыдущего
+crontab. Полный nightly остаётся в 03:00 UTC. Лёгкие `--ingest-only` refresh
+запускаются в 09:17, 15:17 и 21:17 UTC; они не выполняют LLM maintenance и
+RAG canary. Все режимы используют общий `flock`, поэтому не пересекаются.
 
 #### Тестовый запуск на сервере
 
@@ -76,8 +71,11 @@ chmod +x setup_cron.sh
 # Запустить вручную
 /root/infohub/run_scraper.sh
 
-# Или через docker exec напрямую
-docker exec infohub-backend-1 python /app/scripts/populate_vector_db.py --max-pages 10 --initial-run
+# Только ingestion + freshness audit, без ночных LLM/quality стадий
+/root/infohub/run_scraper.sh --ingest-only
+
+# Не запускайте storage-команду напрямую во время cron: singleton lock живёт
+# на host wrapper.
 ```
 
 ## 🔧 Параметры scraping

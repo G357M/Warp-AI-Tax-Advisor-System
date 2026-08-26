@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -138,3 +139,55 @@ def test_nightly_runner_uses_only_the_machine_summary_for_alerting():
     assert '"ingestion freshness audit" "$FRESHNESS_OUT"' not in runner
     assert "FRESHNESS_EXIT" in runner
     assert "exit $EXIT_CODE" in runner
+
+
+def test_daytime_refresh_is_singleton_and_skips_expensive_nightly_stages():
+    runner = (REPOSITORY_ROOT / "run_scraper.sh").read_text(encoding="utf-8")
+
+    assert 'RUN_MODE="${1:-full}"' in runner
+    assert "flock -n 9" in runner
+    assert 'if [ "$INGEST_ONLY" -eq 1 ]; then' in runner
+    assert runner.index("Lightweight refresh complete") < runner.index(
+        "Extracting decision facts for new court decisions"
+    )
+    assert "nightly zero-streak unchanged" in runner
+
+
+def test_ingestion_schedule_is_dry_run_first_and_preserves_unrelated_cron():
+    installer = (
+        REPOSITORY_ROOT / "scripts" / "configure_ingestion_schedule.sh"
+    ).read_text(encoding="utf-8")
+    legacy_entrypoint = (
+        REPOSITORY_ROOT / "backend" / "scripts" / "setup_cron.sh"
+    ).read_text(encoding="utf-8")
+
+    assert 'MODE="${1:---dry-run}"' in installer
+    assert 'FULL_JOB="0 3 * * *' in installer
+    assert 'REFRESH_JOB="17 9,15,21 * * *' in installer
+    assert "--ingest-only" in installer
+    assert "PRESERVED_CRONTAB" in installer
+    assert "ingestion-cron-backups" in installer
+    assert 'grep -Fxq "$FULL_JOB"' in installer
+    assert 'grep -Fxq "$REFRESH_JOB"' in installer
+    assert "cat > /root/infohub/run_scraper.sh" not in legacy_entrypoint
+    assert "configure_ingestion_schedule.sh" in legacy_entrypoint
+
+
+@pytest.mark.skipif(os.name == "nt", reason="authoritative shell execution runs on Linux CI")
+def test_ingestion_schedule_dry_run_is_unprivileged_and_non_mutating():
+    installer = REPOSITORY_ROOT / "scripts" / "configure_ingestion_schedule.sh"
+
+    result = subprocess.run(
+        ["bash", str(installer), "--dry-run"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert '"mode":"dry-run"' in result.stdout
+    assert "0 3 * * * /root/infohub/run_scraper.sh" in result.stdout
+    assert "17 9,15,21 * * * /root/infohub/run_scraper.sh --ingest-only" in result.stdout
+    assert "INFOHUB_INGESTION_CRON_APPLIED=" not in result.stdout

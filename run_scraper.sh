@@ -3,6 +3,28 @@
 
 set -e
 
+# The full nightly run keeps post-ingest maintenance and quality gates at
+# 03:00 UTC. Additional daytime refreshes use --ingest-only so newly exposed
+# official records reach the corpus without multiplying LLM/canary cost.
+RUN_MODE="${1:-full}"
+if [ "$#" -gt 1 ] || { [ "$RUN_MODE" != "full" ] && [ "$RUN_MODE" != "--ingest-only" ]; }; then
+    echo "Usage: $0 [--ingest-only]" >&2
+    exit 2
+fi
+INGEST_ONLY=0
+if [ "$RUN_MODE" = "--ingest-only" ]; then
+    INGEST_ONLY=1
+fi
+
+# A manual catch-up and cron must never write the same documents in parallel.
+# The descriptor remains open for the whole script and releases automatically.
+LOCK_FILE="${INFOHUB_SCRAPER_LOCK_FILE:-/run/lock/infohub-scraper.lock}"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "[ingestion] Another scraper run is active; this invocation is skipped."
+    exit 0
+fi
+
 # Configuration
 MAX_DOCS=200
 LOG_DIR="/root/infohub/logs"
@@ -42,6 +64,7 @@ chmod 0600 "$LOG_FILE"
 
 echo "========================================" | tee -a "$LOG_FILE"
 echo "Starting scraper at $(date)" | tee -a "$LOG_FILE"
+echo "Run mode: $([ "$INGEST_ONLY" -eq 1 ] && echo ingest-only || echo full)" | tee -a "$LOG_FILE"
 echo "========================================" | tee -a "$LOG_FILE"
 
 # Observe root-disk pressure, the bounded InfoHub builder and the legacy
@@ -79,8 +102,18 @@ echo "========================================" | tee -a "$LOG_FILE"
 NEW_DOCS="$(grep -oE '\+[0-9]+ new docs' "$LOG_FILE" | tail -1 | grep -oE '[0-9]+' || true)"
 NEW_DOCS="${NEW_DOCS:-?}"
 
-# Alert (Telegram) on failure, or on too many consecutive 0-new runs.
-bash "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
+# The nightly run owns the consecutive-zero signal. Daytime refreshes alert on
+# primary failures only; counting every healthy no-op refresh would create a
+# false "three nights" warning within one day.
+if [ "$INGEST_ONLY" -eq 0 ]; then
+    bash "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" 2>&1 | tee -a "$LOG_FILE" || true
+elif [ "$EXIT_CODE" -ne 0 ] || ! [[ "$NEW_DOCS" =~ ^[0-9]+$ ]]; then
+    bash "$(dirname "$0")/scraper_alert.sh" "$EXIT_CODE" "$NEW_DOCS" "ingest-only refresh failed" \
+        2>&1 | tee -a "$LOG_FILE" || true
+else
+    echo "[ingestion-refresh] Primary ingest healthy (+${NEW_DOCS}); nightly zero-streak unchanged." \
+        | tee -a "$LOG_FILE"
+fi
 
 # Compare the official per-species catalog totals with the prior valid run.
 # This catches the specific silent-stall case where InfoHub grows but no
@@ -106,6 +139,13 @@ if [ -n "$INGEST_SUMMARY_LINE" ]; then
 else
     echo "[nightly] WARN: freshness audit skipped because ingest summary is missing; primary scraper alert owns this failure." \
         | tee -a "$LOG_FILE"
+fi
+
+if [ "$INGEST_ONLY" -eq 1 ]; then
+    echo "[ingestion-refresh] Lightweight refresh complete; post-ingest nightly maintenance is deferred to 03:00 UTC." \
+        | tee -a "$LOG_FILE"
+    find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete
+    exit "$EXIT_CODE"
 fi
 
 # Extract structured facts from newly ingested dispute decisions (incremental;

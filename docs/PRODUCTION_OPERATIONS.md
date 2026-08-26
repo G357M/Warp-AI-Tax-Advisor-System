@@ -505,6 +505,23 @@ tree exposes no article-level anchors.
 
 ### Ingestion freshness observability
 
+Production uses two bounded runner modes. The full nightly pipeline runs once
+at `03:00 UTC`; lightweight ingestion-only refreshes run at `09:17`, `15:17`
+and `21:17 UTC`. The refresh mode performs the official API ingest, primary
+failure alert and aggregate freshness audit, then exits before decision-fact
+extraction, LLM classification/translation and all RAG quality canaries. A
+host-level non-blocking `flock` covers the complete runner lifetime, so cron and
+manual catch-up cannot write the same document concurrently.
+
+Schedule reconciliation is dry-run-first, preserves unrelated crontab entries
+and writes a mode-600 backup before applying changes:
+
+```bash
+cd /root/infohub
+bash scripts/configure_ingestion_schedule.sh --dry-run
+bash scripts/configure_ingestion_schedule.sh --apply
+```
+
 The API scraper emits one aggregate `INFOHUB_INGEST_SUMMARY=` JSON line after a
 run. For each source species it distinguishes catalog totals and pages from
 `known`, `unseen`, `ingested`, `skipped_short`, `detail_failures` and
