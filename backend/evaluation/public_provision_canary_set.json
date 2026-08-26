@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "suite_version": "2026-08-26.1",
+  "description": "Bounded RU/EN/KA public-response contracts for an exact official Labour Code provision link.",
+  "execution_profile": {
+    "max_public_requests": 3,
+    "postgresql_writes_allowed": false,
+    "redis_translation_cache_writes_allowed": true,
+    "full_report_must_remain_operational": true
+  },
+  "thresholds": {
+    "case_success_rate": 1.0,
+    "http_success_rate": 1.0,
+    "response_contract_accuracy": 1.0,
+    "evidence_contract_accuracy": 1.0,
+    "official_provision_link_accuracy": 1.0,
+    "response_language_accuracy": 1.0,
+    "min_language_case_success": 1.0
+  },
+  "cases": [
+    {
+      "id": "labour_code_article_47_ru",
+      "language": "ru",
+      "query": "Что устанавливает статья 47 Трудового кодекса Грузии?",
+      "required_response_all": ["47"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "47",
+        "url": "https://matsne.gov.ge/ka/document/view/1155567?publication=28#part_173"
+      }
+    },
+    {
+      "id": "labour_code_article_47_en",
+      "language": "en",
+      "query": "What does Article 47 of the Labour Code of Georgia provide?",
+      "required_response_all": ["47"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "47",
+        "url": "https://matsne.gov.ge/ka/document/view/1155567?publication=28#part_173"
+      }
+    },
+    {
+      "id": "labour_code_article_47_ka",
+      "language": "ka",
+      "query": "რას ადგენს საქართველოს შრომის კოდექსის 47-ე მუხლი?",
+      "required_response_all": ["47"],
+      "evidence": {
+        "status": "grounded",
+        "coverage": "exact_provision",
+        "official_sources_only": true,
+        "has_precise_citation": true,
+        "has_official_provision_link": true,
+        "min_source_count": 1
+      },
+      "official_provision": {
+        "article_ref": "47",
+        "url": "https://matsne.gov.ge/ka/document/view/1155567?publication=28#part_173"
+      }
+    }
+  ]
+}

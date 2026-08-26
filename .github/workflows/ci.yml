@@ -54,6 +54,7 @@ jobs:
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
           scripts/evaluate_decision_facts_quality.py
+          scripts/evaluate_public_provision_canary.py
           scripts/export_decision_facts_expert_review.py
           scripts/import_decision_facts_review_workbook.py
           scripts/link_decision_chains.py
@@ -88,6 +89,7 @@ jobs:
           tests/test_ingestion_freshness_audit.py
           tests/test_source_audit_currentness.py
           tests/test_answer_safety_eval.py
+          tests/test_public_provision_canary.py
           tests/test_decision_chain_reporting.py
           tests/test_decision_fact_contract.py
           tests/test_decision_fact_extractor.py
@@ -119,6 +121,9 @@ jobs:
 
       - name: Validate bounded answer-safety execution plan
         run: python scripts/evaluate_answer_safety_live.py
+
+      - name: Validate bounded public provision canary plan
+        run: python scripts/evaluate_public_provision_canary.py
 
       - name: Validate read-only decision-facts quality plan
         run: python scripts/evaluate_decision_facts_quality.py
