@@ -246,6 +246,31 @@ def test_evaluator_makes_exactly_twenty_one_requests_and_baseline_is_aggregate(
     assert "applicable rule" not in serialized
 
 
+def test_evaluator_fails_fast_when_backend_loopback_is_unavailable(monkeypatch):
+    suite = canary.load_suite()
+    calls = []
+    sleeps = []
+
+    def unavailable(_url, payload, _timeout):
+        calls.append(payload)
+        return {"http_status": None, "body": {}, "transport_error": "URLError"}
+
+    monkeypatch.setattr(canary, "_post_json", unavailable)
+    monkeypatch.setattr(canary.time, "sleep", sleeps.append)
+
+    with pytest.raises(RuntimeError, match="inside the running backend container"):
+        canary.evaluate(
+            suite,
+            url=canary.DEFAULT_URL,
+            deployed_commit="a" * 40,
+            max_public_requests=21,
+            timeout=1.0,
+        )
+
+    assert len(calls) == 1
+    assert sleeps == []
+
+
 def test_execute_rejects_non_loopback_targets_and_wrong_ceiling():
     suite = canary.load_suite()
     with pytest.raises(ValueError, match="loopback"):

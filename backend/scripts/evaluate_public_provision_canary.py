@@ -302,6 +302,11 @@ def evaluate(
             {"query": case["query"], "language": case["language"]},
             timeout,
         )
+        if result.get("transport_error"):
+            raise RuntimeError(
+                "public canary loopback is unavailable; execute the canary "
+                "inside the running backend container"
+            )
         results.append(score_case(case, result))
         if requests_made < max_public_requests:
             time.sleep(suite["execution_profile"]["request_interval_seconds"])

@@ -1,5 +1,7 @@
 """Mass contracts for the single-source multilingual answer factory."""
 
+from types import SimpleNamespace
+
 from api.evidence import attach_evidence
 from rag_v2.faq_tax_matrix import (
     CANONICAL_TAX_CODE_SOURCE_URL,
@@ -10,6 +12,9 @@ from rag_v2.legal_answer_contracts import (
     SUPPORTED_LANGUAGES,
     ensure_exact_provision_citations,
 )
+from rag_v2.public_response import direct_tax_faq_response
+from rag_v2.query_classifier import classify_query
+from rag_v2.query_parser import parse_query
 from scripts.audit_legal_answer_contracts import audit_contracts
 from scripts.build_legal_answer_contract_canary import build_suite
 from scripts.evaluate_public_provision_canary import validate_suite_payload
@@ -140,3 +145,30 @@ def test_factory_builds_a_valid_sixty_three_case_public_canary():
         )
         for case in suite["cases"]
     )
+
+
+def test_direct_router_matches_all_contract_cases_before_retrieval():
+    for contract in TAX_FAQ_MATRIX:
+        for language in SUPPORTED_LANGUAGES:
+            parsed = parse_query(contract.sample_queries[language], language=language)
+            classification = classify_query(parsed)
+            trace = SimpleNamespace(
+                parsed_query=parsed.model_dump(),
+                classification=classification.model_dump(),
+            )
+
+            assert direct_tax_faq_response(trace) == contract.response(language)
+
+
+def test_contract_router_has_per_topic_kill_switch(monkeypatch):
+    contract = TAX_FAQ_MATRIX[0]
+    language = "ru"
+    parsed = parse_query(contract.sample_queries[language], language=language)
+    trace = SimpleNamespace(
+        parsed_query=parsed.model_dump(),
+        classification=classify_query(parsed).model_dump(),
+    )
+
+    monkeypatch.setenv("INFOHUB_DISABLED_GUARDS", contract.topic)
+
+    assert direct_tax_faq_response(trace) is None

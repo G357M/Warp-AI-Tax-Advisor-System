@@ -223,6 +223,9 @@ def direct_tax_faq_response(trace: Any) -> Optional[str]:
     entry = get_tax_faq_entry(topic)
     if not entry:
         return None
+    disabled = _disabled_guard_topics()
+    if entry.topic in disabled or entry.slug in disabled:
+        return None
     if classification.get("question_class") != entry.question_class:
         return None
     if parsed.get("goal") != "rate_lookup":

@@ -14,6 +14,7 @@ from rag.pipeline import rag_pipeline
 from .pipeline_v2 import pipeline_v2
 from .query_classifier import classify_query
 from .query_parser import parse_query
+from .faq_tax_matrix import get_tax_faq_entry
 from .public_response import (
     authoritative_tax_fact_response,
     compress_canonical_section_text,
@@ -158,6 +159,12 @@ def _dispute_stats_line(trace) -> Optional[str]:
 
 def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
     basis = CURATED_LEGAL_BASIS.get(topic or "", TAX_CODE_SOURCE)
+    contract = get_tax_faq_entry(topic)
+    article_ref = (
+        ", ".join(contract.article_refs)
+        if contract is not None
+        else CURATED_ARTICLE_REFS.get(topic or "")
+    )
     try:
         from .db_utils import db_available, run_query
         if db_available():
@@ -178,7 +185,7 @@ def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
                     "url": row.get("source_url") or basis["url"],
                     "source_url": row.get("source_url") or basis["url"],
                     "relevance": 1.0,
-                    "article_ref": CURATED_ARTICLE_REFS.get(topic or ""),
+                    "article_ref": article_ref,
                     "document_number": row.get("document_number"),
                     "date_published": _iso_date(row.get("date_published")),
                     "date_effective": _iso_date(row.get("date_effective")),
@@ -192,7 +199,7 @@ def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
         **basis,
         "source_url": basis["url"],
         "relevance": 1.0,
-        "article_ref": CURATED_ARTICLE_REFS.get(topic or ""),
+        "article_ref": article_ref,
         "retrieval_channel": "curated_legal_basis",
     }
 
@@ -991,6 +998,29 @@ def maybe_run_live_rollout(
             "sources": [],
             "retrieved_count": 0,
             "_rag_v2": {"mode": "rollout_scope", "question_class": question_class},
+        }
+
+    # LegalAnswerContract is the single source of truth for recognized,
+    # bounded rate/threshold questions.  Serve it before retrieval so the LLM
+    # cannot paraphrase away expert-approved facts or their exact provision.
+    # Questions outside the contract semantics continue through normal RAG.
+    contract_response = direct_tax_faq_response(scope_trace)
+    if contract_response:
+        question_class = classification.question_class
+        contract_topic = parsed.topic
+        print(
+            f"[RAG_V2_ROLLOUT] class={question_class} "
+            f"contract=1 topic={contract_topic}"
+        )
+        return {
+            "response": contract_response,
+            "sources": [_curated_source(contract_topic)],
+            "retrieved_count": 1,
+            "_rag_v2": {
+                "mode": "rollout_authoritative",
+                "question_class": question_class,
+                "legal_answer_contract": contract_topic,
+            },
         }
 
     trace = pipeline_v2.build_trace(query, language=language)
