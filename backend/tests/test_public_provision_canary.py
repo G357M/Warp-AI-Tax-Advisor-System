@@ -1,5 +1,6 @@
 """Contracts for the bounded public exact-provision canary."""
 
+import hashlib
 import json
 from datetime import datetime, timezone
 
@@ -140,6 +141,35 @@ def test_previous_committed_baseline_contains_no_public_payloads():
     assert baseline["request_budget"] == {"limit": 9, "actual": 9}
     assert baseline["language_metrics"] == {
         language: {"cases": 3, "case_success_rate": 1.0}
+        for language in ("ru", "en", "ka")
+    }
+    assert all(value == 1.0 for value in baseline["metrics"].values())
+    assert "results" not in baseline
+    assert {"query", "response", "sources"}.isdisjoint(_nested_keys(baseline))
+
+
+def test_current_committed_baseline_matches_suite_and_contains_no_public_payloads():
+    suite = canary.load_suite()
+    suite_bytes = json.dumps(
+        suite, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    baseline_path = (
+        canary.BACKEND_ROOT.parent
+        / "evaluation"
+        / "baselines"
+        / "public_provision_canary_2026-08-26_a5a3086.json"
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    assert baseline["suite_sha256"] == hashlib.sha256(suite_bytes).hexdigest()
+    assert baseline["suite_version"] == suite["suite_version"]
+    assert baseline["deployed_commit"] == (
+        "a5a3086982cc8fc24cf3265d69af74041caf6761"
+    )
+    assert baseline["passed_cases"] == baseline["cases"] == 21
+    assert baseline["request_budget"] == {"limit": 21, "actual": 21}
+    assert baseline["language_metrics"] == {
+        language: {"cases": 7, "case_success_rate": 1.0}
         for language in ("ru", "en", "ka")
     }
     assert all(value == 1.0 for value in baseline["metrics"].values())

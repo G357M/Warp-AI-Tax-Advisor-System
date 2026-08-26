@@ -598,21 +598,22 @@ primary scraper exit code.
 
 ## Bounded public exact-provision canary
 
-Inspect the nine-case balanced RU/EN/KA plan first. Dry-run performs no HTTP request:
+Inspect the 21-case balanced RU/EN/KA plan first. Dry-run performs no HTTP request:
 
 ```bash
 cd /root/infohub
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py
 ```
 
-Execute only with the exact versioned nine-request ceiling and keep the full
-report in protected operational state:
+Execute only with the exact versioned 21-request ceiling and keep the full
+report in protected operational state. The evaluator automatically waits eight
+seconds between requests to preserve headroom under the `10/minute` guest limit:
 
 ```bash
 install -d -m 0700 .state/public-provision-canary/manual
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py \
   --execute \
-  --max-public-requests 9 \
+  --max-public-requests 21 \
   --commit "$(git rev-parse HEAD)" \
   --output /tmp/public_provision_canary_report.json \
   --baseline-output /tmp/public_provision_canary_baseline.json
@@ -628,16 +629,18 @@ Execute mode accepts only the backend loopback
 `http://127.0.0.1:8000/api/v1/public/query` route. It validates the final public
 HTTP/Pydantic shape: response language and explicit article reference,
 exact-provision evidence, canonical Matsne article deep-link and the separate
-verified publication URL. The suite covers Labour Code article 47, Tax Code
-article 168 and the RU/EN/KA homepage tax-appeal question grounded in Tax Code
-article 299. The deterministic appeal response cites articles 296, 297 and 299,
-while the public source exposes their individual registry-backed links. The
-accepted `2026-08-26.2` production run for commit `401ec58` passed 9/9 with all
-seven metrics at 1.0 and used exactly 9/9 public requests. The full report
-contains queries, answers and sources and must remain mode `0600`; only
-`evaluation/baselines/public_provision_canary_2026-08-26_401ec58.json` is safe
-for Git. The earlier `ceb7ac7` three-case aggregate is retained as history. The
-canary may invoke the provider, so it is manual and must not be added to the
+verified publication URL. The suite covers Labour Code article 47 and Tax Code
+articles 34, 88, 166, 168, 272 and 299 across direct provision lookup, the
+RU/EN/KA homepage tax-appeal question, VAT rate, LLC small-business eligibility,
+tax residency and late-payment interest. The deterministic appeal response cites
+articles 296, 297 and 299; the LLC answer cites articles 88 and 90; public sources
+expose individual registry-backed links. The accepted `2026-08-26.3` production
+run for commit `a5a3086` passed 21/21 with all seven metrics at 1.0, used exactly
+21/21 public requests and returned no `429`. The full report contains queries,
+answers and sources and must remain mode `0600`; only
+`evaluation/baselines/public_provision_canary_2026-08-26_a5a3086.json` is safe
+for Git. The earlier `ceb7ac7` and `401ec58` aggregates are retained as history.
+The canary may invoke the provider, so it is manual and must not be added to the
 nightly no-LLM quality gates.
 
 ## Bounded live answer-safety evaluation
