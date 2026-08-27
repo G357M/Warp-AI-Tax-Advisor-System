@@ -89,9 +89,13 @@ def audit_contracts(
             errors.append(f"{contract.slug}: unknown registry {contract.registry_id}")
             continue
         for article_ref in contract.article_refs:
-            if article_ref not in registry["article_anchors"]:
+            has_locator = (
+                article_ref in registry.get("article_anchors", {})
+                or article_ref in registry.get("article_links", {})
+            )
+            if not has_locator:
                 errors.append(
-                    f"{contract.slug}: article {article_ref} has no verified anchor"
+                    f"{contract.slug}: article {article_ref} has no verified locator"
                 )
             else:
                 verified_articles += 1

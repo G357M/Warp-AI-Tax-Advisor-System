@@ -25,28 +25,42 @@ from scripts.build_legal_answer_contract_canary import build_suite
 from scripts.evaluate_public_provision_canary import validate_suite_payload
 
 
-def _source(article_ref: str) -> dict:
+def _source(article_ref: str, registry_id: str = "tax_code") -> dict:
+    source_url = (
+        "https://infohub.rs.ge/ka/workspace/document/64a515a7-f7be-4d1a-a9c1-aa9d008b6df8"
+        if registry_id == "funded_pension_law"
+        else CANONICAL_TAX_CODE_SOURCE_URL
+    )
     return {
-        "title": "საქართველოს საგადასახადო კოდექსი.",
+        "title": (
+            "დაგროვებითი პენსიის შესახებ საქართველოს კანონი"
+            if registry_id == "funded_pension_law"
+            else "საქართველოს საგადასახადო კოდექსი."
+        ),
         "document_type": "law",
-        "url": CANONICAL_TAX_CODE_SOURCE_URL,
+        "url": source_url,
         "article_ref": article_ref,
         "relevance": 1.0,
     }
 
 
-def test_factory_generates_all_twenty_eight_contracts_in_three_languages():
+def test_factory_generates_all_thirty_nine_contracts_in_three_languages():
     cases = build_tax_answer_contract_cases()
 
-    assert len(TAX_FAQ_MATRIX) == 28
-    assert len(cases) == 84
+    assert len(TAX_FAQ_MATRIX) == 39
+    assert len(cases) == 117
     assert {case["language"] for case in cases} == set(SUPPORTED_LANGUAGES)
     assert {
         language: sum(case["language"] == language for case in cases)
         for language in SUPPORTED_LANGUAGES
-    } == {"ru": 28, "en": 28, "ka": 28}
-    assert len({case["id"] for case in cases}) == 84
-    assert all(case["official_provision"]["url"].startswith("https://matsne.gov.ge/") for case in cases)
+    } == {"ru": 39, "en": 39, "ka": 39}
+    assert len({case["id"] for case in cases}) == 117
+    assert all(
+        case["official_provision"]["url"].startswith(
+            ("https://matsne.gov.ge/", "https://new.matsne.gov.ge/")
+        )
+        for case in cases
+    )
     assert all("#" in case["official_provision"]["url"] for case in cases)
     assert all(case["evidence"]["coverage"] == "exact_provision" for case in cases)
 
@@ -79,13 +93,15 @@ def test_property_tax_contracts_use_rate_and_exemption_articles_not_penalty_arti
     assert all("281" not in article_refs for article_refs in actual.values())
 
 
-def test_final_boundary_enforces_all_eighty_four_citations_idempotently():
+def test_final_boundary_enforces_all_one_hundred_seventeen_citations_idempotently():
     for contract in TAX_FAQ_MATRIX:
         for language in SUPPORTED_LANGUAGES:
             result = attach_evidence(
                 {
                     "response": contract.response_by_lang[language],
-                    "sources": [_source(", ".join(contract.article_refs))],
+                    "sources": [
+                        _source(", ".join(contract.article_refs), contract.registry_id)
+                    ],
                     "_rag_v2": {
                         "mode": "rollout_authoritative",
                         "question_class": contract.question_class,
@@ -143,23 +159,23 @@ def test_contract_audit_is_complete_read_only_and_call_free():
     report = audit_contracts()
 
     assert report["result"] == "pass"
-    assert report["contracts"] == 28
-    assert report["localized_answers"] == 84
-    assert report["generated_cases"] == 84
-    assert report["verified_article_bindings"] == 36
+    assert report["contracts"] == 39
+    assert report["localized_answers"] == 117
+    assert report["generated_cases"] == 117
+    assert report["verified_article_bindings"] == 50
     assert report["error_count"] == 0
     assert report["network_calls_allowed"] is False
     assert report["database_calls_allowed"] is False
     assert report["llm_calls_allowed"] is False
 
 
-def test_factory_builds_a_valid_eighty_four_case_public_canary():
+def test_factory_builds_a_valid_one_hundred_seventeen_case_public_canary():
     suite = build_suite()
 
     assert validate_suite_payload(suite) is suite
     assert suite["suite_version"].startswith("legal-answer-contracts-")
-    assert suite["execution_profile"]["max_public_requests"] == 84
-    assert len(suite["cases"]) == 84
+    assert suite["execution_profile"]["max_public_requests"] == 117
+    assert len(suite["cases"]) == 117
     assert all(
         any(
             item.startswith(("Источник:", "Source:", "წყარო:"))

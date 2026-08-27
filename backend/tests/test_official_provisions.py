@@ -118,6 +118,37 @@ def test_labour_code_article_gets_exact_official_link():
     assert has_official_provision_link(source) is True
 
 
+def test_funded_pension_registry_uses_verified_official_pdf_page_locator():
+    registries = {
+        registry["registry_id"]: registry
+        for registry in load_official_provision_registries()
+    }
+    registry = registries["funded_pension_law"]
+
+    assert registry["verified_publication_url"].endswith("?publication=12")
+    assert registry["article_links"] == {
+        "3": "https://new.matsne.gov.ge/ka/document/download/4280127/12/ge/pdf#page=5"
+    }
+
+    source = enrich_source(
+        {
+            "title": "დაგროვებითი პენსიის შესახებ საქართველოს კანონი",
+            "url": "https://infohub.rs.ge/ka/workspace/document/64a515a7-f7be-4d1a-a9c1-aa9d008b6df8",
+            "article_ref": "3",
+        }
+    )
+
+    assert source["provision_registry_id"] == "funded_pension_law"
+    assert source["provision_links"] == [
+        {
+            "article_ref": "3",
+            "point_ref": None,
+            "url": "https://new.matsne.gov.ge/ka/document/download/4280127/12/ge/pdf#page=5",
+        }
+    ]
+    assert has_official_provision_link(source) is True
+
+
 def test_accounting_reporting_audit_law_stays_document_level_without_stable_anchors():
     source = enrich_source(
         {

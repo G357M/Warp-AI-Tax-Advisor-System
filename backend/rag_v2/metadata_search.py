@@ -8,6 +8,7 @@ from .faq_tax_matrix import (
     CANONICAL_RATE_ARTICLES,
     match_tax_faq_entry_for_parsed,
 )
+from .official_provisions import load_official_provision_registries
 
 
 CANONICAL_GOAL_ARTICLES = {
@@ -53,6 +54,14 @@ def _score_fixture(parsed: ParsedQuery, doc: Dict[str, object]) -> tuple[float, 
 def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocument]:
     scored: List[CandidateDocument] = []
     contract = match_tax_faq_entry_for_parsed(parsed)
+    contract_registry = next(
+        (
+            registry
+            for registry in load_official_provision_registries()
+            if contract is not None and registry["registry_id"] == contract.registry_id
+        ),
+        None,
+    )
 
     for doc in DOCUMENT_FIXTURES:
         if (
@@ -72,8 +81,8 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
         )
         has_contract_match = bool(
             contract is not None
-            and contract.registry_id == "tax_code"
-            and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
+            and contract_registry is not None
+            and str(doc.get("source_url")) == contract_registry["infohub_source_url"]
         )
         if has_contract_match:
             score = max(score, 0.99)

@@ -11,6 +11,7 @@ from .faq_tax_matrix import (
     CANONICAL_TAX_CODE_SOURCE_URL,
     match_tax_faq_entry_for_parsed,
 )
+from .official_provisions import load_official_provision_registries
 
 
 METADATA_SEARCH_BASE_SQL = """
@@ -152,14 +153,55 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
             }
         return candidates
 
+    def _canonical_contract_candidates(contract) -> List[CandidateDocument]:
+        registry = next(
+            (
+                item
+                for item in load_official_provision_registries()
+                if item["registry_id"] == contract.registry_id
+            ),
+            None,
+        )
+        if registry is None:
+            return []
+        sql = METADATA_SEARCH_BASE_SQL.format(
+            where_clause="WHERE document_type ILIKE %s AND source_url = %s"
+        )
+        rows = run_query(
+            sql,
+            ["%law%", registry["infohub_source_url"], limit],
+        )
+        candidates = [
+            _candidate_from_row(
+                row,
+                parsed,
+                "db legal-answer contract official-law lookup",
+                0.99,
+            )
+            for row in rows or []
+        ]
+        article_ref = ", ".join(contract.article_refs)
+        for item in candidates:
+            item.metadata = {
+                **(item.metadata or {}),
+                "article_ref": article_ref,
+                "section_label": f"მუხლი {article_ref}",
+                "provision_registry_id": contract.registry_id,
+            }
+        return candidates
+
     # Threshold/registration questions win over the rate mapping: they share
     # the topic (vat) but need the registration article, not the rate one.
     normalized = str(getattr(parsed, "normalized_query", "") or "").lower()
     contract = match_tax_faq_entry_for_parsed(parsed)
-    if contract is not None and contract.registry_id == "tax_code":
-        candidates = _canonical_tax_code_candidates(
-            contract.article_ref,
-            "db legal-answer contract provision lookup",
+    if contract is not None:
+        candidates = (
+            _canonical_tax_code_candidates(
+                ", ".join(contract.article_refs),
+                "db legal-answer contract provision lookup",
+            )
+            if contract.registry_id == "tax_code"
+            else _canonical_contract_candidates(contract)
         )
         if candidates:
             return candidates

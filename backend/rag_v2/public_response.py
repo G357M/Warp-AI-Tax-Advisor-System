@@ -383,16 +383,11 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
 def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
     """Compatibility routes for formerly curated high-value tax facts.
 
-    Tax Code facts delegate to parser-backed contracts. Funded pension is the
-    only temporary hard-coded exception and rests on its own external law.
+    Every recognized fact delegates to a parser-backed legal-answer contract.
+    Contracts may point to the Tax Code or another verified official-law registry.
     """
     parsed = getattr(trace, "parsed_query", None) or {}
     q = str(parsed.get("normalized_query") or "").lower()
-    lang = _response_language(trace)
-
-    def pick(d: Dict[str, str]) -> str:
-        return d.get(lang) or d["ru"]
-
     has_vat = any(t in q for t in ("ндс", "vat", "დღგ"))
 
     # Individual tax residency (Tax Code art. 34). The rule is framed as a
@@ -403,7 +398,10 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
         return ("tax_residency", response) if response else None
 
     # Late-payment surcharge (Tax Code art. 272, especially points 3-4).
-    if parsed.get("goal") == "penalty_rate":
+    if (
+        parsed.get("goal") == "penalty_rate"
+        and parsed.get("topic") in {None, "late_payment_interest"}
+    ):
         response = _contract_response_by_slug("late-payment-interest", trace)
         return ("late_payment_interest", response) if response else None
 
@@ -416,21 +414,17 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
         return ("tour_operator_vat", response) if response else None
 
     # VAT registration threshold
-    if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "turnover", "registr", "რეგისტრ", "ბრუნვ")):
+    if parsed.get("topic") == "vat_registration_threshold":
         response = _contract_response_by_slug("vat-registration-threshold", trace)
         return ("vat_registration_threshold", response) if response else None
 
     # Micro business — guard removed (Phase 4): retrieval grounds this correctly in
     # ru+en (eval), so the answer now comes from the retrieved law, not curated text.
 
-    # Mandatory funded pension contributions (Law of Georgia "On Funded Pension",
-    # not the Tax Code — cited accordingly)
+    # Mandatory funded pension contributions (Funded Pension Law art. 3).
     if any(t in q for t in ("пенси", "pension", "საპენსიო", "პენსი")):
-        return "funded_pension", pick({
-            "ru": "Накопительная пенсия в Грузии формируется из взносов: 2% удерживает работодатель из зарплаты работника, 2% добавляет работодатель и 2% — государство (для дохода до установленного потолка). Основание — закон Грузии «О накопительной пенсии».",
-            "en": "Georgia's funded pension is built from contributions: 2% withheld from the employee's salary, 2% added by the employer, and 2% by the state (for income up to the cap). Legal basis — the Law of Georgia \"On Funded Pension\".",
-            "ka": "საქართველოს დაგროვებითი საპენსიო სისტემა იქმნება შენატანებით: 2% იკავება დასაქმებულის ხელფასიდან, 2% ამატებს დამსაქმებელი და 2% — სახელმწიფო (ჭერამდე შემოსავალზე). საფუძველი — საქართველოს კანონი „დაგროვებითი პენსიის შესახებ“.",
-        })
+        response = _contract_response_by_slug("funded-pension-contributions", trace)
+        return ("funded_pension", response) if response else None
 
     # Estonian model of profit taxation
     if any(t in q for t in ("эстонск", "estonian", "ესტონ")):
@@ -438,7 +432,7 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
         return ("profit_tax", response) if response else None
 
     # Property tax
-    if any(t in q for t in ("налог на имущество", "имуществ", "property tax", "ქონების გადასახად")):
+    if parsed.get("topic") == "property_tax":
         response = _contract_response_by_slug("property-tax-overview", trace)
         return ("property_tax", response) if response else None
 

@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -21,8 +22,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from rag_v2.official_provisions import is_official_provision_link
+
+
 DEFAULT_SUITE_PATH = BACKEND_ROOT / "evaluation" / "public_provision_canary_set.json"
 DEFAULT_URL = "http://127.0.0.1:8000/api/v1/public/query"
 
@@ -123,15 +128,17 @@ def validate_suite_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     for case in cases:
         provision = case.get("official_provision") or {}
-        parsed = urlparse(str(provision.get("url") or ""))
         publication = urlparse(str(provision.get("verified_publication_url") or ""))
         if (
             not case.get("query")
             or not case.get("required_response_all")
             or not provision.get("article_ref")
-            or parsed.scheme != "https"
-            or parsed.hostname != "matsne.gov.ge"
-            or not parsed.fragment
+            or not is_official_provision_link(
+                {
+                    "article_ref": provision.get("article_ref"),
+                    "url": provision.get("url"),
+                }
+            )
             or publication.scheme != "https"
             or publication.hostname != "matsne.gov.ge"
             or publication.fragment

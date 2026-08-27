@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL, FAQ_TOPICS
+from .faq_tax_matrix import CANONICAL_TAX_CODE_SOURCE_URL, TAX_CODE_FAQ_TOPICS
 
 DOCUMENT_FIXTURES = [
     {
@@ -8,9 +8,19 @@ DOCUMENT_FIXTURES = [
         "title": "საქართველოს საგადასახადო კოდექსი.",
         "document_type": "law",
         "source_url": CANONICAL_TAX_CODE_SOURCE_URL,
-        "topics": list(dict.fromkeys(FAQ_TOPICS + ["property_tax"])),
+        "topics": list(dict.fromkeys(TAX_CODE_FAQ_TOPICS + ["property_tax"])),
         "subjects": ["individual", "legal_entity"],
         "goals": ["rate_lookup", "calculation_rule", "legal_basis"],
+        "authority_rank": 1.0,
+    },
+    {
+        "document_id": "funded-pension-law",
+        "title": "დაგროვებითი პენსიის შესახებ საქართველოს კანონი",
+        "document_type": "law",
+        "source_url": "https://infohub.rs.ge/ka/workspace/document/64a515a7-f7be-4d1a-a9c1-aa9d008b6df8",
+        "topics": ["funded_pension"],
+        "subjects": ["individual"],
+        "goals": ["contribution_rate", "legal_basis"],
         "authority_rank": 1.0,
     },
     {

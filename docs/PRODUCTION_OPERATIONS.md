@@ -662,8 +662,8 @@ nightly no-LLM quality gates.
 
 ## Generated legal-answer contract canary
 
-The single-source contract factory covers 28 parser-backed contracts and produces
-84 balanced RU/EN/KA cases with 36 verified article bindings. The contract audit,
+The single-source contract factory covers 39 parser-backed contracts and produces
+117 balanced RU/EN/KA cases with 50 verified article bindings. The contract audit,
 parser-goal coverage audit and suite build are read-only and make no HTTP,
 database or LLM calls:
 
@@ -675,7 +675,7 @@ docker exec infohub-backend python /app/scripts/build_legal_answer_contract_cana
 ```
 
 For a reviewed manual production run, create a new suite inside the container
-and use its exact 84-request ceiling. Keep the full answers and sources only in
+and use its exact 117-request ceiling. Keep the full answers and sources only in
 protected operational state:
 
 ```bash
@@ -684,7 +684,7 @@ docker exec infohub-backend python /app/scripts/build_legal_answer_contract_cana
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py \
   --suite /tmp/legal_answer_contract_canary.json \
   --execute \
-  --max-public-requests 84 \
+  --max-public-requests 117 \
   --commit "$(git rev-parse HEAD)" \
   --output /tmp/legal_answer_contract_report.json \
   --baseline-output /tmp/legal_answer_contract_baseline.json
@@ -693,12 +693,13 @@ docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary
 The evaluator is restricted to the backend loopback public route and waits
 eight seconds between requests. Copy accepted reports to a mode-`0600`
 directory under `.state`; never commit the full report. The suite includes the
-multi-article appeal, LLC, property-tax, tour-operator and distributed-profit
-contracts, so it verifies every individual Matsne provision link as well as the
-localized citation text. The coverage audit must report all 11 parser goals as
-classified: seven contract-backed and four contextual-retrieval goals. The only
-permitted remaining hard-coded authoritative fact is funded pension, pending a
-verified Funded Pension Law provision registry; any additional exception fails CI.
+multi-article appeal, LLC, property-tax, tour-operator, distributed-profit and
+funded-pension contracts, so it verifies every individual Matsne provision link
+as well as the localized citation text. Matsne publication 12 of the Funded
+Pension Law has no article-level HTML anchors, so article 3 uses the versioned
+official Matsne PDF page locator. The coverage audit must report all 18 parser
+goals as classified: 14 contract-backed and four contextual-retrieval goals.
+No hard-coded authoritative fact is allowlisted; any such literal fails CI.
 
 ## Bounded live answer-safety evaluation
 

@@ -32,12 +32,9 @@ CONTEXTUAL_RETRIEVAL_GOALS = {
     "document_summary": "requires the requested source document",
 }
 
-# This is the only remaining expert-authored fact outside the contract factory.
-# It depends on a separate legal act for which an official provision registry
-# has not yet been added. Any new exception must be explicit and reviewed.
-ALLOWED_HARDCODED_FACT_TOPICS = {
-    "funded_pension": "awaiting a verified Funded Pension Law provision registry",
-}
+# No authoritative legal fact may live outside the contract factory. Keeping
+# this mapping explicit makes any future temporary exception a reviewed CI diff.
+ALLOWED_HARDCODED_FACT_TOPICS: dict[str, str] = {}
 
 
 def extract_parser_goals(source: str) -> set[str]:

@@ -76,7 +76,6 @@ CURATED_ARTICLE_REFS = {
     "late_payment_interest": "272",
     "vat_threshold": "165",
     "tour_operator_vat": "172",
-    "funded_pension": "3",
     "estonian_model": "97–98",
 }
 

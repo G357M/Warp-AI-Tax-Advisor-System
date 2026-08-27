@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "registry_id": "funded_pension_law",
+  "registry_version": "2026-08-27.1",
+  "minimum_provision_locator_count": 1,
+  "act_title": "დაგროვებითი პენსიის შესახებ",
+  "infohub_source_url": "https://infohub.rs.ge/ka/workspace/document/64a515a7-f7be-4d1a-a9c1-aa9d008b6df8",
+  "matsne_document_url": "https://matsne.gov.ge/ka/document/view/4280127",
+  "verified_publication_url": "https://matsne.gov.ge/ka/document/view/4280127?publication=12",
+  "verified_pdf_url": "https://new.matsne.gov.ge/ka/document/download/4280127/12/ge/pdf",
+  "verified_at_utc": "2026-08-27T18:30:00Z",
+  "article_anchors": {},
+  "article_links": {
+    "3": "https://new.matsne.gov.ge/ka/document/download/4280127/12/ge/pdf#page=5"
+  }
+}

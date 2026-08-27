@@ -11,12 +11,12 @@ def test_all_parser_goals_have_an_explicit_answer_or_retrieval_policy():
     report = audit_coverage()
 
     assert report["result"] == "pass"
-    assert report["parser_goal_count"] == 11
-    assert report["contract_backed_goal_count"] == 7
+    assert report["parser_goal_count"] == 18
+    assert report["contract_backed_goal_count"] == 14
     assert report["contextual_retrieval_goal_count"] == 4
     assert report["classified_goal_coverage"] == 1.0
     assert report["uncovered_goals"] == []
-    assert report["legacy_hardcoded_fact_topics"] == ["funded_pension"]
+    assert report["legacy_hardcoded_fact_topics"] == []
     assert report["error_count"] == 0
     assert report["network_calls_allowed"] is False
     assert report["database_calls_allowed"] is False
@@ -69,4 +69,4 @@ def test_extractors_are_derived_from_source_syntax_not_manual_goal_lists():
     )
 
     assert "profit_distribution_model" in parser_goals
-    assert hardcoded_topics == {"funded_pension"}
+    assert hardcoded_topics == set()

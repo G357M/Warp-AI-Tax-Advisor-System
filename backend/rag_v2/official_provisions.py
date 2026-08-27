@@ -1,9 +1,10 @@
 """Verified official deep links for concrete legal provisions.
 
 The public source URL stored in the corpus remains the Revenue Service
-InfoHub document.  For supported acts, Matsne additionally exposes stable
-named anchors for individual articles.  This module enriches source objects
-with those links without making a network request at answer time.
+InfoHub document. For supported acts, Matsne exposes either stable named
+anchors or a versioned official PDF page for an individual article. This
+module enriches source objects with those links without a network request at
+answer time.
 
 The registry is evidence, not a legal conclusion.  If an article is absent
 from the verified registry, the source remains document-level and the public
@@ -26,12 +27,13 @@ REGISTRY_PATHS = (
     Path(__file__).with_name("official_civil_code_provisions.json"),
     Path(__file__).with_name("official_entrepreneurs_law_provisions.json"),
     Path(__file__).with_name("official_labour_code_provisions.json"),
+    Path(__file__).with_name("official_funded_pension_law_provisions.json"),
 )
 # Backwards-compatible name used by earlier tests and operational tooling.
 REGISTRY_PATH = REGISTRY_PATHS[0]
 _ARTICLE_TOKEN = re.compile(r"\d+(?:(?:[¹²³⁴⁵⁶⁷⁸⁹⁰]+)|(?:-\d+))?")
 _SUPERSCRIPT_TRANSLATION = str.maketrans("¹²³⁴⁵⁶⁷⁸⁹⁰", "1234567890")
-_OFFICIAL_HOSTS = {"matsne.gov.ge", "www.matsne.gov.ge"}
+_OFFICIAL_HOSTS = {"matsne.gov.ge", "www.matsne.gov.ge", "new.matsne.gov.ge"}
 _OFFICIAL_PROVISION_ANCHOR = re.compile(
     r"(?:part_\d+|DOCUMENT:\d+;PART:\d+;CHAPTER:\d+;ARTICLE:\d+(?:_\d+)?;)"
 )
@@ -51,11 +53,17 @@ def _load_registry(path: Path) -> dict[str, Any]:
         raise ValueError("official-provision InfoHub source is invalid")
     if matsne.scheme != "https" or matsne.hostname not in _OFFICIAL_HOSTS:
         raise ValueError("official-provision Matsne source is invalid")
-    anchors = registry.get("article_anchors")
-    minimum_anchor_count = registry.get("minimum_article_anchor_count")
-    if not isinstance(minimum_anchor_count, int) or minimum_anchor_count < 1:
-        raise ValueError("official-provision minimum anchor count is invalid")
-    if not isinstance(anchors, dict) or len(anchors) < minimum_anchor_count:
+    anchors = registry.get("article_anchors") or {}
+    links = registry.get("article_links") or {}
+    minimum_locator_count = registry.get(
+        "minimum_provision_locator_count",
+        registry.get("minimum_article_anchor_count"),
+    )
+    if not isinstance(minimum_locator_count, int) or minimum_locator_count < 1:
+        raise ValueError("official-provision minimum locator count is invalid")
+    if not isinstance(anchors, dict) or not isinstance(links, dict):
+        raise ValueError("official-provision article registry is invalid")
+    if len(anchors) + len(links) < minimum_locator_count:
         raise ValueError("official-provision article registry is incomplete")
     for article, anchor in anchors.items():
         if not re.fullmatch(r"\d+(?:-\d+)?", str(article)):
@@ -64,7 +72,33 @@ def _load_registry(path: Path) -> dict[str, Any]:
             raise ValueError(f"invalid provision anchor: {anchor}")
     if len(set(anchors.values())) != len(anchors):
         raise ValueError("official-provision anchors must identify one article each")
+    for article, provision_url in links.items():
+        if not re.fullmatch(r"\d+(?:-\d+)?", str(article)):
+            raise ValueError(f"invalid provision article key: {article}")
+        if not _is_official_pdf_page_url(str(provision_url)):
+            raise ValueError(f"invalid official PDF provision URL: {provision_url}")
+    if len(set(links.values())) != len(links):
+        raise ValueError("official PDF provision links must identify one locator each")
+    if set(anchors) & set(links):
+        raise ValueError("an article must use exactly one official provision locator")
     return registry
+
+
+def _is_official_pdf_page_url(value: str) -> bool:
+    try:
+        parsed = urlsplit(value)
+        return (
+            parsed.scheme == "https"
+            and parsed.hostname in _OFFICIAL_HOSTS
+            and not parsed.username
+            and not parsed.password
+            and parsed.port is None
+            and re.fullmatch(r"/ka/document/download/\d+/\d+/ge/pdf", parsed.path)
+            is not None
+            and re.fullmatch(r"page=[1-9]\d*", parsed.fragment) is not None
+        )
+    except ValueError:
+        return False
 
 
 @lru_cache(maxsize=1)
@@ -172,6 +206,16 @@ def enrich_source(source: dict[str, Any]) -> dict[str, Any]:
 
     links = []
     for article_key, article_ref, point_ref in _article_refs(source):
+        provision_url = registry.get("article_links", {}).get(article_key)
+        if provision_url:
+            links.append(
+                {
+                    "article_ref": article_ref,
+                    "point_ref": point_ref,
+                    "url": provision_url,
+                }
+            )
+            continue
         anchor = registry["article_anchors"].get(article_key)
         if not anchor:
             continue
@@ -212,8 +256,13 @@ def is_official_provision_link(link: dict[str, Any]) -> bool:
             and not parsed.username
             and not parsed.password
             and parsed.port is None
-            and parsed.path.startswith("/ka/document/view/")
-            and bool(_OFFICIAL_PROVISION_ANCHOR.fullmatch(parsed.fragment))
+            and (
+                (
+                    parsed.path.startswith("/ka/document/view/")
+                    and bool(_OFFICIAL_PROVISION_ANCHOR.fullmatch(parsed.fragment))
+                )
+                or _is_official_pdf_page_url(str(link.get("url") or ""))
+            )
             and bool(str(link.get("article_ref") or "").strip())
         )
     except ValueError:

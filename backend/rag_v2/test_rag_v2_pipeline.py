@@ -640,7 +640,12 @@ class PipelineV2RegressionTests(unittest.TestCase):
             with self.subTest(topic=entry.topic):
                 trace = pipeline_v2.build_trace(entry.sample_queries["ru"])
                 top = trace.reranking["top_ranked_documents"][0]
-                self.assertEqual(top["title"], CANONICAL_TAX_CODE_TITLE)
+                expected_title = (
+                    CANONICAL_TAX_CODE_TITLE
+                    if entry.registry_id == "tax_code"
+                    else "დაგროვებითი პენსიის შესახებ საქართველოს კანონი"
+                )
+                self.assertEqual(top["title"], expected_title)
                 self.assertEqual(top["metadata"].get("article_ref"), entry.article_ref)
 
     def test_tax_faq_matrix_queries_are_classified_as_expected(self):

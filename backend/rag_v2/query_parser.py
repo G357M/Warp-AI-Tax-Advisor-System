@@ -91,6 +91,106 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         and any(token in q for token in ("ндс", "vat", "დღგ"))
     )
 
+    funded_pension_markers = [
+        "накопительн", "пенсионн взнос", "взносы в пенс",
+        "funded pension", "pension contribution",
+        "დაგროვებითი პენს", "საპენსიო შენატან",
+    ]
+    is_funded_pension_query = any(token in q for token in funded_pension_markers)
+
+    tax_limitation_markers = [
+        "срок давности по налог", "налоговая давность", "давность налоговой провер",
+        "tax limitation period", "tax statute of limitations", "tax audit limitation",
+        "საგადასახადო ხანდაზმულ", "გადასახადის ხანდაზმულ", "შემოწმების ხანდაზმულ",
+    ]
+    is_tax_limitation_query = any(token in q for token in tax_limitation_markers)
+
+    tax_overpayment_refund_markers = [
+        "возврат переплаты", "вернуть переплату по налог", "переплата по налог",
+        "tax overpayment refund", "refund overpaid tax", "tax refund of overpayment",
+        "ზედმეტად გადახდილი გადასახად", "ზედმეტად გადახდილი თანხის დაბრუნ",
+    ]
+    is_tax_overpayment_refund_query = any(
+        token in q for token in tax_overpayment_refund_markers
+    )
+
+    tax_return_correction_markers = [
+        "исправить налоговую декларацию", "ошибку в налоговой декларации", "уточненная декларация",
+        "исправленная декларация", "корректировка декларации",
+        "amend a tax return", "correct a tax return", "correct an error in a tax return", "corrected tax return",
+        "საგადასახადო დეკლარაციის შესწორ", "დეკლარაციაში ცვლილების შეტანა", "შეცდომა საგადასახადო დეკლარაციაში",
+    ]
+    is_tax_return_correction_query = any(
+        token in q for token in tax_return_correction_markers
+    )
+
+    payroll_filing_markers = [
+        "декларация по зарплат", "декларацию по зарплат", "отчет по зарплат", "срок зарплатной декларации",
+        "payroll declaration", "payroll tax return", "salary tax return deadline",
+        "ხელფასის დეკლარაცი", "შრომის ანაზღაურების დეკლარაცი",
+    ]
+    is_payroll_filing_query = any(token in q for token in payroll_filing_markers)
+
+    vat_return_deadline_markers = [
+        "декларация по ндс", "срок подачи ндс", "срок уплаты ндс",
+        "срок подачи декларации и уплаты ндс",
+        "когда платить ндс", "vat return deadline", "vat filing deadline",
+        "when is vat due", "vat return and payment deadline",
+        "დღგ-ის დეკლარაციის ვადა", "დღგ-ის გადახდის ვადა",
+        "დღგ-ის დეკლარაციის წარდგენისა და გადახდის ვადა",
+    ]
+    is_vat_return_deadline_query = any(
+        token in q for token in vat_return_deadline_markers
+    )
+
+    vat_reverse_charge_markers = [
+        "обратное начисление ндс", "реверсный ндс", "reverse charge ндс", "ндс по услугам нерезидента",
+        "reverse charge vat", "vat on non-resident services", "უკუდაბეგვრ",
+        "არარეზიდენტის მომსახურების დღგ",
+    ]
+    is_vat_reverse_charge_query = any(token in q for token in vat_reverse_charge_markers)
+
+    vat_input_deduction_markers = [
+        "вычет входного ндс", "входной ндс", "зачет входного ндс", "зачет ндс", "вычет ндс",
+        "input vat deduction", "input vat credit", "claim input vat",
+        "დღგ-ის ჩათვლა", "ჩასათვლელი დღგ",
+    ]
+    is_vat_input_deduction_query = any(
+        token in q for token in vat_input_deduction_markers
+    )
+
+    property_tax_filing_markers = [
+        "декларация по налогу на имущество", "срок уплаты налога на имущество",
+        "когда платить налог на имущество", "декларацию и платить налог на имущество",
+        "property tax return deadline",
+        "property tax payment deadline", "property tax return and payment deadline",
+        "ქონების გადასახადის დეკლარაციის ვადა",
+        "ქონების გადასახადის გადახდის ვადა",
+        "ქონების გადასახადის დეკლარაცია და გადაიხადოს",
+    ]
+    is_property_tax_filing_query = any(
+        token in q for token in property_tax_filing_markers
+    )
+
+    late_filing_penalty_markers = [
+        "штраф за несвоевременную декларацию", "штраф за несвоевременную подачу налоговой декларации",
+        "штраф за просрочку декларации", "late filing penalty", "late tax return penalty",
+        "late tax return filing penalty", "დეკლარაციის დაგვიანებით", "დეკლარაციის ვადის დარღვევა",
+    ]
+    is_late_filing_penalty_query = any(
+        token in q for token in late_filing_penalty_markers
+    )
+
+    vat_registration_penalty_markers = [
+        "штраф без регистрации по ндс", "работу без регистрации по ндс", "штраф за отсутствие регистрации по ндс",
+        "vat registration failure penalty", "penalty for not registering for vat", "failing to register for vat",
+        "დღგ-ზე რეგისტრაციის გარეშე საქმიანობის ჯარიმა",
+        "დღგ-ის რეგისტრაციის გარეშე საქმიანობის ჯარიმა", "დღგ-ზე რეგისტრაციის გარეშე საქმიან",
+    ]
+    is_vat_registration_penalty_query = any(
+        token in q for token in vat_registration_penalty_markers
+    )
+
     is_profit_distribution_model_query = any(
         token in q for token in ("эстонск", "estonian", "ესტონ")
     )
@@ -189,7 +289,29 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
 
     short_term_markers = ["посуточ", "краткосрочн", "airbnb", "booking.com", "booking", "short-term rental", "short term rental", "short-term let", "short term let", "airbnb income", "მოკლევადიან გაქირავ", "მოკლე ვადით გაცემ", "booking.com-ით"]
 
-    if is_tax_residency_query:
+    if is_funded_pension_query:
+        topic = "funded_pension"
+    elif is_tax_limitation_query:
+        topic = "tax_limitation"
+    elif is_tax_overpayment_refund_query:
+        topic = "tax_overpayment_refund"
+    elif is_tax_return_correction_query:
+        topic = "tax_return_correction"
+    elif is_payroll_filing_query:
+        topic = "payroll_filing"
+    elif is_vat_return_deadline_query:
+        topic = "vat_return_deadline"
+    elif is_vat_reverse_charge_query:
+        topic = "vat_reverse_charge"
+    elif is_vat_input_deduction_query:
+        topic = "vat_input_deduction"
+    elif is_property_tax_filing_query:
+        topic = "property_tax_filing"
+    elif is_late_filing_penalty_query:
+        topic = "late_filing_penalty"
+    elif is_vat_registration_penalty_query:
+        topic = "vat_registration_penalty"
+    elif is_tax_residency_query:
         topic = "tax_residency"
     elif is_late_payment_penalty_query:
         topic = "late_payment_interest"
@@ -268,7 +390,31 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     article_ref = citations["articles"][0] if citations["articles"] else None
     decision_ref = document_ref if document_ref and "/" in document_ref else None
 
-    if is_tax_residency_query:
+    if is_funded_pension_query:
+        goal = "contribution_rate"
+        signals.extend(["normative", "funded_pension_contribution"])
+    elif is_tax_limitation_query:
+        goal = "limitation_period"
+        signals.extend(["normative", "tax_limitation"])
+    elif is_tax_overpayment_refund_query:
+        goal = "refund_procedure"
+        signals.extend(["practical", "tax_overpayment_refund"])
+    elif is_tax_return_correction_query:
+        goal = "correction_procedure"
+        signals.extend(["practical", "tax_return_correction"])
+    elif is_payroll_filing_query or is_vat_return_deadline_query or is_property_tax_filing_query:
+        goal = "filing_deadline"
+        signals.extend(["practical", "filing_deadline"])
+    elif is_vat_reverse_charge_query:
+        goal = "reverse_charge_rule"
+        signals.extend(["normative", "vat_reverse_charge"])
+    elif is_vat_input_deduction_query:
+        goal = "deduction_eligibility"
+        signals.extend(["normative", "vat_input_deduction"])
+    elif is_late_filing_penalty_query or is_vat_registration_penalty_query:
+        goal = "penalty_rate"
+        signals.extend(["normative", "filing_or_registration_penalty"])
+    elif is_tax_residency_query:
         goal = "residency_status"
         signals.extend(["normative", "tax_residency"])
     elif is_late_payment_penalty_query:

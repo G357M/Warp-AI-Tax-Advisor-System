@@ -51,6 +51,11 @@ REGISTRY_TITLES: Mapping[str, Mapping[str, str]] = {
         "en": "Labour Code of Georgia",
         "ka": "საქართველოს შრომის კოდექსი",
     },
+    "funded_pension_law": {
+        "ru": "Закон Грузии «О накопительной пенсии»",
+        "en": "Law of Georgia on Funded Pension",
+        "ka": "საქართველოს კანონი „დაგროვებითი პენსიის შესახებ“",
+    },
 }
 
 
@@ -247,8 +252,9 @@ def build_contract_cases(
                 f"contract {contract.slug} uses unknown registry {contract.registry_id}"
             )
         primary_ref = contract.article_refs[0]
-        anchor = registry["article_anchors"].get(primary_ref)
-        if not anchor:
+        anchor = registry.get("article_anchors", {}).get(primary_ref)
+        provision_url = registry.get("article_links", {}).get(primary_ref)
+        if not anchor and not provision_url:
             raise ValueError(
                 f"contract {contract.slug} article {primary_ref} has no verified anchor"
             )
@@ -280,7 +286,8 @@ def build_contract_cases(
                     "official_provision": {
                         "registry_id": contract.registry_id,
                         "article_ref": primary_ref,
-                        "url": f"{registry['matsne_document_url']}#{anchor}",
+                        "url": provision_url
+                        or f"{registry['matsne_document_url']}#{anchor}",
                         "verified_publication_url": registry[
                             "verified_publication_url"
                         ],
