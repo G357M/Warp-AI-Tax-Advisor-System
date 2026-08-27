@@ -5,7 +5,6 @@ import re
 from typing import Any, Dict, Optional, Tuple
 
 from .faq_tax_matrix import (
-    get_tax_faq_entry,
     get_tax_faq_entry_by_slug,
     match_tax_faq_entry,
 )
@@ -276,10 +275,7 @@ def import_vat_response(trace: Any) -> Optional[str]:
     # strict prompt then refuses non-deterministically. The FAQ entry answers both
     # "is it taxed" and "what rate" ("Да … 18%"), so serve it for any goal, not only
     # rate_lookup — this is the single retained import-VAT guard.
-    entry = get_tax_faq_entry("import_vat")
-    if not entry:
-        return None
-    return entry.response(_response_language(trace))
+    return _contract_response_by_slug("vat-import", trace)
 
 
 def nonresident_withholding_tax_response(trace: Any) -> Optional[str]:
@@ -385,11 +381,10 @@ def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
 
 
 def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
-    """Curated high-value facts, matched on query text because the parser does
-    not reliably tag these question shapes.
+    """Compatibility routes for formerly curated high-value tax facts.
 
-    Returns ``(topic, answer)`` so the caller can cite the actual legal basis
-    (most topics rest on the Tax Code; the funded pension rests on its own law).
+    Tax Code facts delegate to parser-backed contracts. Funded pension is the
+    only temporary hard-coded exception and rests on its own external law.
     """
     parsed = getattr(trace, "parsed_query", None) or {}
     q = str(parsed.get("normalized_query") or "").lower()
@@ -412,22 +407,18 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
         response = _contract_response_by_slug("late-payment-interest", trace)
         return ("late_payment_interest", response) if response else None
 
-    # Tour operator VAT exemption (Tax Code art. 172)
+    # Tour operator VAT exemption (Tax Code arts. 172 and 157).
     if ("туропер" in q or "tour oper" in q or "ტუროპერ" in q
-            or ((("турист" in q) or ("tourist" in q) or ("ტურист" in q)) and has_vat)):
-        return "tour_operator_vat", pick({
-            "ru": "Организованный въезд иностранных туристов в Грузию (услуги туроператора) освобождён от НДС с правом зачёта входного НДС (Налоговый кодекс Грузии, статья 172). Туроператор по таким услугам НДС не начисляет, но сохраняет право на зачёт входного НДС.",
-            "en": "The organized inbound travel of foreign tourists to Georgia (tour operator services) is VAT-exempt with the right to credit input VAT (Georgian Tax Code, Article 172). The operator does not charge VAT on such services but keeps the input VAT credit.",
-            "ka": "უცხოელი ტურისტების ორგანიზებული შემოყვანა საქართველოში (ტუროპერატორის მომსახურება) გათავისუფლებულია დღგ-სგან ჩათვლის უფლებით (საგადასახადო კოდექსი, მუხლი 172).",
-        })
+            or ((("турист" in q) or ("tourist" in q) or ("ტურისტ" in q)) and has_vat)):
+        response = _contract_response_by_slug(
+            "tour-operator-inbound-vat-exemption", trace
+        )
+        return ("tour_operator_vat", response) if response else None
 
     # VAT registration threshold
     if has_vat and any(t in q for t in ("оборот", "регистр", "порог", "threshold", "turnover", "registr", "რეგისტრ", "ბრუნვ")):
-        return "vat_threshold", pick({
-            "ru": "Регистрация плательщиком НДС обязательна, когда облагаемый оборот превышает 100 000 лари за любые непрерывные 12 календарных месяцев.",
-            "en": "VAT registration is mandatory once taxable turnover exceeds 100,000 GEL over any continuous 12 calendar months.",
-            "ka": "დღგ-ის გადამხდელად რეგისტრაცია სავალდებულოა, როცა დასაბეგრი ბრუნვა აღემატება 100 000 ლარს ნებისმიერ უწყვეტ 12 კალენდარულ თვეში.",
-        })
+        response = _contract_response_by_slug("vat-registration-threshold", trace)
+        return ("vat_registration_threshold", response) if response else None
 
     # Micro business — guard removed (Phase 4): retrieval grounds this correctly in
     # ru+en (eval), so the answer now comes from the retrieved law, not curated text.
@@ -443,19 +434,13 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
 
     # Estonian model of profit taxation
     if any(t in q for t in ("эстонск", "estonian", "ესტონ")):
-        return "estonian_model", pick({
-            "ru": "По эстонской модели в Грузии налог на прибыль (15%) уплачивается не на заработанную прибыль, а только при её распределении (например, дивиденды). Нераспределённая и реинвестированная прибыль налогом на прибыль не облагается.",
-            "en": "Under Georgia's Estonian model, profit tax (15%) is paid not on earned profit but only when profit is distributed (e.g. dividends). Retained and reinvested profit is not subject to profit tax.",
-            "ka": "ესტონური მოდელით საქართველოში მოგების გადასახადი (15%) იხდება არა მიღებულ მოგებაზე, არამედ მხოლოდ მისი განაწილებისას (მაგ. დივიდენდი). გაუნაწილებელი და რეინვესტირებული მოგება მოგების გადასახადით არ იბეგრება.",
-        })
+        response = _contract_response_by_slug("profit-distribution-model", trace)
+        return ("profit_tax", response) if response else None
 
     # Property tax
     if any(t in q for t in ("налог на имущество", "имуществ", "property tax", "ქონების გადასახად")):
-        return "property_tax", pick({
-            "ru": "Ставка налога на имущество зависит от плательщика. Для предприятия (организации) — не более 1% стоимости налогооблагаемого имущества (для лизинговой компании по переданному в лизинг имуществу — не более 0.6%). Для физлица фиксированной ставки 1% нет: налог зависит от дохода семьи за предыдущий год и составляет от 0% до 0.8%.",
-            "en": "The property tax rate depends on the taxpayer. For a company, it is no more than 1% of the value of taxable property (for a leasing company's leased property, no more than 0.6%). For an individual there is no fixed 1% rate: the tax depends on the family's previous-year income and ranges from 0% to 0.8%.",
-            "ka": "ქონების გადასახადის განაკვეთი დამოკიდებულია გადამხდელზე. საწარმოსთვის — დასაბეგრი ქონების ღირებულების არაუმეტეს 1% (სალიზინგო კომპანიის ლიზინგით გაცემულ ქონებაზე — არაუმეტეს 0.6%). ფიზიკური პირისთვის ფიქსირებული 1% არ არსებობს: გადასახადი დამოკიდებულია ოჯახის წინა წლის შემოსავალზე და შეადგენს 0%-დან 0.8%-მდე.",
-        })
+        response = _contract_response_by_slug("property-tax-overview", trace)
+        return ("property_tax", response) if response else None
 
     return None
 
@@ -527,11 +512,11 @@ def individual_property_tax_rate_response(trace: Any) -> Optional[str]:
 
     locality = str(parsed.get("locality") or "").strip()
     lang = _response_language(trace)
-    contract = get_tax_faq_entry("property_tax")
-    if contract is None:
+    contract_response = _contract_response_by_slug("property-tax-individual", trace)
+    if contract_response is None:
         return None
     if not locality:
-        return contract.response(lang)
+        return contract_response
 
     ru_labels = {
         "dmanisi": "Дманиси",
@@ -553,28 +538,24 @@ def individual_property_tax_rate_response(trace: Any) -> Optional[str]:
     }
 
     if lang == "en":
-        locality_text = f" in {en_labels.get(locality, locality)}" if locality else ""
-        response = (
-            f"For an individual, property tax{locality_text} should not be described as a fixed 1% rate, because that rate applies to companies. "
-            "For individuals, the tax depends on the previous calendar year's family income, and the rate can range from 0% to 0.8%. "
-            "If you need the exact amount, it should be calculated separately based on income and the type of property."
+        context = (
+            f"For property in {en_labels.get(locality, locality)}, the national "
+            "Tax Code bands below apply; the exact amount also depends on the "
+            "municipal rate, property type and taxable value."
         )
     elif lang == "ka":
-        locality_text = f" {ka_labels.get(locality, locality)}" if locality else ""
-        response = (
-            f"ფიზიკური პირისთვის ქონების გადასახადი{locality_text} ფიქსირებული 1%-იანი განაკვეთით არ განისაზღვრება, რადგან ასეთი განაკვეთი ორგანიზაციებს ეხება. "
-            "ფიზიკური პირებისთვის გადასახადი დამოკიდებულია წინა კალენდარული წლის ოჯახის შემოსავალზე და განაკვეთი შეიძლება იყოს 0%-დან 0.8%-მდე. "
-            "ზუსტი თანხის დასადგენად საჭიროა ცალკე გამოთვლა შემოსავლისა და ქონების ტიპის მიხედვით."
+        context = (
+            f"{ka_labels.get(locality, locality)} მდებარე ქონებაზე ქვემოთ მოცემული "
+            "საგადასახადო კოდექსის საერთო ზღვრები მოქმედებს; ზუსტი თანხა ასევე "
+            "მუნიციპალურ განაკვეთზე, ქონების სახესა და დასაბეგრ ღირებულებაზეა დამოკიდებული."
         )
     else:
-        locality_text = f" в {ru_labels.get(locality, locality)}" if locality else ""
-        response = (
-            f"Для физлица налог на имущество{locality_text} не следует описывать фиксированной ставкой 1%, "
-            "потому что такая ставка относится к организациям. Для физических лиц налог зависит от дохода за "
-            "предыдущий календарный год, а ставка может варьироваться от 0% до 0.8%. Если нужен точный расчёт, "
-            "его нужно считать отдельно по доходу семьи и виду имущества."
+        context = (
+            f"Для имущества в {ru_labels.get(locality, locality)} применяются "
+            "приведённые ниже общие диапазоны Налогового кодекса; точная сумма "
+            "также зависит от муниципальной ставки, вида и облагаемой стоимости имущества."
         )
-    return f"{response}\n\n{contract.citation(lang)}"
+    return f"{context}\n\n{contract_response}"
 
 
 def _trim_to_boundary(text: str, limit: int) -> str:

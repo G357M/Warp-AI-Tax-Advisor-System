@@ -6,7 +6,11 @@ from typing import Dict, List, Optional
 from .models import ParsedQuery, CandidateDocument
 from .metadata_search import search_metadata
 from .db_utils import db_available, run_query
-from .faq_tax_matrix import CANONICAL_RATE_ARTICLES, CANONICAL_TAX_CODE_SOURCE_URL
+from .faq_tax_matrix import (
+    CANONICAL_RATE_ARTICLES,
+    CANONICAL_TAX_CODE_SOURCE_URL,
+    match_tax_faq_entry_for_parsed,
+)
 
 
 METADATA_SEARCH_BASE_SQL = """
@@ -151,6 +155,15 @@ def search_metadata_from_backend(parsed: ParsedQuery, limit: int = 5) -> List[Ca
     # Threshold/registration questions win over the rate mapping: they share
     # the topic (vat) but need the registration article, not the rate one.
     normalized = str(getattr(parsed, "normalized_query", "") or "").lower()
+    contract = match_tax_faq_entry_for_parsed(parsed)
+    if contract is not None and contract.registry_id == "tax_code":
+        candidates = _canonical_tax_code_candidates(
+            contract.article_ref,
+            "db legal-answer contract provision lookup",
+        )
+        if candidates:
+            return candidates
+
     if parsed.topic in CANONICAL_THRESHOLD_ARTICLES and any(t in normalized for t in THRESHOLD_QUERY_TOKENS):
         candidates = _canonical_tax_code_candidates(
             CANONICAL_THRESHOLD_ARTICLES[parsed.topic], "db canonical tax code threshold lookup"

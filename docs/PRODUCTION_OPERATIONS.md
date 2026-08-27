@@ -662,18 +662,20 @@ nightly no-LLM quality gates.
 
 ## Generated legal-answer contract canary
 
-The single-source contract factory covers 25 parser-backed contracts and produces
-75 balanced RU/EN/KA cases. Its audit and suite build are read-only and make no
-HTTP, database or LLM calls:
+The single-source contract factory covers 28 parser-backed contracts and produces
+84 balanced RU/EN/KA cases with 36 verified article bindings. The contract audit,
+parser-goal coverage audit and suite build are read-only and make no HTTP,
+database or LLM calls:
 
 ```bash
 cd /root/infohub
 docker exec infohub-backend python /app/scripts/audit_legal_answer_contracts.py
+docker exec infohub-backend python /app/scripts/audit_legal_answer_coverage.py
 docker exec infohub-backend python /app/scripts/build_legal_answer_contract_canary.py
 ```
 
 For a reviewed manual production run, create a new suite inside the container
-and use its exact 75-request ceiling. Keep the full answers and sources only in
+and use its exact 84-request ceiling. Keep the full answers and sources only in
 protected operational state:
 
 ```bash
@@ -682,7 +684,7 @@ docker exec infohub-backend python /app/scripts/build_legal_answer_contract_cana
 docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary.py \
   --suite /tmp/legal_answer_contract_canary.json \
   --execute \
-  --max-public-requests 75 \
+  --max-public-requests 84 \
   --commit "$(git rev-parse HEAD)" \
   --output /tmp/legal_answer_contract_report.json \
   --baseline-output /tmp/legal_answer_contract_baseline.json
@@ -691,8 +693,12 @@ docker exec infohub-backend python /app/scripts/evaluate_public_provision_canary
 The evaluator is restricted to the backend loopback public route and waits
 eight seconds between requests. Copy accepted reports to a mode-`0600`
 directory under `.state`; never commit the full report. The suite includes the
-multi-article appeal and LLC contracts, so it verifies every individual Matsne
-provision link as well as the localized citation text.
+multi-article appeal, LLC, property-tax, tour-operator and distributed-profit
+contracts, so it verifies every individual Matsne provision link as well as the
+localized citation text. The coverage audit must report all 11 parser goals as
+classified: seven contract-backed and four contextual-retrieval goals. The only
+permitted remaining hard-coded authoritative fact is funded pension, pending a
+verified Funded Pension Law provision registry; any additional exception fails CI.
 
 ## Bounded live answer-safety evaluation
 

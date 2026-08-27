@@ -91,6 +91,10 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         and any(token in q for token in ("ндс", "vat", "დღგ"))
     )
 
+    is_profit_distribution_model_query = any(
+        token in q for token in ("эстонск", "estonian", "ესტონ")
+    )
+
     # The homepage asks whether an LLC may use the "1% tax regime" without
     # naming small-business status.  Treat the legal form + regime combination
     # as an eligibility question.  Exclude property-tax wording because a 1%
@@ -189,6 +193,8 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
         topic = "tax_residency"
     elif is_late_payment_penalty_query:
         topic = "late_payment_interest"
+    elif is_profit_distribution_model_query:
+        topic = "profit_tax"
     elif is_tour_operator_vat_query:
         topic = "tour_operator_vat"
     elif is_small_business_legal_form_query:
@@ -268,6 +274,9 @@ def parse_query(raw_query: str, language: str = "ru") -> ParsedQuery:
     elif is_late_payment_penalty_query:
         goal = "penalty_rate"
         signals.extend(["normative", "late_payment_penalty"])
+    elif is_profit_distribution_model_query:
+        goal = "profit_distribution_model"
+        signals.extend(["normative", "profit_distribution_model"])
     elif is_tour_operator_vat_query:
         goal = "exemption_status"
         signals.extend(["normative", "tour_operator_vat_exemption"])

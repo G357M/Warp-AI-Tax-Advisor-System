@@ -80,21 +80,26 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
         slug="property-tax-individual",
         topic="property_tax",
         subject="individual",
-        article_ref="281",
+        article_ref="202",
+        additional_article_refs=("206",),
         question_class="practical_tax_guidance",
-        response_kind="range_not_fixed_rate",
-        note="Do not answer with a false fixed 1%; for individuals the rate depends on income and can range from 0% to 0.8%.",
+        response_kind="income_bands_with_exemption",
+        note="Article 202 sets the individual income bands; Article 206 exempts non-land property when prior-year family income does not exceed GEL 40,000.",
         sample_queries={
             "ru": "Сколько налог на имущество для физлица в Тбилиси?",
             "en": "What is the property tax for an individual in Tbilisi?",
             "ka": "ფიზიკური პირისთვის ქონების გადასახადი რამდენია თბილისში?",
         },
         response_by_lang={
-            "ru": "Для физлица налог на имущество не следует описывать фиксированной ставкой 1%, потому что такая ставка относится к организациям. Для физических лиц налог зависит от дохода за предыдущий календарный год, а ставка может варьироваться от 0% до 0.8%. Если нужен точный расчёт, его нужно считать отдельно по доходу семьи и виду имущества.",
-            "en": "For an individual, property tax should not be described as a fixed 1% rate, because that rate applies to companies. For individuals, the tax depends on the previous calendar year's family income, and the rate can range from 0% to 0.8%. If you need the exact amount, it should be calculated separately based on income and the type of property.",
-            "ka": "ფიზიკური პირისთვის ქონების გადასახადი ფიქსირებული 1%-იანი განაკვეთით არ განისაზღვრება, რადგან ასეთი განაკვეთი ორგანიზაციებს ეხება. ფიზიკური პირებისთვის გადასახადი დამოკიდებულია წინა კალენდარული წლის ოჯახის შემოსავალზე და განაკვეთი შეიძლება იყოს 0%-დან 0.8%-მდე. ზუსტი თანხის დასადგენად საჭიროა ცალკე გამოთვლა შემოსავლისა და ქონების ტიპის მიხედვით.",
+            "ru": "Для физлица ставка налога на облагаемое имущество зависит от дохода семьи: при доходе до 100 000 лари — от 0,05% до 0,2% рыночной стоимости, при доходе 100 000 лари и более — от 0,8% до 1%. Если доход семьи за предыдущий год не превышает 40 000 лари, облагаемое имущество физлица, кроме земли, освобождается от налога. Для земли, специальных льгот и точной суммы применяются отдельные правила.",
+            "en": "For an individual, the property tax rate depends on family income: from 0.05% to 0.2% of market value where income is below GEL 100,000, and from 0.8% to 1% where income is GEL 100,000 or more. If the previous year's family income does not exceed GEL 40,000, the individual's taxable property other than land is exempt. Separate rules apply to land, special exemptions and the exact amount.",
+            "ka": "ფიზიკური პირის ქონების გადასახადის განაკვეთი ოჯახის შემოსავალზეა დამოკიდებული: 100 000 ლარამდე შემოსავლისას — საბაზრო ღირებულების 0,05%-დან 0,2%-მდე, ხოლო 100 000 ლარის ან მეტი შემოსავლისას — 0,8%-დან 1%-მდე. თუ წინა წლის ოჯახის შემოსავალი 40 000 ლარს არ აღემატება, ფიზიკური პირის დასაბეგრი ქონება, მიწის გარდა, გადასახადისგან თავისუფლდება. მიწაზე, სპეციალურ შეღავათებსა და ზუსტ თანხაზე ცალკე წესები მოქმედებს.",
         },
-        smoke_contains={"ru": ["0% до 0.8%"], "en": ["0% to 0.8%"], "ka": ["0%-დან 0.8%-მდე"]},
+        smoke_contains={
+            "ru": ["0,05%", "0,2%", "0,8%", "1%", "40 000 лари"],
+            "en": ["0.05%", "0.2%", "0.8%", "1%", "GEL 40,000"],
+            "ka": ["0,05%", "0,2%", "0,8%", "1%", "40 000 ლარს"],
+        },
     ),
     TaxFaqEntry(
         slug="property-tax-company",
@@ -115,6 +120,30 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
             "ka": "საქართველოში საწარმოსთვის ან ორგანიზაციისთვის ქონების გადასახადის წლიური განაკვეთი დასაბეგრი ქონების ღირებულების არაუმეტეს 1%-ია. სალიზინგო კომპანიისთვის ლიზინგით გაცემულ დასაბეგრ ქონებაზე კოდექსი სპეციალურ წესსაც ითვალისწინებს — არაუმეტეს 0.6%-ს.",
         },
         smoke_contains={"ru": ["1%", "0.6%"], "en": ["1%", "0.6%"], "ka": ["1%", "0.6%"]},
+    ),
+    TaxFaqEntry(
+        slug="property-tax-overview",
+        topic="property_tax",
+        article_ref="202",
+        additional_article_refs=("206",),
+        question_class="canonical_law_lookup",
+        response_kind="taxpayer_specific_overview",
+        note="A generic property-tax question must split company and individual rules instead of presenting one universal rate.",
+        sample_queries={
+            "ru": "Какая ставка налога на имущество в Грузии?",
+            "en": "What is the property tax rate in Georgia?",
+            "ka": "რა არის ქონების გადასახადის განაკვეთი საქართველოში?",
+        },
+        response_by_lang={
+            "ru": "Единой ставки налога на имущество нет. Для предприятия или организации годовая ставка составляет не более 1% стоимости облагаемого имущества; для лизинговой компании по переданному в лизинг имуществу действует специальный предел 0,6%. Для физлица ставка зависит от дохода семьи: 0,05–0,2% при доходе до 100 000 лари и 0,8–1% при доходе 100 000 лари и более. При доходе семьи за предыдущий год не более 40 000 лари имущество физлица, кроме земли, освобождается.",
+            "en": "There is no single property tax rate. For an enterprise or organization, the annual rate is no more than 1% of taxable property value; a special 0.6% cap applies to a leasing company's leased property. For an individual, the rate depends on family income: 0.05–0.2% below GEL 100,000 and 0.8–1% at GEL 100,000 or more. If the previous year's family income does not exceed GEL 40,000, the individual's property other than land is exempt.",
+            "ka": "ქონების გადასახადის ერთი საერთო განაკვეთი არ არსებობს. საწარმოსთვის ან ორგანიზაციისთვის წლიური განაკვეთი დასაბეგრი ქონების ღირებულების არაუმეტეს 1%-ია; სალიზინგო კომპანიის ლიზინგით გაცემულ ქონებაზე სპეციალური 0,6%-იანი ზღვარი მოქმედებს. ფიზიკური პირისთვის განაკვეთი ოჯახის შემოსავალზეა დამოკიდებული: 100 000 ლარამდე — 0,05–0,2%, ხოლო 100 000 ლარის ან მეტის შემთხვევაში — 0,8–1%. თუ წინა წლის ოჯახის შემოსავალი 40 000 ლარს არ აღემატება, ფიზიკური პირის ქონება, მიწის გარდა, გადასახადისგან თავისუფლდება.",
+        },
+        smoke_contains={
+            "ru": ["1%", "0,6%", "0,05–0,2%", "0,8–1%", "40 000 лари"],
+            "en": ["1%", "0.6%", "0.05–0.2%", "0.8–1%", "GEL 40,000"],
+            "ka": ["1%", "0,6%", "0,05–0,2%", "0,8–1%", "40 000 ლარს"],
+        },
     ),
     TaxFaqEntry(
         slug="excise-guardrail",
@@ -193,6 +222,31 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
         smoke_contains={"ru": ["Да", "18%"], "en": ["Yes", "18%"], "ka": ["დიახ", "18%"]},
     ),
     TaxFaqEntry(
+        slug="tour-operator-inbound-vat-exemption",
+        topic="tour_operator_vat",
+        article_ref="172",
+        additional_article_refs=("157",),
+        question_class="canonical_law_lookup",
+        response_kind="conditional_exemption_with_credit",
+        match_goals=("exemption_status",),
+        note="The exemption applies to organized inbound tourism and supply of a qualifying tourist product, not every standalone tourism service.",
+        sample_queries={
+            "ru": "Освобождены ли услуги туроператора от НДС в Грузии?",
+            "en": "Are tour operator services exempt from VAT in Georgia?",
+            "ka": "გათავისუფლებულია თუ არა ტუროპერატორის მომსახურება დღგ-ისგან საქართველოში?",
+        },
+        response_by_lang={
+            "ru": "От НДС с правом зачёта освобождается организованный туроператором въезд иностранного туриста в Грузию и предоставление ему в Грузии туристического продукта. Туристический продукт должен объединять не менее двух компонентов туристических услуг; поэтому освобождение не следует автоматически применять к любой отдельной туристической услуге.",
+            "en": "The organized inbound travel of a foreign tourist to Georgia by a tour operator, together with the supply of a tourist product in Georgia, is VAT-exempt with the right to input VAT credit. A tourist product must combine at least two tourism-service components, so the exemption should not automatically be applied to every standalone tourism service.",
+            "ka": "ტუროპერატორის მიერ უცხოელი ტურისტის საქართველოში ორგანიზებული შემოყვანა და მისთვის საქართველოში ტურისტული პროდუქტის მიწოდება დღგ-ისგან ჩათვლის უფლებით თავისუფლდება. ტურისტული პროდუქტი ტურისტული მომსახურების სულ მცირე ორ კომპონენტს უნდა აერთიანებდეს, ამიტომ შეღავათი ავტომატურად ყველა ცალკეულ ტურისტულ მომსახურებაზე არ ვრცელდება.",
+        },
+        smoke_contains={
+            "ru": ["правом зачёта", "не менее двух"],
+            "en": ["input VAT credit", "at least two"],
+            "ka": ["ჩათვლის უფლებით", "სულ მცირე ორ"],
+        },
+    ),
+    TaxFaqEntry(
         slug="vat-registration-timing",
         topic="vat_registration_timing",
         article_ref="165",
@@ -248,6 +302,31 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
             "ka": "საქართველოში მოგების გადასახადის ძირითადი განაკვეთი 15 პროცენტია. ცალკეულ სპეციალურ შემთხვევებში კოდექსი სხვა წესსაც ითვალისწინებს, მაგრამ საბაზისო განაკვეთი 15%-ია.",
         },
         smoke_contains={"ru": ["15%"], "en": ["15%"], "ka": ["15 პროცენტ"]},
+    ),
+    TaxFaqEntry(
+        slug="profit-distribution-model",
+        topic="profit_tax",
+        article_ref="97",
+        additional_article_refs=("98", "98-1"),
+        question_class="canonical_law_lookup",
+        response_kind="distributed_profit_model_with_deemed_objects",
+        match_goals=("profit_distribution_model",),
+        note="The Georgian distributed-profit model taxes Article 97 objects at the Article 98 rate; it is broader than dividends alone.",
+        sample_queries={
+            "ru": "Как работает эстонская модель налогообложения прибыли в Грузии?",
+            "en": "How does the Estonian profit tax model work in Georgia?",
+            "ka": "როგორ მუშაობს მოგების გადასახადის ესტონური მოდელი საქართველოში?",
+        },
+        response_by_lang={
+            "ru": "В грузинской модели распределённой прибыли само получение и сохранение прибыли обычно не создаёт налог на прибыль. Налог возникает при распределении прибыли и по другим объектам статьи 97: расходам, не связанным с экономической деятельностью, безвозмездным передачам и сверхлимитным представительским расходам. По статье 98 сумма объекта делится на 0,85, после чего применяется ставка 15%; поэтому модель шире выплаты дивидендов, а просто умножать чистую выплату на 15% неверно.",
+            "en": "Under Georgia's distributed-profit model, merely earning and retaining profit generally does not trigger profit tax. Tax arises on distributed profit and the other Article 97 objects: non-business expenses, gratuitous transfers and representation expenses above the statutory limit. Under Article 98, the object amount is divided by 0.85 and the 15% rate is then applied. The model is therefore broader than dividend payments alone, and simply multiplying the net distribution by 15% is not the statutory calculation.",
+            "ka": "საქართველოს განაწილებული მოგების მოდელით მოგების მხოლოდ მიღება და გაუნაწილებლად დატოვება, როგორც წესი, მოგების გადასახადს არ წარმოშობს. გადასახადი წარმოიშობა განაწილებულ მოგებაზე და 97-ე მუხლის სხვა ობიექტებზე: ეკონომიკურ საქმიანობასთან დაუკავშირებელ ხარჯებზე, უსასყიდლო გადაცემებსა და ზღვრულ ოდენობაზე მეტ წარმომადგენლობით ხარჯებზე. 98-ე მუხლით ობიექტის თანხა იყოფა 0,85-ზე და შემდეგ ერიცხება 15%; ამიტომ მოდელი მხოლოდ დივიდენდის გაცემით არ შემოიფარგლება და წმინდა განაწილების 15%-ზე პირდაპირ გამრავლება კოდექსის გამოთვლა არ არის.",
+        },
+        smoke_contains={
+            "ru": ["15%", "статьи 97", "0,85", "шире"],
+            "en": ["15%", "Article 97", "0.85", "broader"],
+            "ka": ["15%", "97-ე მუხლის", "0,85", "არ შემოიფარგლება"],
+        },
     ),
     TaxFaqEntry(
         slug="dividends",
@@ -568,6 +647,17 @@ def match_tax_faq_entry(
         if entry.matches(parsed, question_class):
             return entry
     return None
+
+
+def match_tax_faq_entry_for_parsed(parsed: Any) -> Optional[TaxFaqEntry]:
+    """Resolve the contract and retrieval pointer from one parser result."""
+    from .query_classifier import classify_query
+
+    parsed_mapping = (
+        parsed.model_dump() if hasattr(parsed, "model_dump") else dict(parsed or {})
+    )
+    classification = classify_query(parsed)
+    return match_tax_faq_entry(parsed_mapping, classification.question_class)
 
 
 def build_tax_answer_contract_cases() -> List[Dict[str, object]]:

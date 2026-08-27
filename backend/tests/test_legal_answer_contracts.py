@@ -35,17 +35,17 @@ def _source(article_ref: str) -> dict:
     }
 
 
-def test_factory_generates_all_twenty_five_contracts_in_three_languages():
+def test_factory_generates_all_twenty_eight_contracts_in_three_languages():
     cases = build_tax_answer_contract_cases()
 
-    assert len(TAX_FAQ_MATRIX) == 25
-    assert len(cases) == 75
+    assert len(TAX_FAQ_MATRIX) == 28
+    assert len(cases) == 84
     assert {case["language"] for case in cases} == set(SUPPORTED_LANGUAGES)
     assert {
         language: sum(case["language"] == language for case in cases)
         for language in SUPPORTED_LANGUAGES
-    } == {"ru": 25, "en": 25, "ka": 25}
-    assert len({case["id"] for case in cases}) == 75
+    } == {"ru": 28, "en": 28, "ka": 28}
+    assert len({case["id"] for case in cases}) == 84
     assert all(case["official_provision"]["url"].startswith("https://matsne.gov.ge/") for case in cases)
     assert all("#" in case["official_provision"]["url"] for case in cases)
     assert all(case["evidence"]["coverage"] == "exact_provision" for case in cases)
@@ -62,7 +62,24 @@ def test_every_contract_response_contains_fact_tokens_and_generated_citation():
             )
 
 
-def test_final_boundary_enforces_all_seventy_five_citations_idempotently():
+def test_property_tax_contracts_use_rate_and_exemption_articles_not_penalty_article():
+    expected = {
+        "property-tax-individual": ("202", "206"),
+        "property-tax-company": ("202",),
+        "property-tax-overview": ("202", "206"),
+    }
+
+    actual = {
+        contract.slug: contract.article_refs
+        for contract in TAX_FAQ_MATRIX
+        if contract.slug in expected
+    }
+
+    assert actual == expected
+    assert all("281" not in article_refs for article_refs in actual.values())
+
+
+def test_final_boundary_enforces_all_eighty_four_citations_idempotently():
     for contract in TAX_FAQ_MATRIX:
         for language in SUPPORTED_LANGUAGES:
             result = attach_evidence(
@@ -126,23 +143,23 @@ def test_contract_audit_is_complete_read_only_and_call_free():
     report = audit_contracts()
 
     assert report["result"] == "pass"
-    assert report["contracts"] == 25
-    assert report["localized_answers"] == 75
-    assert report["generated_cases"] == 75
-    assert report["verified_article_bindings"] == 28
+    assert report["contracts"] == 28
+    assert report["localized_answers"] == 84
+    assert report["generated_cases"] == 84
+    assert report["verified_article_bindings"] == 36
     assert report["error_count"] == 0
     assert report["network_calls_allowed"] is False
     assert report["database_calls_allowed"] is False
     assert report["llm_calls_allowed"] is False
 
 
-def test_factory_builds_a_valid_seventy_five_case_public_canary():
+def test_factory_builds_a_valid_eighty_four_case_public_canary():
     suite = build_suite()
 
     assert validate_suite_payload(suite) is suite
     assert suite["suite_version"].startswith("legal-answer-contracts-")
-    assert suite["execution_profile"]["max_public_requests"] == 75
-    assert len(suite["cases"]) == 75
+    assert suite["execution_profile"]["max_public_requests"] == 84
+    assert len(suite["cases"]) == 84
     assert all(
         any(
             item.startswith(("Источник:", "Source:", "წყარო:"))

@@ -412,7 +412,9 @@ class PublicResponseShapeTests(unittest.TestCase):
         )
         result = individual_property_tax_rate_response(trace)
         self.assertIn("თბილისში", result)
-        self.assertIn("0%-დან 0.8%-მდე", result)
+        self.assertIn("0,05%-დან 0,2%-მდე", result)
+        self.assertIn("0,8%-დან 1%-მდე", result)
+        self.assertIn("მუხლები 202 და 206", result)
 
     def test_individual_property_tax_rate_response_uses_individual_range_not_company_rate(self):
         trace = types.SimpleNamespace(
@@ -425,9 +427,11 @@ class PublicResponseShapeTests(unittest.TestCase):
             },
         )
         result = individual_property_tax_rate_response(trace)
-        self.assertIn("от 0% до 0.8%", result)
+        self.assertIn("от 0,05% до 0,2%", result)
+        self.assertIn("от 0,8% до 1%", result)
         self.assertIn("в Тбилиси", result)
-        self.assertIn("ставка относится к организациям", result)
+        self.assertIn("статьи 202 и 206", result)
+        self.assertNotIn("статья 281", result)
 
     def test_tax_faq_matrix_topics_have_direct_response_functions(self):
         for entry in TAX_FAQ_MATRIX:
@@ -442,10 +446,7 @@ class PublicResponseShapeTests(unittest.TestCase):
                         "goal": entry.match_goals[0],
                         },
                     )
-                    if entry.topic == "property_tax":
-                        result = individual_property_tax_rate_response(trace)
-                    else:
-                        result = direct_tax_faq_response(trace)
+                    result = direct_tax_faq_response(trace)
                     self.assertEqual(result, entry.response(lang))
 
     def test_nonresident_service_wht_response_mentions_possible_vat_separately(self):

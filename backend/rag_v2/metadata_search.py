@@ -4,7 +4,10 @@ from typing import Dict, List
 
 from .fixtures_metadata import DOCUMENT_FIXTURES
 from .models import ParsedQuery, CandidateDocument
-from .faq_tax_matrix import CANONICAL_RATE_ARTICLES
+from .faq_tax_matrix import (
+    CANONICAL_RATE_ARTICLES,
+    match_tax_faq_entry_for_parsed,
+)
 
 
 CANONICAL_GOAL_ARTICLES = {
@@ -49,11 +52,11 @@ def _score_fixture(parsed: ParsedQuery, doc: Dict[str, object]) -> tuple[float, 
 
 def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocument]:
     scored: List[CandidateDocument] = []
+    contract = match_tax_faq_entry_for_parsed(parsed)
 
     for doc in DOCUMENT_FIXTURES:
         if (
-            parsed.topic in CANONICAL_RATE_ARTICLES
-            and parsed.goal == "rate_lookup"
+            contract is not None
             and "საგადასახადო კოდექსში ცვლილების შეტანის შესახებ" in str(doc.get("title", ""))
         ):
             continue
@@ -67,8 +70,23 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
             parsed.goal in CANONICAL_GOAL_ARTICLES
             and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
         )
+        has_contract_match = bool(
+            contract is not None
+            and contract.registry_id == "tax_code"
+            and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
+        )
+        if has_contract_match:
+            score = max(score, 0.99)
+            why_parts.append(
+                f"legal-answer contract provision matched: {contract.article_ref}"
+            )
 
-        if not has_topic_match and not has_goal_match and not has_canonical_goal_match:
+        if not (
+            has_topic_match
+            or has_goal_match
+            or has_canonical_goal_match
+            or has_contract_match
+        ):
             continue
         if score <= 0:
             continue
@@ -82,7 +100,12 @@ def search_metadata(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocume
             "is_current": doc.get("is_current"),
             "recency_bucket": doc.get("recency_bucket"),
         }
-        if (
+        if has_contract_match:
+            article_ref = contract.article_ref
+            metadata.update(
+                {"article_ref": article_ref, "section_label": f"მუხლი {article_ref}"}
+            )
+        elif (
             parsed.topic in CANONICAL_RATE_ARTICLES
             and parsed.goal == "rate_lookup"
             and str(doc.get("title")) == "საქართველოს საგადასახადო კოდექსი."
