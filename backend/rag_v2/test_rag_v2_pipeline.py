@@ -648,7 +648,7 @@ class PipelineV2RegressionTests(unittest.TestCase):
             with self.subTest(topic=entry.topic):
                 parsed = parse_query(entry.sample_queries["ru"], language="ru")
                 self.assertEqual(parsed.topic, entry.topic)
-                self.assertEqual(parsed.goal, "rate_lookup")
+                self.assertIn(parsed.goal, entry.match_goals)
                 if entry.subject:
                     self.assertEqual(parsed.subject, entry.subject)
 

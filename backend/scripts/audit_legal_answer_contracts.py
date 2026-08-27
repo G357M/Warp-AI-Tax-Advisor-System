@@ -35,6 +35,7 @@ def _fingerprint(contracts: Iterable[LegalAnswerContract]) -> str:
             "subject": item.subject,
             "question_class": item.question_class,
             "response_kind": item.response_kind,
+            "match_goals": item.match_goals,
             "registry_id": item.registry_id,
             "article_refs": item.article_refs,
             "sample_queries": item.sample_queries,
@@ -58,6 +59,22 @@ def audit_contracts(
     slugs = [item.slug for item in selected]
     if len(slugs) != len(set(slugs)):
         errors.append("contract slugs must be unique")
+    signatures: set[tuple[str, str, str, str | None]] = set()
+    for contract in selected:
+        if not contract.match_goals:
+            errors.append(f"{contract.slug}: at least one match goal is required")
+        for goal in contract.match_goals:
+            signature = (
+                contract.topic,
+                contract.question_class,
+                goal,
+                contract.subject,
+            )
+            if signature in signatures:
+                errors.append(
+                    f"{contract.slug}: duplicate deterministic match signature {signature}"
+                )
+            signatures.add(signature)
 
     registries = {
         item["registry_id"]: item for item in load_official_provision_registries()

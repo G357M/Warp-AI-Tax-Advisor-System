@@ -14,7 +14,7 @@ from rag.pipeline import rag_pipeline
 from .pipeline_v2 import pipeline_v2
 from .query_classifier import classify_query
 from .query_parser import parse_query
-from .faq_tax_matrix import get_tax_faq_entry
+from .faq_tax_matrix import get_tax_faq_entry, match_tax_faq_entry
 from .public_response import (
     authoritative_tax_fact_response,
     compress_canonical_section_text,
@@ -157,9 +157,9 @@ def _dispute_stats_line(trace) -> Optional[str]:
         return None
 
 
-def _curated_source(topic: Optional[str]) -> Dict[str, Any]:
+def _curated_source(topic: Optional[str], *, contract: Any = None) -> Dict[str, Any]:
     basis = CURATED_LEGAL_BASIS.get(topic or "", TAX_CODE_SOURCE)
-    contract = get_tax_faq_entry(topic)
+    contract = contract or get_tax_faq_entry(topic)
     article_ref = (
         ", ".join(contract.article_refs)
         if contract is not None
@@ -1004,22 +1004,26 @@ def maybe_run_live_rollout(
     # bounded rate/threshold questions.  Serve it before retrieval so the LLM
     # cannot paraphrase away expert-approved facts or their exact provision.
     # Questions outside the contract semantics continue through normal RAG.
+    contract = match_tax_faq_entry(
+        parsed.model_dump(), classification.question_class
+    )
     contract_response = direct_tax_faq_response(scope_trace)
     if contract_response:
         question_class = classification.question_class
-        contract_topic = parsed.topic
+        contract_topic = contract.topic if contract else parsed.topic
         print(
             f"[RAG_V2_ROLLOUT] class={question_class} "
-            f"contract=1 topic={contract_topic}"
+            f"contract=1 topic={contract_topic} slug={contract.slug if contract else ''}"
         )
         return {
             "response": contract_response,
-            "sources": [_curated_source(contract_topic)],
+            "sources": [_curated_source(contract_topic, contract=contract)],
             "retrieved_count": 1,
             "_rag_v2": {
                 "mode": "rollout_authoritative",
                 "question_class": question_class,
                 "legal_answer_contract": contract_topic,
+                "legal_answer_contract_slug": contract.slug if contract else None,
             },
         }
 

@@ -4,7 +4,11 @@ import os
 import re
 from typing import Any, Dict, Optional, Tuple
 
-from .faq_tax_matrix import get_tax_faq_entry
+from .faq_tax_matrix import (
+    get_tax_faq_entry,
+    get_tax_faq_entry_by_slug,
+    match_tax_faq_entry,
+)
 
 
 def _disabled_guard_topics() -> set:
@@ -230,18 +234,21 @@ def finalize_rollout_response(response: str, trace: Any) -> str:
 def direct_tax_faq_response(trace: Any) -> Optional[str]:
     parsed = getattr(trace, "parsed_query", None) or {}
     classification = getattr(trace, "classification", None) or {}
-    topic = parsed.get("topic")
-    entry = get_tax_faq_entry(topic)
+    entry = match_tax_faq_entry(parsed, classification.get("question_class"))
     if not entry:
         return None
     disabled = _disabled_legal_answer_contracts()
     if entry.topic in disabled or entry.slug in disabled:
         return None
-    if classification.get("question_class") != entry.question_class:
+    return entry.response(_response_language(trace))
+
+
+def _contract_response_by_slug(slug: str, trace: Any) -> Optional[str]:
+    entry = get_tax_faq_entry_by_slug(slug)
+    if not entry:
         return None
-    if parsed.get("goal") != "rate_lookup":
-        return None
-    if entry.subject and parsed.get("subject") not in {None, entry.subject}:
+    disabled = _disabled_legal_answer_contracts()
+    if entry.topic in disabled or entry.slug in disabled:
         return None
     return entry.response(_response_language(trace))
 
@@ -362,34 +369,7 @@ def tax_appeal_procedure_response(trace: Any) -> Optional[str]:
         return None
     if "appeal_procedure" in _disabled_guard_topics():
         return None
-
-    answers = {
-        "ru": (
-            "Решение налогового органа можно обжаловать в течение 30 дней со дня его вручения. "
-            "В системе Министерства финансов спор обычно начинается с подачи жалобы в Службу доходов и является двухэтапным; "
-            "на любой стадии этого административного рассмотрения заявитель вправе обратиться в суд. "
-            "Жалоба, как правило, подаётся в электронной форме. Если решение не было направлено заявителю, "
-            "срок обжалования исчисляется со дня, когда он узнал о решении.\n\n"
-            "Источник: Налоговый кодекс Грузии, статьи 296, 297 и 299."
-        ),
-        "en": (
-            "A tax authority decision may be appealed within 30 days after it is delivered to the person. "
-            "Within the Ministry of Finance system, a dispute normally begins by filing a complaint with the Revenue Service and proceeds in two stages; "
-            "the complainant may go to court at any stage of that administrative process. "
-            "The complaint is generally filed electronically. If the decision was not sent to the complainant, "
-            "the appeal period runs from the day the decision became known to them.\n\n"
-            "Source: Tax Code of Georgia, Articles 296, 297 and 299."
-        ),
-        "ka": (
-            "საგადასახადო ორგანოს გადაწყვეტილება შეგიძლიათ გაასაჩივროთ მისი ჩაბარებიდან 30 დღის ვადაში. "
-            "საქართველოს ფინანსთა სამინისტროს სისტემაში დავა, როგორც წესი, იწყება საჩივრის შემოსავლების სამსახურში წარდგენით და ორეტაპიანია; "
-            "ამ ადმინისტრაციული დავის ნებისმიერ ეტაპზე მომჩივანს შეუძლია მიმართოს სასამართლოს. "
-            "საჩივარი, როგორც წესი, ელექტრონული ფორმით წარედგინება. თუ გადაწყვეტილება მომჩივანს არ გაეგზავნა, "
-            "გასაჩივრების ვადა აითვლება იმ დღიდან, როდესაც გადაწყვეტილება მისთვის ცნობილი გახდა.\n\n"
-            "წყარო: საქართველოს საგადასახადო კოდექსი, მუხლები 296, 297 და 299."
-        ),
-    }
-    return answers.get(_response_language(trace), answers["ru"])
+    return _contract_response_by_slug("tax-appeal-procedure", trace)
 
 
 def authoritative_tax_fact_response(trace: Any) -> Optional[Tuple[str, str]]:
@@ -424,57 +404,13 @@ def _authoritative_tax_fact_impl(trace: Any) -> Optional[Tuple[str, str]]:
     # whole-tax-year status and deliberately keeps the statutory exceptions
     # visible instead of presenting the day count as the only legal test.
     if parsed.get("goal") == "residency_status":
-        return "tax_residency", pick({
-            "ru": (
-                "Физическое лицо считается налоговым резидентом Грузии за весь текущий "
-                "налоговый год, если оно фактически находилось в Грузии 183 дня или более "
-                "в любом непрерывном 12-месячном периоде, заканчивающемся в этом налоговом "
-                "году (Налоговый кодекс Грузии, статья 34). В статье также предусмотрены "
-                "специальные правила и исключения, поэтому для конкретной ситуации нужно "
-                "проверить их и применимое соглашение об избежании двойного налогообложения."
-            ),
-            "en": (
-                "An individual is treated as a Georgian tax resident for the whole current "
-                "tax year if they were physically present in Georgia for 183 days or more "
-                "during any continuous 12-month period ending in that tax year (Georgian "
-                "Tax Code, Article 34). The article also contains special rules and "
-                "exceptions, so the facts and any applicable double-tax treaty must be "
-                "checked for an individual case."
-            ),
-            "ka": (
-                "ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად ითვლება მთელი მიმდინარე "
-                "საგადასახადო წლის განმავლობაში, თუ იგი საქართველოში ფაქტობრივად იმყოფებოდა "
-                "183 დღე ან მეტი ნებისმიერი უწყვეტი 12-თვიანი პერიოდის განმავლობაში, რომელიც "
-                "ამ საგადასახადო წელს სრულდება (საქართველოს საგადასახადო კოდექსი, მუხლი 34). "
-                "მუხლი ასევე შეიცავს სპეციალურ წესებსა და გამონაკლისებს, ამიტომ კონკრეტულ "
-                "შემთხვევაში უნდა შემოწმდეს ფაქტები და ორმაგი დაბეგვრის შესაბამისი შეთანხმება."
-            ),
-        })
+        response = _contract_response_by_slug("tax-residency-individual", trace)
+        return ("tax_residency", response) if response else None
 
     # Late-payment surcharge (Tax Code art. 272, especially points 3-4).
     if parsed.get("goal") == "penalty_rate":
-        return "late_payment_interest", pick({
-            "ru": (
-                "За каждый день просрочки уплаты налога начисляется пеня в размере 0,05% "
-                "неуплаченной суммы; по общему правилу начисление начинается со дня, "
-                "следующего за установленным сроком уплаты (Налоговый кодекс Грузии, "
-                "статья 272, пункты 3–4). В самой статье предусмотрены исключения, которые "
-                "нужно проверить применительно к конкретному обязательству."
-            ),
-            "en": (
-                "Late-payment interest accrues at 0.05% of the unpaid tax for each overdue "
-                "day and, as a general rule, starts on the day after the statutory payment "
-                "deadline (Georgian Tax Code, Article 272, points 3–4). The article contains "
-                "exceptions that must be checked for the specific tax obligation."
-            ),
-            "ka": (
-                "გადასახადის გადახდის ვადის გადაცილების ყოველი დღისთვის საურავი შეადგენს "
-                "გადაუხდელი გადასახადის 0,05%-ს და, საერთო წესით, დარიცხვა იწყება გადახდის "
-                "ვადის მომდევნო დღიდან (საქართველოს საგადასახადო კოდექსი, მუხლი 272, "
-                "პუნქტები 3–4). ამავე მუხლით გათვალისწინებული გამონაკლისები უნდა შემოწმდეს "
-                "კონკრეტული საგადასახადო ვალდებულებისთვის."
-            ),
-        })
+        response = _contract_response_by_slug("late-payment-interest", trace)
+        return ("late_payment_interest", response) if response else None
 
     # Tour operator VAT exemption (Tax Code art. 172)
     if ("туропер" in q or "tour oper" in q or "ტუროპერ" in q
@@ -546,25 +482,7 @@ def small_business_legal_form_response(trace: Any) -> Optional[str]:
         and (goal == "small_business_eligibility" or explicit_small_biz)
     ):
         return None
-    answers = {
-        "ru": (
-            "Нет. Режим малого бизнеса со ставкой 1% доступен только индивидуальному "
-            "предпринимателю (физлицу-предпринимателю). ООО (общество с ограниченной "
-            "ответственностью) применять его не может.\n\n"
-            "Источник: Налоговый кодекс Грузии, статьи 88 и 90."
-        ),
-        "en": (
-            "No. The 1% small business regime is available only to an individual entrepreneur. "
-            "An LLC cannot use it.\n\n"
-            "Source: Tax Code of Georgia, Articles 88 and 90."
-        ),
-        "ka": (
-            "არა. მცირე ბიზნესის 1%-იანი რეჟიმი ხელმისაწვდომია მხოლოდ ინდივიდუალური "
-            "მეწარმისთვის (ფიზიკური პირისთვის). შპს ამ რეჟიმს ვერ გამოიყენებს.\n\n"
-            "წყარო: საქართველოს საგადასახადო კოდექსი, 88-ე და 90-ე მუხლები."
-        ),
-    }
-    return answers.get(_response_language(trace), answers["ru"])
+    return _contract_response_by_slug("small-business-llc-ineligible", trace)
 
 
 def small_business_tax_rate_response(trace: Any) -> Optional[str]:

@@ -23,6 +23,7 @@ _CANONICAL_ARTICLE = re.compile(r"\d+(?:-\d+)?")
 _SOURCE_LABELS = {"ru": "Источник", "en": "Source", "ka": "წყარო"}
 _SINGLE_ARTICLE_LABELS = {"ru": "статья", "en": "Article", "ka": "მუხლი"}
 _MULTIPLE_ARTICLE_LABELS = {"ru": "статьи", "en": "Articles", "ka": "მუხლები"}
+_ARTICLE_CONJUNCTIONS = {"ru": "и", "en": "and", "ka": "და"}
 
 REGISTRY_TITLES: Mapping[str, Mapping[str, str]] = {
     "tax_code": {
@@ -88,7 +89,16 @@ def format_official_citation(
     refs = tuple(dict.fromkeys(canonical_article_ref(item) for item in article_refs))
     if not refs:
         raise ValueError("at least one article reference is required")
-    displayed = ", ".join(display_article_ref(item) for item in refs)
+    displayed_refs = [display_article_ref(item) for item in refs]
+    if len(displayed_refs) == 1:
+        displayed = displayed_refs[0]
+    elif len(displayed_refs) == 2:
+        displayed = f"{displayed_refs[0]} {_ARTICLE_CONJUNCTIONS[language]} {displayed_refs[1]}"
+    else:
+        displayed = (
+            f"{', '.join(displayed_refs[:-1])} "
+            f"{_ARTICLE_CONJUNCTIONS[language]} {displayed_refs[-1]}"
+        )
     article_label = (
         _SINGLE_ARTICLE_LABELS[language]
         if len(refs) == 1
@@ -174,11 +184,28 @@ class LegalAnswerContract:
     response_kind: str
     sample_queries: Dict[str, str]
     response_by_lang: Dict[str, str]
+    match_goals: Tuple[str, ...] = ("rate_lookup",)
     note: str = ""
     subject: Optional[str] = None
     smoke_contains: Optional[Dict[str, List[str]]] = None
     additional_article_refs: Tuple[str, ...] = ()
     registry_id: str = "tax_code"
+
+    def matches(
+        self,
+        parsed: Mapping[str, Any],
+        question_class: Optional[str],
+    ) -> bool:
+        """Return whether deterministic parser output selects this contract."""
+        if parsed.get("topic") != self.topic:
+            return False
+        if question_class != self.question_class:
+            return False
+        if parsed.get("goal") not in self.match_goals:
+            return False
+        if self.subject and parsed.get("subject") not in {None, self.subject}:
+            return False
+        return True
 
     @property
     def article_refs(self) -> Tuple[str, ...]:

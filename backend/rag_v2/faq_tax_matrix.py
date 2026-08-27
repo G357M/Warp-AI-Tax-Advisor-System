@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from .legal_answer_contracts import (
     LegalAnswerContract,
@@ -425,13 +425,116 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
         },
         smoke_contains={"ru": ["5%", "10%", "15%"], "en": ["5%", "10%", "15%"], "ka": ["5%", "10%", "15%"]},
     ),
+    TaxFaqEntry(
+        slug="tax-residency-individual",
+        topic="tax_residency",
+        subject="individual",
+        article_ref="34",
+        question_class="canonical_law_lookup",
+        response_kind="residency_test_with_exceptions",
+        match_goals=("residency_status",),
+        note="183-day rule for the whole current tax year, with statutory exceptions and treaty caveat.",
+        sample_queries={
+            "ru": "Когда физлицо становится налоговым резидентом Грузии?",
+            "en": "When does an individual become a tax resident of Georgia?",
+            "ka": "როდის ითვლება ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად?",
+        },
+        response_by_lang={
+            "ru": "Физическое лицо считается налоговым резидентом Грузии за весь текущий налоговый год, если оно фактически находилось в Грузии 183 дня или более в любом непрерывном 12-месячном периоде, заканчивающемся в этом налоговом году. Статья 34 также предусматривает специальные правила и исключения, поэтому для конкретной ситуации нужно проверить их и применимое соглашение об избежании двойного налогообложения.",
+            "en": "An individual is treated as a Georgian tax resident for the whole current tax year if they were physically present in Georgia for 183 days or more during any continuous 12-month period ending in that tax year. Article 34 also contains special rules and exceptions, so the facts and any applicable double-tax treaty must be checked for an individual case.",
+            "ka": "ფიზიკური პირი საქართველოს საგადასახადო რეზიდენტად ითვლება მთელი მიმდინარე საგადასახადო წლის განმავლობაში, თუ იგი საქართველოში ფაქტობრივად იმყოფებოდა 183 დღე ან მეტი ნებისმიერი უწყვეტი 12-თვიანი პერიოდის განმავლობაში, რომელიც ამ საგადასახადო წელს სრულდება. 34-ე მუხლი ასევე შეიცავს სპეციალურ წესებსა და გამონაკლისებს, ამიტომ კონკრეტულ შემთხვევაში უნდა შემოწმდეს ფაქტები და ორმაგი დაბეგვრის შესაბამისი შეთანხმება.",
+        },
+        smoke_contains={
+            "ru": ["183", "12-месячном", "статья 34"],
+            "en": ["183", "12-month", "Article 34"],
+            "ka": ["183", "12-თვიანი", "34-ე მუხლი"],
+        },
+    ),
+    TaxFaqEntry(
+        slug="late-payment-interest",
+        topic="late_payment_interest",
+        article_ref="272",
+        question_class="canonical_law_lookup",
+        response_kind="daily_penalty_with_exceptions",
+        match_goals=("penalty_rate",),
+        note="0.05% of unpaid tax for each overdue day; general start date and exceptions remain visible.",
+        sample_queries={
+            "ru": "Какая пеня начисляется за просрочку уплаты налога в Грузии?",
+            "en": "What late payment interest applies to overdue tax in Georgia?",
+            "ka": "რა საურავი ერიცხება ვადაგადაცილებულ გადასახადს საქართველოში?",
+        },
+        response_by_lang={
+            "ru": "За каждый день просрочки уплаты налога начисляется пеня в размере 0,05% неуплаченной суммы; по общему правилу начисление начинается со дня, следующего за установленным сроком уплаты. Статья 272, пункты 3–4, предусматривает исключения, которые нужно проверить применительно к конкретному обязательству.",
+            "en": "Late-payment interest accrues at 0.05% of the unpaid tax for each overdue day and, as a general rule, starts on the day after the statutory payment deadline. Article 272, points 3–4, contains exceptions that must be checked for the specific tax obligation.",
+            "ka": "გადასახადის გადახდის ვადის გადაცილების ყოველი დღისთვის საურავი შეადგენს გადაუხდელი გადასახადის 0,05%-ს და, საერთო წესით, დარიცხვა იწყება გადახდის ვადის მომდევნო დღიდან. 272-ე მუხლის 3–4 პუნქტებით გათვალისწინებული გამონაკლისები უნდა შემოწმდეს კონკრეტული საგადასახადო ვალდებულებისთვის.",
+        },
+        smoke_contains={
+            "ru": ["0,05%", "пункты 3–4"],
+            "en": ["0.05%", "points 3–4"],
+            "ka": ["0,05%", "3–4 პუნქტებით"],
+        },
+    ),
+    TaxFaqEntry(
+        slug="tax-appeal-procedure",
+        topic="tax",
+        article_ref="296",
+        additional_article_refs=("297", "299"),
+        question_class="practical_tax_guidance",
+        response_kind="appeal_path_and_deadline",
+        match_goals=("appeal_procedure",),
+        note="Tax appeal path, delivery-based 30-day deadline, electronic filing and court option.",
+        sample_queries={
+            "ru": "Как обжаловать решение налоговой?",
+            "en": "How do I appeal a tax authority decision?",
+            "ka": "როგორ გავასაჩივრო საგადასახადოს გადაწყვეტილება?",
+        },
+        response_by_lang={
+            "ru": "Решение налогового органа можно обжаловать в течение 30 дней со дня его вручения. В системе Министерства финансов спор обычно начинается с подачи жалобы в Службу доходов и является двухэтапным; на любой стадии этого административного рассмотрения заявитель вправе обратиться в суд. Жалоба, как правило, подаётся в электронной форме. Если решение не было направлено заявителю, срок обжалования исчисляется со дня, когда он узнал о решении.",
+            "en": "A tax authority decision may be appealed within 30 days after it is delivered to the person. Within the Ministry of Finance system, a dispute normally begins by filing a complaint with the Revenue Service and proceeds in two stages; the complainant may go to court at any stage of that administrative process. The complaint is generally filed electronically. If the decision was not sent to the complainant, the appeal period runs from the day the decision became known to them.",
+            "ka": "საგადასახადო ორგანოს გადაწყვეტილება შეგიძლიათ გაასაჩივროთ მისი ჩაბარებიდან 30 დღის ვადაში. საქართველოს ფინანსთა სამინისტროს სისტემაში დავა, როგორც წესი, იწყება საჩივრის შემოსავლების სამსახურში წარდგენით და ორეტაპიანია; ამ ადმინისტრაციული დავის ნებისმიერ ეტაპზე მომჩივანს შეუძლია მიმართოს სასამართლოს. საჩივარი, როგორც წესი, ელექტრონული ფორმით წარედგინება. თუ გადაწყვეტილება მომჩივანს არ გაეგზავნა, გასაჩივრების ვადა აითვლება იმ დღიდან, როდესაც გადაწყვეტილება მისთვის ცნობილი გახდა.",
+        },
+        smoke_contains={
+            "ru": ["30", "Службу доходов", "электронной форме"],
+            "en": ["30", "Revenue Service", "filed electronically"],
+            "ka": ["30", "შემოსავლების სამსახურში", "ელექტრონული ფორმით"],
+        },
+    ),
+    TaxFaqEntry(
+        slug="small-business-llc-ineligible",
+        topic="small_business",
+        subject="legal_entity",
+        article_ref="88",
+        additional_article_refs=("90",),
+        question_class="canonical_law_lookup",
+        response_kind="legal_form_eligibility",
+        match_goals=("small_business_eligibility",),
+        note="Article 88 limits small-business status to an entrepreneur natural person; article 90 provides the 1% rate.",
+        sample_queries={
+            "ru": "Может ли ООО применять режим малого бизнеса 1%?",
+            "en": "Can an LLC use the 1% small business regime?",
+            "ka": "შეუძლია თუ არა შპს-ს მცირე ბიზნესის 1%-იანი რეჟიმის გამოყენება?",
+        },
+        response_by_lang={
+            "ru": "Нет. Режим малого бизнеса со ставкой 1% доступен только индивидуальному предпринимателю — физическому лицу. ООО применять его не может.",
+            "en": "No. The 1% small business regime is available only to an individual entrepreneur. An LLC cannot use it.",
+            "ka": "არა. მცირე ბიზნესის 1%-იანი რეჟიმი ხელმისაწვდომია მხოლოდ ინდივიდუალური მეწარმისთვის — ფიზიკური პირისთვის. შპს ამ რეჟიმს ვერ გამოიყენებს.",
+        },
+        smoke_contains={
+            "ru": ["1%", "ООО", "индивидуальному"],
+            "en": ["1%", "LLC", "individual"],
+            "ka": ["1%", "შპს", "ინდივიდუალური"],
+        },
+    ),
 ]
 
 
 CANONICAL_RATE_ARTICLES: Dict[str, str] = {
     entry.topic: entry.article_ref
     for entry in TAX_FAQ_MATRIX
-    if entry.question_class == "canonical_law_lookup"
+    if (
+        entry.question_class == "canonical_law_lookup"
+        and "rate_lookup" in entry.match_goals
+    )
 }
 
 
@@ -443,6 +546,26 @@ def get_tax_faq_entry(topic: Optional[str]) -> Optional[TaxFaqEntry]:
         return None
     for entry in TAX_FAQ_MATRIX:
         if entry.topic == topic:
+            return entry
+    return None
+
+
+def get_tax_faq_entry_by_slug(slug: Optional[str]) -> Optional[TaxFaqEntry]:
+    if not slug:
+        return None
+    for entry in TAX_FAQ_MATRIX:
+        if entry.slug == slug:
+            return entry
+    return None
+
+
+def match_tax_faq_entry(
+    parsed: Mapping[str, Any],
+    question_class: Optional[str],
+) -> Optional[TaxFaqEntry]:
+    """Select one parser-backed contract without broad text heuristics."""
+    for entry in TAX_FAQ_MATRIX:
+        if entry.matches(parsed, question_class):
             return entry
     return None
 

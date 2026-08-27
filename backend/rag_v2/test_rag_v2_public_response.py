@@ -436,10 +436,10 @@ class PublicResponseShapeTests(unittest.TestCase):
                     trace = types.SimpleNamespace(
                         classification={"question_class": entry.question_class},
                         parsed_query={
-                            "language": lang,
-                            "topic": entry.topic,
-                            "subject": entry.subject,
-                            "goal": "rate_lookup",
+                        "language": lang,
+                        "topic": entry.topic,
+                        "subject": entry.subject,
+                        "goal": entry.match_goals[0],
                         },
                     )
                     if entry.topic == "property_tax":
