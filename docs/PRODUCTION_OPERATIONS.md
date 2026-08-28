@@ -747,6 +747,14 @@ the exact response bytes into the bounded store.
 See `docs/TEMPORAL_LEGAL_ENGINE_FOUNDATION.md` for the data model, bitemporal
 selection semantics, CI proof and explicitly deferred backfill boundary.
 
+The controlled bulk source-evidence/import workflow is documented separately
+in `docs/TEMPORAL_LEGAL_BACKFILL.md`. It requires an exact official-source fetch
+budget, manifest SHA-256 and source/act/operation write ceilings. The importer
+uses one transaction, is idempotent for the same bundle and cannot create
+authoritative provision versions. Take a fresh hashed production dump before
+the first full apply because imported temporal evidence rejects ad-hoc updates
+and deletes.
+
 ## Bounded live answer-safety evaluation
 
 Inspect the versioned execution plan first; this does not connect to the corpus

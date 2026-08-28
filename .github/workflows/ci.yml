@@ -53,8 +53,10 @@ jobs:
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
           scripts/audit_legal_answer_coverage.py
+          scripts/audit_legal_temporal_backfill.py
           scripts/audit_legal_temporal_schema.py
           scripts/build_legal_answer_contract_canary.py
+          scripts/build_legal_temporal_backfill_bundle.py
           scripts/build_official_provision_registry.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
@@ -62,6 +64,7 @@ jobs:
           scripts/evaluate_public_provision_canary.py
           scripts/export_decision_facts_expert_review.py
           scripts/import_decision_facts_review_workbook.py
+          scripts/import_legal_temporal_backfill.py
           scripts/install_legal_temporal_schema.py
           scripts/link_decision_chains.py
           scripts/prepare_duplicate_expert_prefill.py
@@ -112,6 +115,7 @@ jobs:
           tests/test_integration.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
+          tests/test_legal_temporal_backfill.py
           tests/test_legal_temporal_foundation.py
           tests/test_infohub_duplicate_verification.py
           tests/test_duplicate_expert_prefill.py
@@ -194,12 +198,13 @@ jobs:
         run: >-
           python -c "from sqlalchemy import text;
           from core.database import engine;
-          from models.document import Document;
+          from models.document import Document, LawAmendment;
           connection=engine.connect();
           connection.execute(text('CREATE EXTENSION IF NOT EXISTS vector'));
           connection.commit();
           connection.close();
-          Document.__table__.create(engine)"
+          Document.__table__.create(engine);
+          LawAmendment.__table__.create(engine)"
       - name: Install pinned additive temporal schema
         run: >-
           python scripts/install_legal_temporal_schema.py
@@ -209,9 +214,10 @@ jobs:
         run: >-
           python -m pytest
           tests/test_legal_temporal_postgres.py
+          tests/test_legal_temporal_backfill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
-      - name: Audit empty post-rollback temporal foundation
+      - name: Audit temporal foundation after backfill integration
         run: >-
           python scripts/audit_legal_temporal_schema.py
           --execute

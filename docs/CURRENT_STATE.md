@@ -153,6 +153,19 @@ trigger от `UPDATE`/`DELETE`. Пересекающиеся head-редакци
 таблицы не являются источником юридических ответов; LLM-сводки `old_norm/new_norm`
 не повышаются до authoritative provision text.
 
+Controlled backfill v1 автоматизирует следующий слой без ослабления этой
+границы. Read-only inventory строит точный бюджет источников; bounded fetch
+сохраняет exact JSON bytes официального InfoHub API и требует совпадения
+нормализованного текста с legacy MD5. Atomic importer создаёт snapshots,
+act/publication identity и только кандидаты операций с однозначной грузинской
+оперативной формулой. Каждый такой кандидат всё равно помечен `needs_review`;
+остальные элементы массово экспортируются в защищённую экспертную CSV-очередь.
+Authoritative provision versions и public temporal routing остаются запрещены.
+
+MD5-проверка учитывает смешанное происхождение корпуса: для каждой строки
+воспроизводится зафиксированный plain-text, native Markdown v2 или Scrapling
+repair v1 normalizer. Неизвестный extraction method останавливает bundle.
+
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
   сохранён как совместимый API-механизм, но новый frontend не пишет JWT в

@@ -111,11 +111,20 @@ The dedicated disposable PostgreSQL job installs the exact schema and verifies:
 Production image builds depend on this job in addition to the existing backend,
 frontend and visual gates.
 
+## Controlled backfill package
+
+The next layer is implemented by the dry-run-first exact-source bundle and
+atomic importer documented in `docs/TEMPORAL_LEGAL_BACKFILL.md`. It can
+materialize official snapshots, stable act/publication identity and
+deterministically correlated operations at bulk scale while every operation
+remains `needs_review`. It still creates no authoritative provision version and
+does not change public answer routing.
+
 ## Explicitly deferred
 
 Foundation v1 does not:
 
-- backfill any of the existing amendment rows;
+- promote unreviewed amendment candidates to authoritative historical text;
 - resolve the existing unmatched amendment queue;
 - reconstruct a consolidated law;
 - parse `as_of_date` from public questions;

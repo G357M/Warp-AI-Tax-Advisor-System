@@ -147,6 +147,17 @@ mutable evidence and overlapping active provision intervals. The public RAG
 path remains on the reviewed current-law registries until a separate historical
 backfill is complete.
 
+The controlled backfill path is intentionally offline from request handling:
+legacy amendment hints → bounded official API bundle → MD5/source-lineage gate
+→ one-transaction candidate import → expert queue. It never imports legacy
+`old_norm/new_norm` summaries as provision text, and the public RAG dependency
+graph has no edge to temporal storage until a later reviewed release.
+
+The MD5 gate replays the source row's recorded corpus generation contract:
+old API plain text, native Markdown v2, or Scrapling repair v1. An unknown
+extraction method stops the bundle rather than being silently interpreted as
+source drift.
+
 #### PostgreSQL Database Schema:
 
 ```sql
