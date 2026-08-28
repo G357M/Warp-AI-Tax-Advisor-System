@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 
+import legal_temporal.backfill as backfill_contract
 from legal_temporal.backfill import (
     BACKFILL_CONTRACT,
     LEGACY_NORMALIZER_NATIVE,
@@ -196,6 +197,36 @@ def test_workspace_url_and_official_bytes_are_fail_closed():
         )
     with pytest.raises(BackfillValidationError, match="invalid official"):
         parse_workspace_source_url(workspace + "?redirect=1")
+
+
+def test_official_response_size_ceiling_is_64_mib_and_fail_closed(monkeypatch):
+    assert backfill_contract.MAX_OFFICIAL_RESPONSE_BYTES == 64 * 1024 * 1024
+
+    unique_key = str(uuid4())
+    source = parse_workspace_source_url(
+        f"https://infohub.rs.ge/ka/workspace/document/{unique_key}"
+    )
+    payload = _payload(unique_key, "მუხლი 5. ტექსტი.")
+    raw = json.dumps(payload, ensure_ascii=False).encode()
+    expected_md5 = hashlib.md5(normalized_infohub_text(payload).encode()).hexdigest()
+
+    monkeypatch.setattr(backfill_contract, "MAX_OFFICIAL_RESPONSE_BYTES", len(raw))
+    validate_official_api_bytes(
+        raw,
+        source=source,
+        expected_legacy_md5=expected_md5,
+    )
+    monkeypatch.setattr(
+        backfill_contract,
+        "MAX_OFFICIAL_RESPONSE_BYTES",
+        len(raw) - 1,
+    )
+    with pytest.raises(BackfillValidationError, match="invalid size"):
+        validate_official_api_bytes(
+            raw,
+            source=source,
+            expected_legacy_md5=expected_md5,
+        )
 
 
 def test_native_v2_legacy_normalizer_is_explicit_and_fail_closed():

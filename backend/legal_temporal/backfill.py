@@ -25,7 +25,10 @@ from bs4 import BeautifulSoup
 
 BUNDLE_SCHEMA_VERSION = 1
 BACKFILL_CONTRACT = "legal-temporal-backfill-v1"
-MAX_OFFICIAL_RESPONSE_BYTES = 16 * 1024 * 1024
+# Two official acts in the production inventory currently return JSON payloads
+# of roughly 23 MiB and 45 MiB.  Keep the fetch bounded, but leave enough room
+# for those observed official responses plus modest upstream growth.
+MAX_OFFICIAL_RESPONSE_BYTES = 64 * 1024 * 1024
 CANONICAL_ARTICLE_RE = re.compile(r"^[1-9]\d*(?:-[1-9]\d*)?$")
 WORKSPACE_PATH_RE = re.compile(
     r"^/(ka|ru|en)/workspace/document/([0-9a-fA-F-]{36})/?$"

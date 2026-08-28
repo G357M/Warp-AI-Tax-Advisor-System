@@ -32,6 +32,12 @@ The bundle is non-overwriting and contains:
 
 Directories are mode `0700`; files are mode `0600` on Linux.
 
+Each official API response is capped at 64 MiB before JSON parsing. This
+ceiling covers the largest observed production responses (approximately
+23 MiB and 45 MiB) while still rejecting empty and unexpectedly unbounded
+payloads. The fetcher reads at most one byte beyond the ceiling and fails the
+entire bundle if any response exceeds it.
+
 The legacy corpus was produced by three historical normalization contracts.
 The builder reads only `metadata.extraction.method` and selects the matching
 frozen verifier: old API plain text, native Markdown v2, or Scrapling-repaired
