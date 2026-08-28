@@ -59,14 +59,25 @@ def execute_audit(manifest: dict[str, Any]) -> dict[str, Any]:
     source_by_document = {
         source["legacy_document_id"]: source for source in manifest["sources"]
     }
-    expected_operation_keys: list[str] = []
+    expected_operations: list[tuple[str, str]] = []
     for amendment in manifest["amendments"]:
         source = source_by_document[amendment["amendment_legacy_document_id"]]
         for candidate in amendment["candidates"]:
             if candidate["classification"].get("state") == "operation_candidate":
-                expected_operation_keys.append(
-                    operation_key(candidate, source["content_sha256"])
+                expected_operations.append(
+                    (
+                        operation_key(candidate, source["content_sha256"]),
+                        candidate["candidate_fingerprint"],
+                    )
                 )
+    expected_by_key = dict(expected_operations)
+    expected_key_by_fingerprint = {
+        fingerprint: key for key, fingerprint in expected_operations
+    }
+    if len(expected_key_by_fingerprint) != len(expected_operations):
+        raise BackfillValidationError(
+            "bundle operation candidate fingerprints are not unique"
+        )
 
     document_ids = list(source_by_document)
     document_uuids = [UUID(value) for value in document_ids]
@@ -102,7 +113,7 @@ def execute_audit(manifest: dict[str, Any]) -> dict[str, Any]:
             )
             found_snapshots.update((row.source_url, row.blob_sha256) for row in rows)
             source_snapshot_ids.extend(row.id for row in rows)
-        for batch in _batches(expected_operation_keys):
+        for batch in _batches(list(expected_by_key)):
             rows = (
                 db.query(LegalAmendmentOperation)
                 .filter(LegalAmendmentOperation.operation_key.in_(batch))
@@ -112,11 +123,44 @@ def execute_audit(manifest: dict[str, Any]) -> dict[str, Any]:
                 found_operations[row.operation_key] = row.id
                 payload = row.structured_payload or {}
                 if (
+                    payload.get("legacy_candidate_fingerprint")
+                    != expected_by_key[row.operation_key]
+                    or payload.get("backfill_contract") != BACKFILL_CONTRACT
+                    or payload.get("review_state") != "needs_expert_review"
+                    or payload.get("authoritative_text_promoted") is not False
+                ):
+                    errors.append("operation payload escaped pending-review contract")
+        missing_fingerprints = [
+            fingerprint
+            for key, fingerprint in expected_operations
+            if key not in found_operations
+        ]
+        for batch in _batches(missing_fingerprints):
+            rows = (
+                db.query(LegalAmendmentOperation)
+                .filter(
+                    LegalAmendmentOperation.structured_payload[
+                        "legacy_candidate_fingerprint"
+                    ].as_string().in_(batch)
+                )
+                .all()
+            )
+            for row in rows:
+                payload = row.structured_payload or {}
+                fingerprint = payload.get("legacy_candidate_fingerprint")
+                expected_key = expected_key_by_fingerprint.get(fingerprint)
+                if expected_key is None:
+                    continue
+                if expected_key in found_operations:
+                    errors.append("operation candidate fingerprint is duplicated")
+                    continue
+                if (
                     payload.get("backfill_contract") != BACKFILL_CONTRACT
                     or payload.get("review_state") != "needs_expert_review"
                     or payload.get("authoritative_text_promoted") is not False
                 ):
                     errors.append("operation payload escaped pending-review contract")
+                found_operations[expected_key] = row.id
         operation_ids = list(found_operations.values())
         for batch in _batches(operation_ids):
             rows = (
@@ -160,7 +204,7 @@ def execute_audit(manifest: dict[str, Any]) -> dict[str, Any]:
 
     missing_acts = len(set(document_ids) - found_acts)
     missing_snapshots = len(expected_snapshot_keys - found_snapshots)
-    missing_operations = len(set(expected_operation_keys) - set(found_operations))
+    missing_operations = len(set(expected_by_key) - set(found_operations))
     operation_id_strings = {str(value) for value in found_operations.values()}
     missing_pending_reviews = len(operation_id_strings - pending_reviews)
     missing_machine_reviews = len(operation_id_strings - machine_reviews)
@@ -184,7 +228,7 @@ def execute_audit(manifest: dict[str, Any]) -> dict[str, Any]:
         "full_legal_text_output_allowed": False,
         "expected": {
             "sources": len(document_ids),
-            "operations": len(expected_operation_keys),
+            "operations": len(expected_operations),
         },
         "found": {
             "acts": len(found_acts),

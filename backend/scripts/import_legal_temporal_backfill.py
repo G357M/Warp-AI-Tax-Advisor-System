@@ -41,6 +41,7 @@ from models.legal_temporal import (
     LegalAmendmentOperation,
     LegalProvision,
     LegalReviewEvent,
+    LegalSourceSnapshot,
 )
 
 
@@ -111,9 +112,23 @@ def _get_or_create_publication(
     )
     published = parse_iso_date(source.get("date_published"))
     if publication is not None:
-        _assert_equal(publication.source_snapshot_id, snapshot_id, "publication snapshot")
+        anchored_snapshot = db.get(
+            LegalSourceSnapshot,
+            publication.source_snapshot_id,
+        )
+        if anchored_snapshot is None:
+            raise BackfillValidationError("publication source snapshot is missing")
+        _assert_equal(
+            anchored_snapshot.source_url,
+            source["api_url"],
+            "publication evidence URL",
+        )
         _assert_equal(publication.official_url, source["workspace_url"], "publication URL")
+        _assert_equal(publication.publication_date, published, "publication date")
         _assert_equal(publication.effective_from, effective_from, "publication effective date")
+        _assert_equal(publication.is_consolidated, False, "publication consolidation state")
+        if publication.source_snapshot_id != snapshot_id:
+            counters["publication_additional_snapshots_observed"] += 1
         counters["publications_reused"] += 1
         return publication
     publication = LegalActPublication(
@@ -245,6 +260,7 @@ def apply_bundle(
         "acts_reused": 0,
         "publications_created": 0,
         "publications_reused": 0,
+        "publication_additional_snapshots_observed": 0,
         "provisions_created": 0,
         "provisions_reused": 0,
         "operations_created": 0,
@@ -359,6 +375,30 @@ def apply_bundle(
                         "source_blob_sha256": source["content_sha256"],
                         "source_verification_mode": source["verification_mode"],
                     }
+                    if (
+                        operation is None
+                        and amendment_publication.source_snapshot_id
+                        != snapshot_by_document[amendment_doc]
+                    ):
+                        compatible_operations = (
+                            db.query(LegalAmendmentOperation)
+                            .filter(
+                                LegalAmendmentOperation.structured_payload[
+                                    "legacy_candidate_fingerprint"
+                                ].as_string()
+                                == candidate["candidate_fingerprint"]
+                            )
+                            .all()
+                        )
+                        if len(compatible_operations) > 1:
+                            raise BackfillValidationError(
+                                "candidate fingerprint maps to multiple operations"
+                            )
+                        operation = (
+                            compatible_operations[0]
+                            if compatible_operations
+                            else None
+                        )
                     if operation is None:
                         operation = LegalAmendmentOperation(
                             operation_key=key,
@@ -375,15 +415,71 @@ def apply_bundle(
                         db.flush()
                         counters["operations_created"] += 1
                     else:
+                        stored_payload = operation.structured_payload or {}
+                        for field in (
+                            "backfill_contract",
+                            "review_state",
+                            "authoritative_text_promoted",
+                            "legacy_law_amendment_id",
+                            "legacy_candidate_fingerprint",
+                            "legacy_extraction_version",
+                            "legacy_action",
+                            "article_mention_count",
+                            "operative_marker_codes",
+                            "source_verification_mode",
+                        ):
+                            _assert_equal(
+                                stored_payload.get(field),
+                                payload.get(field),
+                                f"amendment operation {field}",
+                            )
                         _assert_equal(
-                            operation.structured_payload,
-                            payload,
-                            "amendment operation payload",
+                            operation.amendment_publication_id,
+                            amendment_publication.id,
+                            "amendment operation publication",
                         )
                         _assert_equal(
+                            operation.target_provision_id,
+                            provision.id,
+                            "amendment operation target provision",
+                        )
+                        _assert_equal(
+                            operation.operation_type,
+                            classification["operation_type"],
+                            "amendment operation type",
+                        )
+                        _assert_equal(
+                            operation.effective_from,
+                            parse_iso_date(amendment["effective_date"]),
+                            "amendment operation effective date",
+                        )
+                        _assert_equal(
+                            operation.source_locator,
+                            source["workspace_url"],
+                            "amendment operation source locator",
+                        )
+                        _assert_equal(
+                            operation.extraction_method,
+                            "llm_assisted",
+                            "amendment operation extraction method",
+                        )
+                        evidence_snapshot = db.get(
+                            LegalSourceSnapshot,
                             operation.source_snapshot_id,
-                            snapshot_by_document[amendment_doc],
-                            "amendment operation snapshot",
+                        )
+                        if evidence_snapshot is None:
+                            raise BackfillValidationError(
+                                "amendment operation source snapshot is missing"
+                            )
+                        _assert_equal(
+                            evidence_snapshot.source_url,
+                            source["api_url"],
+                            "amendment operation evidence URL",
+                        )
+                        _assert_equal(
+                            evidence_snapshot.blob_sha256,
+                            stored_payload.get("source_blob_sha256"),
+                            "amendment operation evidence hash",
                         )
                         counters["operations_reused"] += 1
                     _ensure_review_events(

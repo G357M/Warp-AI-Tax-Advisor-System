@@ -158,6 +158,16 @@ The same exact bundle is idempotent: content-addressed snapshots, stable acts,
 publications, provisions, operation keys and deterministic review-event UUIDs
 are reused. A different source body cannot reuse the reviewed manifest hash.
 
+InfoHub response JSON includes volatile service metadata, so a later capture of
+the same official document may have different exact bytes while reproducing
+the same frozen legacy legal-text normalization. In that case the original
+publication keeps its first immutable snapshot, the later body is stored as a
+separate immutable snapshot/observation, and a prior pending-review operation
+is reused only when its candidate fingerprint, classification, target,
+effective date, verification mode and original evidence hash all validate.
+No snapshot, publication or operation is rewritten. A changed legal-text
+normalization remains subject to the source-drift quarantine described above.
+
 The import is additive and one-transaction, but imported evidence is immutable
 by design. Take and hash a fresh production backup before the first full apply.
 Recovery from a bad committed bundle therefore uses the reviewed database

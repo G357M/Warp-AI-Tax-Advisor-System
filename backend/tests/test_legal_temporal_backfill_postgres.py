@@ -26,7 +26,11 @@ from legal_temporal.backfill import (
     validate_bundle,
 )
 from models.document import Document, LawAmendment
-from models.legal_temporal import LegalAmendmentOperation
+from models.legal_temporal import (
+    LegalActPublication,
+    LegalAmendmentOperation,
+    LegalSourceSnapshot,
+)
 from scripts.audit_legal_temporal_backfill import execute_audit
 from scripts.build_legal_temporal_backfill_bundle import collect_inventory
 from scripts.import_legal_temporal_backfill import apply_bundle
@@ -271,3 +275,46 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
     audit = execute_audit(loaded)
     assert audit["result"] == "pass"
     assert audit["found"]["authoritative_provision_versions"] == 0
+
+    observed_payload = json.loads(amendment_raw)
+    observed_payload["views"] = 1
+    observed_raw = json.dumps(
+        observed_payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode()
+    observed_digest = hashlib.sha256(observed_raw).hexdigest()
+    observed_file = f"sources/{amendment_key}-{observed_digest[:16]}.json"
+    (bundle / observed_file).write_bytes(observed_raw)
+    amendment_source.update(
+        {
+            "file": observed_file,
+            "content_sha256": observed_digest,
+            "byte_length": len(observed_raw),
+            "captured_at_utc": "2026-08-28T13:00:00Z",
+        }
+    )
+    manifest["generated_at_utc"] = "2026-08-28T13:00:00Z"
+    manifest["manifest_sha256"] = manifest_sha256(manifest)
+    (bundle / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    observed = validate_bundle(
+        bundle,
+        expected_manifest_sha256=manifest["manifest_sha256"],
+    )
+    third = apply_bundle(
+        bundle_dir=bundle,
+        manifest=observed,
+        max_source_snapshots=2,
+        max_acts=2,
+        max_operations=1,
+    )
+    assert third["counters"]["publication_additional_snapshots_observed"] == 1
+    assert third["counters"]["operations_created"] == 0
+    assert third["counters"]["operations_reused"] == 1
+    with Session(engine) as db:
+        assert db.query(LegalActPublication).count() == 2
+        assert db.query(LegalAmendmentOperation).count() == 1
+        assert db.query(LegalSourceSnapshot).count() == 3
+    observed_audit = execute_audit(observed)
+    assert observed_audit["result"] == "pass"
+    assert observed_audit["found"]["operations"] == 1
