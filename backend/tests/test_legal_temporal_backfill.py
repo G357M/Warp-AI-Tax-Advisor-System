@@ -14,10 +14,14 @@ from legal_temporal.backfill import (
     BACKFILL_CONTRACT,
     LEGACY_NORMALIZER_NATIVE,
     LEGACY_NORMALIZER_PLAIN,
+    SOURCE_VERIFICATION_DRIFT,
+    SOURCE_VERIFICATION_EXACT,
+    SOURCE_VERIFICATION_WHITESPACE,
     BackfillValidationError,
     candidate_fingerprint,
     canonical_article_ref,
     classify_deterministic_operation,
+    compact_whitespace,
     manifest_sha256,
     legacy_normalized_text,
     normalized_infohub_text,
@@ -62,8 +66,13 @@ def _bundle(tmp_path: Path) -> tuple[Path, dict]:
         "language": "ka",
         "unique_key": unique_key,
         "legacy_md5": legacy_md5,
+        "legacy_full_text_md5": legacy_md5,
+        "legacy_compact_md5": hashlib.md5(
+            compact_whitespace(normalized_infohub_text(payload)).encode()
+        ).hexdigest(),
         "legacy_extraction_method": None,
         "legacy_normalizer": LEGACY_NORMALIZER_PLAIN,
+        "verification_mode": SOURCE_VERIFICATION_EXACT,
         "title": payload["name"],
         "document_type": "law",
         "document_number": "1",
@@ -95,6 +104,12 @@ def _bundle(tmp_path: Path) -> tuple[Path, dict]:
         "unique_key": target_key,
         "legacy_md5": hashlib.md5(
             normalized_infohub_text(target_payload).encode()
+        ).hexdigest(),
+        "legacy_full_text_md5": hashlib.md5(
+            normalized_infohub_text(target_payload).encode()
+        ).hexdigest(),
+        "legacy_compact_md5": hashlib.md5(
+            compact_whitespace(normalized_infohub_text(target_payload)).encode()
         ).hexdigest(),
         "title": target_payload["name"],
         "file": f"sources/{target_key}.json",
@@ -143,6 +158,7 @@ def _bundle(tmp_path: Path) -> tuple[Path, dict]:
             "amendment_rows_with_issues": 0,
             "expert_review_rows": 1,
             "legacy_normalizers": {LEGACY_NORMALIZER_PLAIN: 2},
+            "source_verification_modes": {SOURCE_VERIFICATION_EXACT: 2},
             "postgresql_writes_allowed": False,
             "public_answer_routing_changed": False,
         },
@@ -165,13 +181,19 @@ def test_workspace_url_and_official_bytes_are_fail_closed():
     payload = _payload(unique_key, "მუხლი 5. ტექსტი.")
     raw = json.dumps(payload, ensure_ascii=False).encode()
     expected_md5 = hashlib.md5(normalized_infohub_text(payload).encode()).hexdigest()
-    loaded, text = validate_official_api_bytes(
+    loaded, text, verification_mode = validate_official_api_bytes(
         raw, source=source, expected_legacy_md5=expected_md5
     )
     assert loaded["uniqueKey"] == unique_key
     assert "მუხლი 5" in text
+    assert verification_mode == SOURCE_VERIFICATION_EXACT
     with pytest.raises(BackfillValidationError, match="drifted"):
-        validate_official_api_bytes(raw, source=source, expected_legacy_md5="0" * 32)
+        validate_official_api_bytes(
+            raw,
+            source=source,
+            expected_legacy_md5="0" * 32,
+            expected_legacy_compact_md5="0" * 32,
+        )
     with pytest.raises(BackfillValidationError, match="invalid official"):
         parse_workspace_source_url(workspace + "?redirect=1")
 
@@ -194,7 +216,7 @@ def test_native_v2_legacy_normalizer_is_explicit_and_fail_closed():
     assert "მუხლი 5. ტექსტი." in normalized
     assert normalized.count(workspace) == 1
     digest = hashlib.md5(normalized.encode()).hexdigest()
-    loaded, verified = validate_official_api_bytes(
+    loaded, verified, verification_mode = validate_official_api_bytes(
         json.dumps(payload, ensure_ascii=False).encode(),
         source=source,
         expected_legacy_md5=digest,
@@ -202,8 +224,40 @@ def test_native_v2_legacy_normalizer_is_explicit_and_fail_closed():
     )
     assert loaded == payload
     assert verified == normalized
+    assert verification_mode == SOURCE_VERIFICATION_EXACT
     with pytest.raises(BackfillValidationError, match="unsupported"):
         legacy_normalized_text(payload, source=source, normalizer="unknown-v9")
+
+
+def test_whitespace_equivalence_and_content_drift_are_distinct():
+    unique_key = str(uuid4())
+    source = parse_workspace_source_url(
+        f"https://infohub.rs.ge/ka/workspace/document/{unique_key}"
+    )
+    payload = _payload(unique_key, "მუხლი 5.  ტექსტი.")
+    raw = json.dumps(payload, ensure_ascii=False).encode()
+    live = normalized_infohub_text(payload)
+    stored_equivalent = live.replace("  ", " ")
+    _, _, equivalent_mode = validate_official_api_bytes(
+        raw,
+        source=source,
+        expected_legacy_md5=hashlib.md5(stored_equivalent.encode()).hexdigest(),
+        expected_legacy_full_text_md5=hashlib.md5(
+            stored_equivalent.encode()
+        ).hexdigest(),
+        expected_legacy_compact_md5=hashlib.md5(
+            compact_whitespace(stored_equivalent).encode()
+        ).hexdigest(),
+    )
+    assert equivalent_mode == SOURCE_VERIFICATION_WHITESPACE
+    _, _, drift_mode = validate_official_api_bytes(
+        raw,
+        source=source,
+        expected_legacy_md5="0" * 32,
+        expected_legacy_compact_md5="0" * 32,
+        allow_content_drift=True,
+    )
+    assert drift_mode == SOURCE_VERIFICATION_DRIFT
 
 
 @pytest.mark.parametrize(
@@ -252,6 +306,25 @@ def test_bundle_hash_source_bytes_and_candidate_fingerprints(tmp_path: Path):
     (bundle / source["file"]).write_bytes(b"tampered")
     with pytest.raises(BackfillValidationError, match="SHA-256"):
         validate_bundle(bundle)
+
+
+def test_drifted_amendment_source_cannot_promote_operation(tmp_path: Path):
+    bundle, manifest = _bundle(tmp_path)
+    amendment_source = manifest["sources"][0]
+    amendment_source["legacy_md5"] = "0" * 32
+    amendment_source["legacy_full_text_md5"] = "0" * 32
+    amendment_source["legacy_compact_md5"] = "0" * 32
+    amendment_source["verification_mode"] = SOURCE_VERIFICATION_DRIFT
+    manifest["summary"]["source_verification_modes"] = {
+        SOURCE_VERIFICATION_DRIFT: 1,
+        SOURCE_VERIFICATION_EXACT: 1,
+    }
+    manifest["manifest_sha256"] = manifest_sha256(manifest)
+    (bundle / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(BackfillValidationError, match="drifted amendment"):
+        validate_bundle(
+            bundle, expected_manifest_sha256=manifest["manifest_sha256"]
+        )
 
 
 def test_plans_are_no_database_no_network_and_no_public_routing():

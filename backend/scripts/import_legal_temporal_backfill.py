@@ -291,6 +291,8 @@ def apply_bundle(
                         "backfill_contract": BACKFILL_CONTRACT,
                         "legacy_document_id": source["legacy_document_id"],
                         "workspace_url": source["workspace_url"],
+                        "legacy_normalizer": source["legacy_normalizer"],
+                        "verification_mode": source["verification_mode"],
                     },
                 )
                 stored = store_prepared_snapshot(db, prepared)
@@ -355,6 +357,7 @@ def apply_bundle(
                         ],
                         "operative_marker_codes": classification["marker_codes"],
                         "source_blob_sha256": source["content_sha256"],
+                        "source_verification_mode": source["verification_mode"],
                     }
                     if operation is None:
                         operation = LegalAmendmentOperation(

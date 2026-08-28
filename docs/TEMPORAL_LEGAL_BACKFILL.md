@@ -39,6 +39,15 @@ native Markdown. Unknown methods fail closed. The chosen method is recorded in
 every source manifest entry, so validation cannot silently substitute a newer
 normalizer for an older stored hash.
 
+Source comparison has three explicit outcomes. `exact_legacy_md5` and
+`whitespace_equivalent_legacy` may support a deterministic operation; the
+latter requires the stored and live texts to have the same compact-whitespace
+MD5. `source_content_drift` is quarantined as evidence. A drifted amendment is
+forced into the expert queue and validation rejects any bundle that promotes
+an operation from it. A drifted target-only consolidated act may retain its
+official identity and current snapshot because this package creates no
+authoritative target provision text.
+
 ## Deterministic operation promotion
 
 An old affected-article entry is only materialized as a pending
@@ -48,6 +57,8 @@ An old affected-article entry is only materialized as a pending
 - its effective date exists;
 - the article identifier is canonical (`N` or `N-M`);
 - the exact official response reproduces the stored document MD5;
+- or it differs only in whitespace and reproduces the separately calculated
+  compact-whitespace MD5;
 - the official Georgian text contains the referenced article and one
   unambiguous operative formula nearby:
   - add: `დაემატოს` / `დამატებულ იქნეს`;

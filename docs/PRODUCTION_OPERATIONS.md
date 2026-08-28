@@ -754,6 +754,9 @@ uses one transaction, is idempotent for the same bundle and cannot create
 authoritative provision versions. Take a fresh hashed production dump before
 the first full apply because imported temporal evidence rejects ad-hoc updates
 and deletes.
+Exact, whitespace-equivalent and content-drift source counts must be reviewed
+from `summary.json`; content-drift amendment sources are evidence-only and
+cannot create amendment operations.
 
 ## Bounded live answer-safety evaluation
 

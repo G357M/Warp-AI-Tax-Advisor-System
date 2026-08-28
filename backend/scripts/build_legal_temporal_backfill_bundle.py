@@ -27,6 +27,7 @@ from uuid import UUID
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from sqlalchemy import func
 from sqlalchemy.orm import aliased
 
 from core.database import SessionLocal
@@ -37,12 +38,14 @@ from legal_temporal.backfill import (
     LEGACY_NORMALIZER_PLAIN,
     LEGACY_NORMALIZER_SCRAPLING,
     MAX_OFFICIAL_RESPONSE_BYTES,
+    SOURCE_VERIFICATION_DRIFT,
     BackfillValidationError,
     candidate_fingerprint,
     canonical_article_ref,
     classify_deterministic_operation,
     manifest_sha256,
     parse_workspace_source_url,
+    validate_bundle,
     validate_official_api_bytes,
 )
 from models.document import Document, LawAmendment
@@ -90,6 +93,8 @@ def _source_record_from_row(row, prefix: str, role: str) -> dict[str, Any]:
         "language": identity.language,
         "unique_key": identity.unique_key,
         "legacy_md5": str(value("file_hash") or "").lower(),
+        "legacy_full_text_md5": str(value("full_text_md5") or "").lower(),
+        "legacy_compact_md5": str(value("compact_md5") or "").lower(),
         "legacy_extraction_method": extraction_method or None,
         "legacy_normalizer": normalizer_by_method[extraction_method],
         "title": str(value("title") or "").strip(),
@@ -175,6 +180,19 @@ def collect_inventory(
                 amendment_doc.authority.label("amendment_authority"),
                 amendment_doc.date_published.label("amendment_date_published"),
                 amendment_doc.date_effective.label("amendment_date_effective"),
+                func.md5(func.coalesce(amendment_doc.full_text, "")).label(
+                    "amendment_full_text_md5"
+                ),
+                func.md5(
+                    func.btrim(
+                        func.regexp_replace(
+                            func.coalesce(amendment_doc.full_text, ""),
+                            r"\s+",
+                            " ",
+                            "g",
+                        )
+                    )
+                ).label("amendment_compact_md5"),
                 amendment_doc.metadata_json["extraction"]["method"]
                 .as_string()
                 .label("amendment_extraction_method"),
@@ -187,6 +205,19 @@ def collect_inventory(
                 target_doc.authority.label("target_authority"),
                 target_doc.date_published.label("target_date_published"),
                 target_doc.date_effective.label("target_date_effective"),
+                func.md5(func.coalesce(target_doc.full_text, "")).label(
+                    "target_full_text_md5"
+                ),
+                func.md5(
+                    func.btrim(
+                        func.regexp_replace(
+                            func.coalesce(target_doc.full_text, ""),
+                            r"\s+",
+                            " ",
+                            "g",
+                        )
+                    )
+                ).label("target_compact_md5"),
                 target_doc.metadata_json["extraction"]["method"]
                 .as_string()
                 .label("target_extraction_method"),
@@ -302,16 +333,20 @@ def _fetch_source(
                 etag = response.headers.get("ETag")
                 last_modified = response.headers.get("Last-Modified")
             identity = parse_workspace_source_url(source["workspace_url"])
-            _, normalized_text = validate_official_api_bytes(
+            _, normalized_text, verification_mode = validate_official_api_bytes(
                 raw,
                 source=identity,
                 expected_legacy_md5=source["legacy_md5"],
+                expected_legacy_full_text_md5=source["legacy_full_text_md5"],
+                expected_legacy_compact_md5=source["legacy_compact_md5"],
                 legacy_normalizer=source["legacy_normalizer"],
+                allow_content_drift=True,
             )
             return {
                 "ok": True,
                 "raw": raw,
                 "normalized_text": normalized_text,
+                "verification_mode": verification_mode,
                 "http_status": status,
                 "etag": etag,
                 "last_modified": last_modified,
@@ -476,12 +511,16 @@ def build_bundle(args: argparse.Namespace) -> dict[str, Any]:
                 for amendment in amendments_by_document.get(
                     source["legacy_document_id"], []
                 ):
+                    if result["verification_mode"] == SOURCE_VERIFICATION_DRIFT:
+                        amendment["row_issues"] = sorted(
+                            set(amendment["row_issues"]) | {"source_content_drift"}
+                        )
                     row_blocked = bool(amendment["row_issues"])
                     for candidate in amendment["candidates"]:
                         if row_blocked:
                             classification = {
                                 "state": "needs_review",
-                                "reason": amendment["row_issues"][0],
+                                "reason": ";".join(amendment["row_issues"]),
                             }
                         else:
                             classification = classify_deterministic_operation(
@@ -550,6 +589,13 @@ def build_bundle(args: argparse.Namespace) -> dict[str, Any]:
                 ).items()
             )
         ),
+        "source_verification_modes": dict(
+            sorted(
+                Counter(
+                    source["verification_mode"] for source in manifest_sources
+                ).items()
+            )
+        ),
         "postgresql_writes_allowed": False,
         "public_answer_routing_changed": False,
     }
@@ -577,6 +623,10 @@ def build_bundle(args: argparse.Namespace) -> dict[str, Any]:
             "manifest_sha256": manifest["manifest_sha256"],
             "database_writes_allowed": False,
         },
+    )
+    validate_bundle(
+        output,
+        expected_manifest_sha256=manifest["manifest_sha256"],
     )
     return {
         **summary,

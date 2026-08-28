@@ -16,14 +16,17 @@ from core.database import engine
 from legal_temporal.backfill import (
     BACKFILL_CONTRACT,
     LEGACY_NORMALIZER_PLAIN,
+    SOURCE_VERIFICATION_EXACT,
     candidate_fingerprint,
     classify_deterministic_operation,
+    compact_whitespace,
     manifest_sha256,
     normalized_infohub_text,
     parse_workspace_source_url,
     validate_bundle,
 )
 from models.document import Document, LawAmendment
+from models.legal_temporal import LegalAmendmentOperation
 from scripts.audit_legal_temporal_backfill import execute_audit
 from scripts.build_legal_temporal_backfill_bundle import collect_inventory
 from scripts.import_legal_temporal_backfill import apply_bundle
@@ -68,8 +71,15 @@ def _source(
             "legacy_md5": hashlib.md5(
                 normalized_infohub_text(payload).encode()
             ).hexdigest(),
+            "legacy_full_text_md5": hashlib.md5(
+                normalized_infohub_text(payload).encode()
+            ).hexdigest(),
+            "legacy_compact_md5": hashlib.md5(
+                compact_whitespace(normalized_infohub_text(payload)).encode()
+            ).hexdigest(),
             "legacy_extraction_method": None,
             "legacy_normalizer": LEGACY_NORMALIZER_PLAIN,
+            "verification_mode": SOURCE_VERIFICATION_EXACT,
             "title": title,
             "document_type": "law",
             "document_number": None,
@@ -100,7 +110,7 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
     amendment_id = uuid4()
     amendment_key = str(uuid4())
     target_key = str(uuid4())
-    amendment_source, _ = _source(
+    amendment_source, amendment_raw = _source(
         bundle,
         document_id=amendment_document_id,
         unique_key=amendment_key,
@@ -108,7 +118,7 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
         body="მე-5 მუხლს დაემატოს ახალი ნაწილი.",
         role="amendment",
     )
-    target_source, _ = _source(
+    target_source, target_raw = _source(
         bundle,
         document_id=target_document_id,
         unique_key=target_key,
@@ -127,6 +137,8 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
                     status="active",
                     source_url=amendment_source["workspace_url"],
                     file_hash=amendment_source["legacy_md5"],
+                    full_text=normalized_infohub_text(json.loads(amendment_raw)),
+                    metadata_json={},
                 ),
                 Document(
                     id=target_document_id,
@@ -136,6 +148,8 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
                     status="active",
                     source_url=target_source["workspace_url"],
                     file_hash=target_source["legacy_md5"],
+                    full_text=normalized_infohub_text(json.loads(target_raw)),
+                    metadata_json={},
                 ),
             ]
         )
@@ -166,6 +180,12 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
     )
     assert len(inventory_amendments) == 1
     assert len(inventory_sources) == 2
+    assert {
+        source["legacy_compact_md5"] for source in inventory_sources.values()
+    } == {
+        amendment_source["legacy_compact_md5"],
+        target_source["legacy_compact_md5"],
+    }
 
     candidate = {
         "legacy_law_amendment_id": str(amendment_id),
@@ -210,6 +230,7 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
             "amendment_rows_with_issues": 0,
             "expert_review_rows": 1,
             "legacy_normalizers": {LEGACY_NORMALIZER_PLAIN: 2},
+            "source_verification_modes": {SOURCE_VERIFICATION_EXACT: 2},
             "postgresql_writes_allowed": False,
             "public_answer_routing_changed": False,
         },
@@ -231,6 +252,12 @@ def test_backfill_is_atomic_idempotent_and_never_promotes_authoritative_text(
     assert first["counters"]["acts_created"] == 2
     assert first["counters"]["operations_created"] == 1
     assert first["authoritative_provision_versions_created"] == 0
+    with Session(engine) as db:
+        stored_operation = db.query(LegalAmendmentOperation).one()
+        assert (
+            stored_operation.structured_payload["source_verification_mode"]
+            == SOURCE_VERIFICATION_EXACT
+        )
 
     second = apply_bundle(
         bundle_dir=bundle,

@@ -158,6 +158,11 @@ old API plain text, native Markdown v2, or Scrapling repair v1. An unknown
 extraction method stops the bundle rather than being silently interpreted as
 source drift.
 
+Source drift is represented, not hidden: exact and whitespace-equivalent
+amendment sources may create pending candidates; a content-drifted amendment
+is evidence-only and forced to expert review. Target-only consolidated-source
+drift does not create provision text and therefore cannot enter public answers.
+
 #### PostgreSQL Database Schema:
 
 ```sql

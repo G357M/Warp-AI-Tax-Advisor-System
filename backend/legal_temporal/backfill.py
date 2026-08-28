@@ -64,6 +64,16 @@ ALLOWED_LEGACY_NORMALIZERS = frozenset(
         LEGACY_NORMALIZER_SCRAPLING,
     }
 )
+SOURCE_VERIFICATION_EXACT = "exact_legacy_md5"
+SOURCE_VERIFICATION_WHITESPACE = "whitespace_equivalent_legacy"
+SOURCE_VERIFICATION_DRIFT = "source_content_drift"
+ALLOWED_SOURCE_VERIFICATION_MODES = frozenset(
+    {
+        SOURCE_VERIFICATION_EXACT,
+        SOURCE_VERIFICATION_WHITESPACE,
+        SOURCE_VERIFICATION_DRIFT,
+    }
+)
 _LEGAL_HEADINGS = ("კარი", "თავი", "მუხლი")
 
 
@@ -143,6 +153,10 @@ def normalized_infohub_text(payload: dict[str, Any]) -> str:
     if body:
         parts.append(body)
     return "\n\n".join(parts).strip()
+
+
+def compact_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _clean_native_text(text: str) -> str:
@@ -529,8 +543,11 @@ def validate_official_api_bytes(
     *,
     source: OfficialSourceIdentity,
     expected_legacy_md5: str,
+    expected_legacy_full_text_md5: str | None = None,
+    expected_legacy_compact_md5: str | None = None,
     legacy_normalizer: str = LEGACY_NORMALIZER_PLAIN,
-) -> tuple[dict[str, Any], str]:
+    allow_content_drift: bool = False,
+) -> tuple[dict[str, Any], str, str]:
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_OFFICIAL_RESPONSE_BYTES:
         raise BackfillValidationError("official API response has an invalid size")
     try:
@@ -550,9 +567,25 @@ def validate_official_api_bytes(
         normalizer=legacy_normalizer,
     )
     actual_md5 = hashlib.md5(normalized_text.encode("utf-8")).hexdigest()
-    if actual_md5 != expected_md5:
-        raise BackfillValidationError("official source text drifted from the legacy row")
-    return payload, normalized_text
+    if actual_md5 == expected_md5:
+        return payload, normalized_text, SOURCE_VERIFICATION_EXACT
+    compact_expected = str(expected_legacy_compact_md5 or "").lower()
+    if not re.fullmatch(r"[0-9a-f]{32}", compact_expected):
+        raise BackfillValidationError(
+            "legacy compact document MD5 is missing or invalid"
+        )
+    compact_actual = hashlib.md5(
+        compact_whitespace(normalized_text).encode("utf-8")
+    ).hexdigest()
+    full_text_expected = str(expected_legacy_full_text_md5 or "").lower()
+    if (
+        compact_actual == compact_expected
+        and full_text_expected == expected_md5
+    ):
+        return payload, normalized_text, SOURCE_VERIFICATION_WHITESPACE
+    if allow_content_drift:
+        return payload, normalized_text, SOURCE_VERIFICATION_DRIFT
+    raise BackfillValidationError("official source text drifted from the legacy row")
 
 
 def canonical_article_ref(value: Any) -> str | None:
@@ -752,17 +785,37 @@ def validate_bundle(
             raise BackfillValidationError("bundle source SHA-256 mismatch")
         if len(raw) != source.get("byte_length"):
             raise BackfillValidationError("bundle source byte length mismatch")
+        if not re.fullmatch(
+            r"[0-9a-f]{32}", str(source.get("legacy_compact_md5") or "")
+        ):
+            raise BackfillValidationError("legacy compact source MD5 is invalid")
+        if not re.fullmatch(
+            r"[0-9a-f]{32}", str(source.get("legacy_full_text_md5") or "")
+        ):
+            raise BackfillValidationError("legacy full-text source MD5 is invalid")
         if source.get("media_type") != "application/json":
             raise BackfillValidationError("bundle source media type mismatch")
         if source.get("http_status") != 200:
             raise BackfillValidationError("bundle source HTTP status mismatch")
         parse_iso_datetime(str(source.get("captured_at_utc") or ""))
-        validate_official_api_bytes(
+        _, _, verification_mode = validate_official_api_bytes(
             raw,
             source=identity,
             expected_legacy_md5=str(source.get("legacy_md5") or ""),
+            expected_legacy_full_text_md5=str(
+                source.get("legacy_full_text_md5") or ""
+            ),
+            expected_legacy_compact_md5=str(
+                source.get("legacy_compact_md5") or ""
+            ),
             legacy_normalizer=str(source.get("legacy_normalizer") or ""),
+            allow_content_drift=True,
         )
+        recorded_verification_mode = source.get("verification_mode")
+        if recorded_verification_mode not in ALLOWED_SOURCE_VERIFICATION_MODES:
+            raise BackfillValidationError("invalid source verification mode")
+        if verification_mode != recorded_verification_mode:
+            raise BackfillValidationError("source verification mode mismatch")
         source_urls.add(identity.workspace_url)
         source_by_document[legacy_id] = source
 
@@ -804,6 +857,13 @@ def validate_bundle(
                 raise BackfillValidationError("candidate target identity mismatch")
             parse_iso_date(candidate.get("effective_date"))
             if state == "operation_candidate":
+                if (
+                    source_by_document[amendment_doc].get("verification_mode")
+                    == SOURCE_VERIFICATION_DRIFT
+                ):
+                    raise BackfillValidationError(
+                        "drifted amendment source promoted an operation"
+                    )
                 operation_type = classification.get("operation_type")
                 if operation_type not in {"add", "replace", "repeal"}:
                     raise BackfillValidationError("invalid promoted operation type")
@@ -858,6 +918,11 @@ def validate_bundle(
                 Counter(
                     source["legacy_normalizer"] for source in sources
                 ).items()
+            )
+        ),
+        "source_verification_modes": dict(
+            sorted(
+                Counter(source["verification_mode"] for source in sources).items()
             )
         ),
         "postgresql_writes_allowed": False,

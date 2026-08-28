@@ -165,6 +165,9 @@ Authoritative provision versions и public temporal routing остаются з�
 MD5-проверка учитывает смешанное происхождение корпуса: для каждой строки
 воспроизводится зафиксированный plain-text, native Markdown v2 или Scrapling
 repair v1 normalizer. Неизвестный extraction method останавливает bundle.
+Точное совпадение и подтверждённое whitespace-only расхождение допускаются к
+candidate correlation; content drift сохраняется только как evidence и
+принудительно отправляет amendment в expert queue.
 
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
