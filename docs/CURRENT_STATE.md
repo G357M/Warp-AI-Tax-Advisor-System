@@ -138,6 +138,21 @@ exact-ссылку на общий фрагмент `part_511`; статья 623
 «О бухгалтерском учёте, отчётности и аудите»: её официальное дерево Matsne не
 содержит отдельных article anchors.
 
+Фундамент исторически точных ответов выделен в отдельный Temporal Legal Engine
+schema v1. Десять additive-таблиц разделяют постоянную идентичность акта и нормы,
+официальную публикацию, valid-time редакцию, append-only system-time коррекцию,
+структурированную amendment operation и expert review event. Точные bytes
+официального источника сохраняются content-addressed по SHA-256; blobs,
+snapshots, observations, редакции, операции и review events защищены PostgreSQL
+trigger от `UPDATE`/`DELETE`. Пересекающиеся head-редакции одной нормы
+отклоняются в транзакции. Deploy требует exact schema-contract SHA-256 и затем
+выполняет read-only aggregate audit до замены runtime-контейнеров.
+
+Этот foundation намеренно не меняет публичные ответы и не переносит существующие
+`law_amendments` автоматически. До отдельного проверенного backfill temporal
+таблицы не являются источником юридических ответов; LLM-сводки `old_norm/new_norm`
+не повышаются до authoritative provision text.
+
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
   сохранён как совместимый API-механизм, но новый frontend не пишет JWT в

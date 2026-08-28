@@ -75,6 +75,21 @@ python3 scripts/manage_infohub_buildkit.py build \
 docker compose run --rm --no-deps backend \
     python scripts/audit_production_readiness.py --commit "$NEW_COMMIT"
 
+# Install only the reviewed additive Temporal Legal Engine foundation.  The
+# exact contract pin prevents an unreviewed model/trigger change from mutating
+# production.  The following audit is read-only and must pass before runtime
+# containers can be replaced.  This release creates no historical backfill and
+# does not route public answers through the new tables.
+LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256="b69e7bcc73da12c5b80a69ec6fc436758842a11b838895d02241dcde0af07e98"
+docker compose run --rm --no-deps backend \
+    python scripts/install_legal_temporal_schema.py \
+        --apply \
+        --expected-contract-sha256 "$LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256"
+docker compose run --rm --no-deps backend \
+    python scripts/audit_legal_temporal_schema.py \
+        --execute \
+        --expected-contract-sha256 "$LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256"
+
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.
 docker compose run --rm --no-deps backend python scripts/add_auth_recovery.py

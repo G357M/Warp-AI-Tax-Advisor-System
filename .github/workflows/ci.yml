@@ -47,12 +47,13 @@ jobs:
       - name: Compile runtime modules
         run: >-
           python -m compileall -q
-          api billing core models rag rag_v2 scraper
+          api billing core legal_temporal models rag rag_v2 scraper
           decision_fact_contract.py
           scripts/add_auth_recovery.py
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
           scripts/audit_legal_answer_coverage.py
+          scripts/audit_legal_temporal_schema.py
           scripts/build_legal_answer_contract_canary.py
           scripts/build_official_provision_registry.py
           scripts/build_decision_facts_full_review_bundle.py
@@ -61,6 +62,7 @@ jobs:
           scripts/evaluate_public_provision_canary.py
           scripts/export_decision_facts_expert_review.py
           scripts/import_decision_facts_review_workbook.py
+          scripts/install_legal_temporal_schema.py
           scripts/link_decision_chains.py
           scripts/prepare_duplicate_expert_prefill.py
           scripts/repair_decision_fact_normalization.py
@@ -110,6 +112,7 @@ jobs:
           tests/test_integration.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
+          tests/test_legal_temporal_foundation.py
           tests/test_infohub_duplicate_verification.py
           tests/test_duplicate_expert_prefill.py
           -q -p no:cacheprovider
@@ -144,6 +147,75 @@ jobs:
         run: |
           python -m pip install pip-audit
           pip-audit -r requirements-production.txt --progress-spinner off
+
+  temporal-postgres:
+    name: Temporal schema and immutable evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      REDIS_URL: redis://localhost:6379/15
+      SECRET_KEY: test-secret-key-for-ci-minimum-32-characters
+      JWT_SECRET_KEY: test-jwt-secret-for-ci-minimum-32-characters
+      OPENAI_API_KEY: test-key
+      ENVIRONMENT: testing
+      DEBUG: "false"
+      RATE_LIMIT_ENABLED: "false"
+      LEGAL_TEMPORAL_POSTGRES_TESTS: "1"
+      LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256: b69e7bcc73da12c5b80a69ec6fc436758842a11b838895d02241dcde0af07e98
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-test.txt
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-test.txt
+      - name: Create legacy document FK fixture
+        run: >-
+          python -c "from sqlalchemy import text;
+          from core.database import engine;
+          from models.document import Document;
+          connection=engine.connect();
+          connection.execute(text('CREATE EXTENSION IF NOT EXISTS vector'));
+          connection.commit();
+          connection.close();
+          Document.__table__.create(engine)"
+      - name: Install pinned additive temporal schema
+        run: >-
+          python scripts/install_legal_temporal_schema.py
+          --apply
+          --expected-contract-sha256 "$LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256"
+      - name: Exercise PostgreSQL immutability and interval triggers
+        run: >-
+          python -m pytest
+          tests/test_legal_temporal_postgres.py
+          -q -p no:cacheprovider
+          -W error::DeprecationWarning
+      - name: Audit empty post-rollback temporal foundation
+        run: >-
+          python scripts/audit_legal_temporal_schema.py
+          --execute
+          --expected-contract-sha256 "$LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256"
 
   frontend:
     name: Frontend lint, types, build and critical audit
@@ -208,7 +280,7 @@ jobs:
 
   containers:
     name: Production image builds
-    needs: [backend, frontend, visual]
+    needs: [backend, temporal-postgres, frontend, visual]
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

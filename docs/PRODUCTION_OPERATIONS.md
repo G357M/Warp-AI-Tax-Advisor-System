@@ -701,6 +701,52 @@ official Matsne PDF page locator. The coverage audit must report all 18 parser
 goals as classified: 14 contract-backed and four contextual-retrieval goals.
 No hard-coded authoritative fact is allowlisted; any such literal fails CI.
 
+## Temporal Legal Engine schema foundation
+
+Schema v1 is additive and installs ten new tables without backfilling legal
+content or changing public answer routing. Its contract SHA-256 covers the
+normalized column/FK/CHECK/UNIQUE/index contract and every trigger definition. The exact pin
+is stored in `scripts/deploy_production.sh`; changing a model, constraint, index
+or trigger changes the computed hash and fails both the test contract and
+deployment until the pin is explicitly reviewed.
+
+Inspect both plans without connecting to PostgreSQL:
+
+```bash
+cd /root/infohub
+docker compose run --rm --no-deps backend \
+  python scripts/install_legal_temporal_schema.py
+docker compose run --rm --no-deps backend \
+  python scripts/audit_legal_temporal_schema.py
+```
+
+The deployment script performs the only normal production apply path:
+
+```text
+production readiness audit
+  -> pinned additive temporal schema apply
+  -> read-only temporal schema/integrity audit
+  -> account recovery schema
+  -> Nginx validation
+  -> runtime replacement and public health
+```
+
+Apply mode requires `--expected-contract-sha256` and refuses a non-PostgreSQL
+database. It creates no legacy backfill. The follow-up audit checks the migration
+record, all expected tables, immutability and interval triggers, orphaned
+snapshots, byte lengths, a bounded number of actual blob SHA-256 values, invalid
+valid-time bounds and overlapping active provision heads. Output is aggregate
+only and the audit never writes to the database.
+
+The immutable source boundary accepts exact bytes only from approved official
+HTTPS hosts (`matsne.gov.ge`, `new.matsne.gov.ge`, `infohub.rs.ge` and
+`infohubapi.rs.ge`) with a 64 MiB per-object ceiling. Snapshot storage performs
+no HTTP request; future ingestion/backfill code must fetch externally and pass
+the exact response bytes into the bounded store.
+
+See `docs/TEMPORAL_LEGAL_ENGINE_FOUNDATION.md` for the data model, bitemporal
+selection semantics, CI proof and explicitly deferred backfill boundary.
+
 ## Bounded live answer-safety evaluation
 
 Inspect the versioned execution plan first; this does not connect to the corpus

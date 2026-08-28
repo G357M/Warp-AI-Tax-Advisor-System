@@ -136,6 +136,17 @@
 
 ### 3. Storage Layer (Слой хранения)
 
+#### Temporal Legal Engine foundation
+
+Historical law is normalized separately from the legacy document index. Stable
+acts and provisions link to official publications, immutable content-addressed
+source snapshots and append-only provision versions. Legal validity uses
+half-open `[valid_from, valid_to)` intervals; later knowledge corrections append
+a `supersedes` row instead of rewriting history. PostgreSQL triggers reject
+mutable evidence and overlapping active provision intervals. The public RAG
+path remains on the reviewed current-law registries until a separate historical
+backfill is complete.
+
 #### PostgreSQL Database Schema:
 
 ```sql
