@@ -116,7 +116,10 @@ The test environment pins AnyIO 4.14.2, the resolution in the last green
 TestClient during test collection. The strict warnings-as-errors gate is kept;
 this test-only compatibility pin does not alter production dependencies.
 
-Next: an independently reviewed, hash-pinned proposal importer with exact
-transaction ceilings and backup/rollback proof, then provision reconstruction,
+The separate [review admission command](TEMPORAL_LEGAL_REVIEW_ADMISSION.md) now
+provides independently reviewed, hash-pinned import of candidate review events,
+with exact transaction ceilings and backup/rollback rehearsal gates. This offline
+dossier tool remains non-executable. Corrections and unresolved candidates are
+not auto-applied. Next: genuine expert decisions, provision reconstruction,
 valid-time coverage and multilingual historical answer canaries. Neither an
-unchecked LLM extraction nor a successful JSON validation is publication approval.
+unchecked LLM extraction nor successful JSON validation is publication approval.

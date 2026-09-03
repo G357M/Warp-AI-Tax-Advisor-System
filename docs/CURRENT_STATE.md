@@ -178,6 +178,16 @@ Offline expert review v1 (`docs/TEMPORAL_LEGAL_EXPERT_REVIEW.md`) превращ
 `confirm`. Результат — только non-executable proposals; expert review events,
 authoritative versions и public routing этот инструмент не меняет.
 
+Следующий отдельный контур — `admit_legal_temporal_review.py`
+(`docs/TEMPORAL_LEGAL_REVIEW_ADMISSION.md`). Он повторно сверяет исходные файлы,
+требует решения второго эксперта и допускает только review events для уже
+существующих, неблокированных кандидатов `confirm/reject`. Read-only preflight,
+свежий backup с успешным restore-drill, репетиция с откатом на восстановленной
+копии, SHA-256 всех входов и точное совпадение production scope обязательны до
+apply. Неоднозначность, source drift, corrections и конфликтующие решения
+останавливают весь пакет. Сам выпуск инструмента не подтверждает ни одного
+решения и не создаёт исторических редакций; реальные досье остаются pending.
+
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
   сохранён как совместимый API-механизм, но новый frontend не пишет JWT в
