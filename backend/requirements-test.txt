@@ -13,6 +13,9 @@ redis==5.0.1
 PyJWT[crypto]==2.13.0
 bcrypt==4.1.2
 httpx==0.28.1
+# Last green CI resolution: AnyIO 4.15 deprecates the alias used by Starlette
+# 1.6 TestClient and breaks our warnings-as-errors gate during collection.
+anyio==4.14.2
 pgvector==0.5.0
 beautifulsoup4==4.12.3
 pytest==8.4.2

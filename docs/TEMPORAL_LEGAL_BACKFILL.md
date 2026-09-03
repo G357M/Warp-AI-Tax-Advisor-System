@@ -175,7 +175,10 @@ recovery procedure, not ad-hoc `DELETE` statements.
 
 ## What remains after this package
 
-Expert verification can approve/correct the generated candidate queue in bulk.
+The offline expert-review workflow in `docs/TEMPORAL_LEGAL_EXPERT_REVIEW.md`
+now prepares per-law dossiers and validates partial human decisions against the
+complete pinned source bundle. It produces non-executable proposals only.
+Expert verification can propose approvals/corrections in bulk.
 A later package may then append verified amendment operations and reconstruct
 authoritative provision versions. Public historical answers remain disabled
 until coverage, non-overlap, source lineage and multilingual answer canaries all

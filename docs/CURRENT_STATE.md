@@ -169,6 +169,15 @@ repair v1 normalizer. Неизвестный extraction method останавл�
 candidate correlation; content drift сохраняется только как evidence и
 принудительно отправляет amendment в expert queue.
 
+Offline expert review v1 (`docs/TEMPORAL_LEGAL_EXPERT_REVIEW.md`) превращает
+полный backfill bundle в досье по законам и небольшие пакеты решений. В них
+сохранены официальные ссылки, SHA-256, полный нормализованный архивный текст,
+навигационные отрывки и причины блокировки. Валидатор принимает частичную
+проверку, отклоняет подмену evidence, повторные строки, неверные UTC-даты и
+цитаты, отсутствующие в снимке. Source drift и неоднозначность не разрешают
+`confirm`. Результат — только non-executable proposals; expert review events,
+authoritative versions и public routing этот инструмент не меняет.
+
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
   сохранён как совместимый API-механизм, но новый frontend не пишет JWT в
