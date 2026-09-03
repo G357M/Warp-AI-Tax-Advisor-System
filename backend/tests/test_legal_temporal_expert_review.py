@@ -14,6 +14,7 @@ import pytest
 from legal_temporal.backfill import (
     BackfillValidationError, SOURCE_VERIFICATION_DRIFT,
     compact_whitespace, manifest_sha256, normalized_infohub_text,
+    validate_bundle,
 )
 from legal_temporal.expert_review import (
     REVIEW_CONTRACT, ReviewValidationError, build_rows, load_evidence,
@@ -95,6 +96,32 @@ def test_schema_package_exports_still_work():
     assert legal_temporal.SCHEMA_CONTRACT_SHA256 == SCHEMA_CONTRACT_SHA256
     with pytest.raises(AttributeError):
         getattr(legal_temporal, "not_a_schema_export")
+
+
+def test_verified_normalization_is_reused_once_and_only_after_full_success(evidence, monkeypatch):
+    import legal_temporal.backfill as backfill
+    bundle, manifest, expected_texts = evidence
+    calls = []
+    original = backfill.validate_official_api_bytes
+
+    def counted(*args, **kwargs):
+        calls.append(kwargs["source"].unique_key)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(backfill, "validate_official_api_bytes", counted)
+    loaded, texts = load_evidence(bundle, manifest["manifest_sha256"])
+    assert loaded == manifest
+    assert texts == expected_texts
+    assert len(calls) == len(manifest["sources"])
+    sink = {}
+    # Even an error after every source passes must not expose a partial result.
+    manifest["summary"]["sources"] += 1
+    _save_manifest(bundle, manifest)
+    with pytest.raises(BackfillValidationError, match="source summary"):
+        validate_bundle(bundle, normalized_texts=sink)
+    assert sink == {}
+    with pytest.raises(BackfillValidationError, match="must be empty"):
+        validate_bundle(bundle, normalized_texts={"already": "present"})
 
 
 def test_full_packet_is_deterministic_protected_and_all_pending(evidence, tmp_path):

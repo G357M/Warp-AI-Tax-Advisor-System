@@ -715,7 +715,14 @@ def validate_bundle(
     bundle_dir: Path,
     *,
     expected_manifest_sha256: str | None = None,
+    normalized_texts: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    # Optional offline-review output, populated only after the entire bundle
+    # passes. Reuse text from the very bytes just verified; never parse a second
+    # potentially replaced file, or make callers normalize the whole corpus twice.
+    if normalized_texts:
+        raise BackfillValidationError("normalized text output must be empty")
+    verified_texts: dict[str, str] = {}
     if bundle_dir.is_symlink():
         raise BackfillValidationError("bundle must not be a symlink")
     root = bundle_dir.resolve()
@@ -801,7 +808,7 @@ def validate_bundle(
         if source.get("http_status") != 200:
             raise BackfillValidationError("bundle source HTTP status mismatch")
         parse_iso_datetime(str(source.get("captured_at_utc") or ""))
-        _, _, verification_mode = validate_official_api_bytes(
+        _, normalized_text, verification_mode = validate_official_api_bytes(
             raw,
             source=identity,
             expected_legacy_md5=str(source.get("legacy_md5") or ""),
@@ -819,6 +826,8 @@ def validate_bundle(
             raise BackfillValidationError("invalid source verification mode")
         if verification_mode != recorded_verification_mode:
             raise BackfillValidationError("source verification mode mismatch")
+        if normalized_texts is not None:
+            verified_texts[legacy_id] = normalized_text
         source_urls.add(identity.workspace_url)
         source_by_document[legacy_id] = source
 
@@ -934,6 +943,8 @@ def validate_bundle(
     for field, expected in expected_summary.items():
         if summary.get(field) != expected:
             raise BackfillValidationError(f"bundle {field} summary mismatch")
+    if normalized_texts is not None:
+        normalized_texts.update(verified_texts)
     return manifest
 
 

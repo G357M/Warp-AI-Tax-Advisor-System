@@ -18,9 +18,6 @@ from legal_temporal.backfill import (
     SOURCE_VERIFICATION_DRIFT,
     _article_pattern,
     canonical_article_ref,
-    legacy_normalized_text,
-    parse_workspace_source_url,
-    safe_bundle_file,
     sha256_json,
     validate_bundle,
 )
@@ -86,18 +83,11 @@ def load_evidence(bundle: Path, expected_manifest_sha256: str):
     """Validate every source before deriving review rows or normalized text."""
     if not re.fullmatch(r"[0-9a-f]{64}", expected_manifest_sha256):
         raise ReviewValidationError("a pinned manifest SHA-256 is required")
+    texts: dict[str, str] = {}
     manifest = validate_bundle(
         bundle, expected_manifest_sha256=expected_manifest_sha256,
+        normalized_texts=texts,
     )
-    texts = {}
-    for source in manifest["sources"]:
-        raw = safe_bundle_file(bundle, source["file"]).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != source["content_sha256"]:
-            raise ReviewValidationError("source changed after bundle validation")
-        texts[source["legacy_document_id"]] = legacy_normalized_text(
-            json.loads(raw), normalizer=source["legacy_normalizer"],
-            source=parse_workspace_source_url(source["workspace_url"]),
-        )
     return manifest, texts
 
 

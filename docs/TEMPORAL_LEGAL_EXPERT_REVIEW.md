@@ -21,6 +21,9 @@ Neither public routing nor the PostgreSQL schema changes.
 Run inside the backend environment; no database credentials are needed. The
 source `bundle` is the existing complete backfill directory, not its CSV file.
 The expected SHA is the canonical `manifest_sha256`, not the file's byte hash.
+Full-corpus validation also requires the production-pinned Scrapling parser
+for legacy Scrapling-repaired sources. Verified normalized text is reused from
+the bundle validator, avoiding a second parse of every official response.
 
 ```bash
 python scripts/review_legal_temporal.py
