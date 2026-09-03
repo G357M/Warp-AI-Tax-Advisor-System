@@ -1,6 +1,7 @@
 """Real PostgreSQL proof in CI only. All decisions and dumps are fixtures."""
 
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 import hashlib
 import json
@@ -101,7 +102,8 @@ def test_readonly_rehearsal_apply_and_idempotent_replay(admitted_fixture):
         assert db.query(LegalReviewEvent).filter_by(event_type="published").count() == 0
 
 
-def test_mid_transaction_failure_leaves_no_partial_approval(admitted_fixture):
+@pytest.mark.parametrize("mode", ["rehearse", "apply"])
+def test_mid_transaction_failure_leaves_no_partial_approval(admitted_fixture, mode):
     class FailAfterFirstInsert(Session):
         def flush(self, *args, **kwargs):
             pending = [row for row in self.new if isinstance(row, LegalReviewEvent)]
@@ -112,11 +114,29 @@ def test_mid_transaction_failure_leaves_no_partial_approval(admitted_fixture):
 
     data = admitted_fixture
     before = _run(data)
+    proof = _run(data, mode="rehearse", max_events=2, recovery=RECOVERY)
     failing = (*data[:4], sessionmaker(bind=engine, class_=FailAfterFirstInsert, autoflush=False))
     with pytest.raises(RuntimeError, match="real INSERT"):
-        _run(failing, mode="rehearse", max_events=2, recovery=RECOVERY)
+        _run(failing, mode=mode, max_events=2, recovery=RECOVERY, rollback_proof=proof)
     assert _human_events(data) == 0
     assert _run(data)["scope_sha256"] == before["scope_sha256"]
+
+
+def test_concurrent_identical_imports_create_each_event_once(admitted_fixture):
+    from threading import Barrier
+    data = admitted_fixture
+    proof = _run(data, mode="rehearse", max_events=2, recovery=RECOVERY)
+    barrier = Barrier(2)
+
+    def apply_once():
+        barrier.wait(timeout=10)
+        return _run(data, mode="apply", max_events=2, recovery=RECOVERY, rollback_proof=proof)
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        futures = [workers.submit(apply_once) for _ in range(2)]
+        results = [future.result(timeout=30) for future in futures]
+    assert sorted(result["events_created"] for result in results) == [0, 2]
+    assert _human_events(data) == 2
 
 
 @pytest.mark.parametrize("max_events", [0, 1, 3, True])
