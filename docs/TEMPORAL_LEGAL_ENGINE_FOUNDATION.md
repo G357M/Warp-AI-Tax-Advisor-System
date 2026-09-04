@@ -120,6 +120,15 @@ deterministically correlated operations at bulk scale while every operation
 remains `needs_review`. It still creates no authoritative provision version and
 does not change public answer routing.
 
+## Official publication-edition reconstruction
+
+The next offline layer is documented in
+`docs/MATSNE_PUBLICATION_EDITIONS.md`. It verifies browser-captured Matsne
+publication HTML and document trees by exact SHA-256, extracts articles only
+between official anchors, builds half-open historical intervals and reports
+coverage gaps. Its result remains a non-executable expert-review proposal: it
+creates no provision versions and changes no public answer route.
+
 ## Explicitly deferred
 
 Foundation v1 does not:

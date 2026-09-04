@@ -58,6 +58,7 @@ jobs:
           scripts/audit_legal_temporal_schema.py
           scripts/build_legal_answer_contract_canary.py
           scripts/build_legal_temporal_backfill_bundle.py
+          scripts/build_matsne_publication_editions.py
           scripts/build_official_provision_registry.py
           scripts/build_decision_facts_full_review_bundle.py
           scripts/build_decision_facts_review_bundle.py
@@ -69,6 +70,7 @@ jobs:
           scripts/install_legal_temporal_schema.py
           scripts/link_decision_chains.py
           scripts/prepare_duplicate_expert_prefill.py
+          scripts/query_matsne_provision_history.py
           scripts/repair_decision_fact_normalization.py
           scripts/review_legal_temporal.py
           scripts/scrape_infohub_api.py
@@ -121,6 +123,7 @@ jobs:
           tests/test_legal_temporal_expert_review.py
           tests/test_legal_temporal_review_admission.py
           tests/test_legal_temporal_foundation.py
+          tests/test_matsne_publication_editions.py
           tests/test_infohub_duplicate_verification.py
           tests/test_duplicate_expert_prefill.py
           -q -p no:cacheprovider
