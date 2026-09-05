@@ -93,7 +93,8 @@ After a pass, independently audit the receipts and exact stored bodies from
 python scripts/audit_matsne_browser_capture_receipts.py \
   --plan /secure/evidence/tax-code-capture/capture_plan.json \
   --bundle /secure/evidence/tax-code-capture \
-  --expected-plan-sha256 <plan-sha256>
+  --expected-plan-sha256 <plan-sha256> \
+  --checkpoint /secure/audit-state/tax-code-receipts.checkpoint.json
 ```
 
 This audit is read-only and exits `2` while any source pair or receipt is
@@ -102,6 +103,25 @@ and article boundary, and returns one exact `next_action`. A green receipt audit
 proves a complete, internally consistent browser observation; it does not
 establish when a publication entered into force and does not authorize public
 answers.
+
+The optional checkpoint is operational state and therefore must be outside the
+immutable evidence bundle. It is replaced atomically after each edition. On an
+interrupted pass, copy the latest `checkpoint_sha256` from the progress output
+(or calculate the exact file SHA-256 independently), then resume with both pins:
+
+```bash
+python scripts/audit_matsne_browser_capture_receipts.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256> \
+  --checkpoint /secure/audit-state/tax-code-receipts.checkpoint.json \
+  --expected-checkpoint-sha256 <checkpoint-file-sha256>
+```
+
+An existing checkpoint is never trusted without its exact external SHA-256
+pin. Reuse is also bound to the capture-plan file, auditor implementation and
+the current page, tree and receipt hashes. A changed source or changed parsing
+contract is audited again instead of being accepted from cache.
 
 ## Evidence bundle v1
 

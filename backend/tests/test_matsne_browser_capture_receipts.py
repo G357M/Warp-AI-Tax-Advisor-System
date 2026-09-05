@@ -10,6 +10,7 @@ import sys
 
 import pytest
 
+import legal_temporal.browser_capture_receipts as browser_capture_receipts
 from legal_temporal.browser_capture_receipts import (
     BROWSER_RECEIPT_AUDIT_CONTRACT,
     BROWSER_RECEIPT_CONTRACT,
@@ -165,6 +166,119 @@ def test_complete_browser_receipts_bind_exact_sources(packet):
     ).hexdigest()
 
 
+def test_progress_and_resume_are_bound_to_current_evidence_hashes(packet, monkeypatch):
+    output, created, plan = packet
+    for item in plan["items"]:
+        _write_receipt(output, item, created["plan_sha256"])
+    initial = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+    )
+    resume = {detail["publication"]: detail for detail in initial["details"]}
+    original_extract = browser_capture_receipts.extract_article_sections
+    extracted_publications = []
+
+    def tracked_extract(page_raw, tree_value):
+        extracted_publications.append(page_raw)
+        return original_extract(page_raw, tree_value)
+
+    monkeypatch.setattr(
+        browser_capture_receipts, "extract_article_sections", tracked_extract
+    )
+    observed = []
+    resumed = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+        resume_details=resume,
+        progress=lambda completed, total, detail: observed.append(
+            (completed, total, detail["publication"])
+        ),
+    )
+    assert resumed["complete"]
+    assert extracted_publications == []
+    assert observed == [(1, 2, 0), (2, 2, 1)]
+
+    first = plan["items"][0]
+    page_path = output / first["page_file"]
+    page_path.write_bytes(
+        page_path.read_bytes().replace(
+            "ოფიციალური ტექსტი 0".encode(), "ოფიციალური ტექსტი 9".encode()
+        )
+    )
+    changed = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+        resume_details=resume,
+    )
+    assert len(extracted_publications) == 1
+    assert not changed["details"][0]["ready"]
+    assert any(
+        "SHA-256 mismatch" in error for error in changed["details"][0]["errors"]
+    )
+
+
+def test_cli_checkpoint_requires_pin_and_resumes(packet, tmp_path):
+    output, created, plan = packet
+    for item in plan["items"]:
+        _write_receipt(output, item, created["plan_sha256"])
+    backend = Path(__file__).resolve().parents[1]
+    script = backend / "scripts" / "audit_matsne_browser_capture_receipts.py"
+    checkpoint = tmp_path / "audit-checkpoint.json"
+    command = [
+        sys.executable,
+        str(script),
+        "--plan",
+        str(output / "capture_plan.json"),
+        "--bundle",
+        str(output),
+        "--expected-plan-sha256",
+        created["plan_sha256"],
+        "--checkpoint",
+        str(checkpoint),
+        "--progress-every",
+        "1",
+    ]
+
+    first = subprocess.run(command, cwd=backend, capture_output=True, text=True)
+    assert first.returncode == 0, first.stderr
+    assert "completed=2/2" in first.stderr
+    checkpoint_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    checkpoint_value = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert len(checkpoint_value["details"]) == 2
+
+    unpinned = subprocess.run(command, cwd=backend, capture_output=True, text=True)
+    assert unpinned.returncode != 0
+    assert "requires --expected-checkpoint-sha256" in unpinned.stderr
+
+    resumed = subprocess.run(
+        command + ["--expected-checkpoint-sha256", checkpoint_sha],
+        cwd=backend,
+        capture_output=True,
+        text=True,
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert "\"complete\": true" in resumed.stdout
+
+    inside_checkpoint = output / "audit-checkpoint.json"
+    inside_command = list(command)
+    inside_command[inside_command.index(str(checkpoint))] = str(inside_checkpoint)
+    inside = subprocess.run(
+        inside_command,
+        cwd=backend,
+        capture_output=True,
+        text=True,
+    )
+    assert inside.returncode != 0
+    assert "outside the immutable evidence bundle" in inside.stderr
+    assert not inside_checkpoint.exists()
+
+
 def test_matsne_html_content_type_is_allowed_only_for_valid_tree_json(packet):
     output, created, plan = packet
     item = plan["items"][0]
@@ -194,6 +308,37 @@ def test_matsne_html_content_type_is_allowed_only_for_valid_tree_json(packet):
     )
     assert not report["details"][0]["ready"]
     assert any("strict UTF-8 JSON" in error for error in report["details"][0]["errors"])
+
+
+def test_challenge_prefix_limit_does_not_split_georgian_utf8(packet):
+    output, created, plan = packet
+    item = plan["items"][0]
+    _write_receipt(output, item, created["plan_sha256"])
+    opening = b"<!doctype html><html><body><aside>"
+    filler = b"x" * (199_999 - len(opening))
+    page = (
+        opening
+        + filler
+        + "ა".encode()
+        + b"</aside><main><div id=\"document-content\">"
+        + f'<a id="part_{item["publication"]}"></a>'.encode()
+        + "<h2>მუხლი 1. სათაური</h2><p>ოფიციალური ტექსტი</p>".encode()
+        + b"</div></main></body></html>"
+    )
+    (output / item["page_file"]).write_bytes(page)
+    receipt_path = output / browser_receipt_file(item["publication"])
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["page"] = _response(item, "page", page)
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    report = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+    )
+
+    assert report["details"][0]["ready"]
 
 
 @pytest.mark.parametrize(

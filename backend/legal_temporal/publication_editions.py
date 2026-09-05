@@ -9,9 +9,10 @@ historical edition.
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import date
 import hashlib
+import html
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -24,7 +25,6 @@ from scripts.build_official_provision_registry import (
     _ANCHOR,
     _walk,
     canonical_article_ref,
-    extract_article_anchors,
 )
 
 
@@ -304,18 +304,39 @@ def _verified_source(
 
 
 def _tree_anchors_in_order(tree: dict[str, Any]) -> tuple[list[tuple[str, str]], int, int]:
-    accepted, excluded_future, excluded_ambiguous = extract_article_anchors(tree)
-    ordered: list[tuple[str, str]] = []
-    seen: set[str] = set()
+    candidates: list[tuple[str, str]] = []
+    anchor_refs: defaultdict[str, set[str]] = defaultdict(set)
+    excluded_future = 0
+    seen_pairs: set[tuple[str, str]] = set()
     for node in _walk(tree):
-        ref = canonical_article_ref(str(node.get("Title") or ""))
+        title = str(node.get("Title") or "")
+        decoded = html.unescape(re.sub(r"<[^>]+>", "", title)).translate(
+            str.maketrans("", "", "\u200b\u200c\u200d\ufeff")
+        ).lstrip()
+        if node.get("Future") is True or (
+            decoded.startswith("[") and "მუხლი" in decoded
+        ):
+            excluded_future += 1
+            continue
+        ref = canonical_article_ref(title)
+        if not ref:
+            continue
         anchor = str(node.get("Anchor") or "")
-        if ref in accepted and accepted[ref] == anchor and ref not in seen:
-            ordered.append((ref, anchor))
-            seen.add(ref)
-    if len(ordered) != len(accepted):
-        raise PublicationEditionValidationError("tree article order is incomplete")
-    return ordered, excluded_future, excluded_ambiguous
+        if not _ANCHOR.fullmatch(anchor):
+            raise PublicationEditionValidationError(
+                f"invalid anchor for article {ref}: {anchor!r}"
+            )
+        pair = (ref, anchor)
+        if pair not in seen_pairs:
+            candidates.append(pair)
+            seen_pairs.add(pair)
+        anchor_refs[anchor].add(ref)
+
+    ambiguous_refs = {
+        ref for refs in anchor_refs.values() if len(refs) > 1 for ref in refs
+    }
+    ordered = [pair for pair in candidates if pair[0] not in ambiguous_refs]
+    return ordered, excluded_future, len(ambiguous_refs)
 
 
 def _contains_block_page(html_text: str) -> bool:
@@ -323,47 +344,82 @@ def _contains_block_page(html_text: str) -> bool:
     return any(marker in prefix for marker in _BLOCKED_PAGE_MARKERS)
 
 
-def _matching_anchor_tags(soup: BeautifulSoup, anchor: str) -> list[Tag]:
-    return [
-        tag
-        for tag in soup.find_all(True)
-        if tag.get("id") == anchor or tag.get("name") == anchor
-    ]
+def _index_anchor_tags(
+    soup: BeautifulSoup,
+    anchors: set[str],
+) -> dict[str, list[Tag]]:
+    """Index only requested Matsne anchors in one DOM pass.
+
+    A publication can contain hundreds of articles and tens of thousands of
+    tags.  Looking through the whole document once per article makes a full
+    historical audit quadratic.  The index preserves document order and
+    de-duplicates a tag that happens to expose the same value through both
+    ``id`` and ``name``.
+    """
+
+    indexed: defaultdict[str, list[Tag]] = defaultdict(list)
+    for tag in soup.find_all(True):
+        values = {str(tag.get(field) or "") for field in ("id", "name")}
+        for value in values & anchors:
+            indexed[value].append(tag)
+    return dict(indexed)
 
 
-def _article_anchor_marker(soup: BeautifulSoup, article_ref: str, anchor: str) -> Tag:
+def _semantic_tag_text(tag: Tag) -> str:
+    """Normalize source whitespace without inventing gaps between inline tags."""
+
+    return re.sub(r"\s+", " ", tag.get_text("", strip=False)).strip()
+
+
+def _article_anchor_marker(
+    matches: list[Tag],
+    article_ref: str,
+    anchor: str,
+) -> Tag:
     """Choose the one Matsne anchor that carries this article heading.
 
     Old-style Matsne editions may repeat a ``name=part_N`` marker: first as an
-    empty range boundary and then as the linked article heading.  The heading
-    proves the pair when exactly one duplicate decodes to the tree's
-    article reference.  Extraction starts at the preceding empty boundary so
-    the heading and body remain inside the article range.  A genuinely unique
-    marker remains supported for newer and synthetic editions.
+    empty range boundary, then as the linked article heading, and occasionally
+    again on a later boundary or chapter heading.  Exactly one semantic article
+    heading plus a preceding empty marker proves the start; later occurrences
+    remain hard range boundaries.  A genuinely unique marker remains supported
+    for newer and synthetic editions.
     """
-    matches = _matching_anchor_tags(soup, anchor)
     semantic = [
         tag
         for tag in matches
-        if canonical_article_ref(tag.get_text(" ", strip=True)) == article_ref
+        if canonical_article_ref(_semantic_tag_text(tag)) == article_ref
     ]
     if len(matches) == 1:
         return matches[0]
     if len(semantic) == 1:
         heading = semantic[0]
+        heading_position = next(
+            index for index, tag in enumerate(matches) if tag is heading
+        )
         boundaries = [
             tag
             for tag in matches
-            if tag is not heading and not tag.get_text(" ", strip=True)
+            if tag is not heading and not _semantic_tag_text(tag)
         ]
-        if (
-            len(boundaries) == 1
-            and matches.index(boundaries[0]) < matches.index(heading)
-        ):
-            return boundaries[0]
+        boundary_ids = {id(tag) for tag in boundaries}
+        preceding = [
+            tag
+            for index, tag in enumerate(matches)
+            if index < heading_position and id(tag) in boundary_ids
+        ]
+        nonsemantic_before = [
+            tag
+            for index, tag in enumerate(matches)
+            if index < heading_position
+            and tag is not heading
+            and _semantic_tag_text(tag)
+        ]
+        if preceding and not nonsemantic_before:
+            return preceding[-1]
     raise PublicationEditionValidationError(
-        f"article {article_ref} anchor must occur exactly once or as one "
-        "verified old-style boundary/heading pair in page HTML"
+        f"article {article_ref} anchor must occur exactly once or as a "
+        "verified old-style boundary/heading sequence in page HTML"
     )
 
 
@@ -371,9 +427,13 @@ def _common_ancestor(tags: list[Tag]) -> Tag:
     if not tags:
         raise PublicationEditionValidationError("edition has no article anchors")
     first_chain = [first for first in tags[0].parents if isinstance(first, Tag)]
-    other_sets = [set(tag.parents) for tag in tags[1:]]
+    # BeautifulSoup Tag equality and hashing serialize/compare whole subtrees.
+    # On a multi-megabyte consolidated act, putting parent tags in sets made
+    # this seemingly small operation dominate the entire historical audit.
+    # DOM containment is an identity relationship, so compare object ids.
+    other_parent_ids = [{id(parent) for parent in tag.parents} for tag in tags[1:]]
     for candidate in first_chain:
-        if all(candidate in parents for parents in other_sets):
+        if all(id(candidate) in parent_ids for parent_ids in other_parent_ids):
             if candidate.name in {"html", "body"}:
                 raise PublicationEditionValidationError(
                     "article anchors do not share a bounded document-content container"
@@ -385,7 +445,9 @@ def _common_ancestor(tags: list[Tag]) -> Tag:
 
 
 def _is_within(element: Any, container: Tag) -> bool:
-    return element is container or container in getattr(element, "parents", [])
+    return element is container or any(
+        parent is container for parent in getattr(element, "parents", [])
+    )
 
 
 def _normalized_article_text(parts: list[str]) -> str:
@@ -424,11 +486,115 @@ def extract_article_sections(
         value = re.sub(r"\s+", "", node.get_text()).strip()
         if value.isdigit():
             node.string = value.translate(superscript)
-    markers: list[tuple[str, str, Tag]] = []
+    anchor_index = _index_anchor_tags(soup, {anchor for _, anchor in ordered})
+    candidate_infos: list[dict[str, Any]] = []
+    ambiguous_boundary_ids: set[int] = set()
+    page_ambiguous = 0
     for ref, anchor in ordered:
-        markers.append((ref, anchor, _article_anchor_marker(soup, ref, anchor)))
+        matches = anchor_index.get(anchor, [])
+        semantic_refs = {
+            parsed
+            for tag in matches
+            if (parsed := canonical_article_ref(_semantic_tag_text(tag)))
+        }
+        if len(semantic_refs) > 1:
+            # Some consolidated pages assign one fragment to an entire removed
+            # article block even when the tree exposes only its first member.
+            # Such a fragment cannot prove the exact range of any one article,
+            # but every occurrence must remain a hard range boundary so the
+            # preceding valid article cannot absorb the removed block.
+            ambiguous_boundary_ids.update(id(tag) for tag in matches)
+            page_ambiguous += 1
+            continue
+        resolved_ref = ref
+        has_semantic_heading = len(semantic_refs) == 1
+        if has_semantic_heading:
+            page_ref = next(iter(semantic_refs))
+            if page_ref != ref:
+                if page_ref.replace("-", "") != ref.replace("-", ""):
+                    raise PublicationEditionValidationError(
+                        f"tree article {ref} conflicts with page article {page_ref} "
+                        f"at anchor {anchor}"
+                    )
+                # Some legacy tree labels flatten article 20<sup>3</sup> to
+                # ``203``. The exact page heading restores the canonical
+                # suffix while the shared digits and anchor bind both views.
+                resolved_ref = page_ref
+        candidate_infos.append(
+            {
+                "tree_ref": ref,
+                "resolved_ref": resolved_ref,
+                "anchor": anchor,
+                "matches": matches,
+                "has_semantic_heading": has_semantic_heading,
+            }
+        )
+
+    grouped: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    for info in candidate_infos:
+        grouped[info["tree_ref"]].append(info)
+    selected_ids: set[int] = set()
+    for tree_ref, group in grouped.items():
+        if len(group) == 1:
+            selected_ids.add(id(group[0]))
+            continue
+        semantic = [info for info in group if info["has_semantic_heading"]]
+        if not semantic:
+            anchors = ", ".join(info["anchor"] for info in group)
+            raise PublicationEditionValidationError(
+                f"article {tree_ref} has multiple unproved tree anchors: {anchors}"
+            )
+        resolved_refs = [info["resolved_ref"] for info in semantic]
+        if len(set(resolved_refs)) != len(resolved_refs):
+            # Two content-bearing anchors claim the same article in this exact
+            # consolidated edition. Never choose between the legal texts.
+            # Quarantine that ref while keeping every occurrence as a hard
+            # boundary, allowing unrelated articles to remain auditable.
+            for info in group:
+                ambiguous_boundary_ids.update(id(tag) for tag in info["matches"])
+            page_ambiguous += len(set(resolved_refs))
+            continue
+        selected_ids.update(id(info) for info in semantic)
+        for info in group:
+            if id(info) not in selected_ids:
+                ambiguous_boundary_ids.update(id(tag) for tag in info["matches"])
+
+    markers: list[tuple[str, str, Tag]] = []
+    resolved_seen: set[str] = set()
+    for info in candidate_infos:
+        if id(info) not in selected_ids:
+            continue
+        ref = info["resolved_ref"]
+        anchor = info["anchor"]
+        matches = info["matches"]
+        if ref in resolved_seen:
+            raise PublicationEditionValidationError(
+                f"page resolves more than one tree node to article {ref}"
+            )
+        marker = _article_anchor_marker(matches, ref, anchor)
+        marker_position = next(
+            index for index, tag in enumerate(matches) if tag is marker
+        )
+        semantic_positions = [
+            index
+            for index, tag in enumerate(matches)
+            if canonical_article_ref(_semantic_tag_text(tag)) == ref
+        ]
+        boundary_position = (
+            semantic_positions[0] if len(semantic_positions) == 1 else marker_position
+        )
+        ambiguous_boundary_ids.update(
+            id(tag) for tag in matches[boundary_position + 1 :]
+        )
+        markers.append((ref, anchor, marker))
+        resolved_seen.add(ref)
+    if not markers:
+        raise PublicationEditionValidationError(
+            "page contains no unambiguous extractable article anchors"
+        )
     container = _common_ancestor([marker for _, _, marker in markers])
     marker_identity = {id(marker): ref for ref, _, marker in markers}
+    boundary_identity = set(marker_identity) | ambiguous_boundary_ids
     extracted: dict[str, dict[str, Any]] = {}
     for ref, anchor, marker in markers:
         parts: list[str] = []
@@ -439,7 +605,7 @@ def extract_article_sections(
                 continue
             if not _is_within(element, container):
                 break
-            if isinstance(element, Tag) and id(element) in marker_identity:
+            if isinstance(element, Tag) and id(element) in boundary_identity:
                 break
             if isinstance(element, Comment):
                 continue
@@ -466,7 +632,7 @@ def extract_article_sections(
         }
     return extracted, {
         "excluded_future_article_nodes": excluded_future,
-        "excluded_ambiguous_article_nodes": excluded_ambiguous,
+        "excluded_ambiguous_article_nodes": excluded_ambiguous + page_ambiguous,
     }
 
 

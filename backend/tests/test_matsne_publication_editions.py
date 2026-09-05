@@ -257,6 +257,22 @@ def test_superscript_and_tree_exclusions_are_deterministic():
     }
 
 
+def test_duplicate_article_with_unproved_tree_anchors_fails_as_edition_validation():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {"Title": "მუხლი 134. პირველი", "Anchor": "part_439"},
+            {"Title": "მუხლი 134. მეორე", "Anchor": "part_457"},
+        ],
+    }
+    with pytest.raises(
+        PublicationEditionValidationError,
+        match="article 134 has multiple unproved tree anchors: part_439, part_457",
+    ):
+        extract_article_sections(b"<html></html>", tree)
+
+
 def test_old_style_nbsp_heading_duplicate_name_and_singleton_tree_node_are_supported():
     tree = {
         "Title": "ROOT",
@@ -275,7 +291,9 @@ def test_old_style_nbsp_heading_duplicate_name_and_singleton_tree_node_are_suppo
         '<a class="oldStyleDocumentPart" name="part_2"></a>'
         '<section><h2><a class="oldStyleDocumentPart" name="part_2">'
         '<span>&nbsp;&nbsp;&nbsp; მუხლი 1. სათაური</span></a></h2>'
-        '<p>ოფიციალური ტექსტი</p></section></div></body></html>'
+        '<p>ოფიციალური ტექსტი</p></section>'
+        '<a class="oldStyleDocumentPart" name="part_2">თავი II. სხვა ნაწილი</a>'
+        "</div></body></html>"
     ).encode()
 
     articles, excluded = extract_article_sections(page, tree)
@@ -288,6 +306,114 @@ def test_old_style_nbsp_heading_duplicate_name_and_singleton_tree_node_are_suppo
     assert excluded == {
         "excluded_future_article_nodes": 0,
         "excluded_ambiguous_article_nodes": 0,
+    }
+
+
+def test_page_shared_removed_anchor_is_excluded_and_remains_a_hard_boundary():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {"Title": "მუხლი 1. მოქმედი", "Anchor": "part_1"},
+            {"Title": "მუხლი 207. ამოღებულია", "Anchor": "part_511"},
+            {"Title": "მუხლი 300. მოქმედი", "Anchor": "part_3"},
+        ],
+    }
+    page = (
+        '<html><body><div id="document-content">'
+        '<a id="part_1"></a><h2>მუხლი 1. მოქმედი</h2><p>პირველი ტექსტი</p>'
+        '<a name="part_511">მუხლი 207. ამოღებულია</a><p>ძველი ბლოკი</p>'
+        '<a name="part_511">მუხლი 208. ამოღებულია</a><p>სხვა ძველი ბლოკი</p>'
+        '<a id="part_3"></a><h2>მუხლი 300. მოქმედი</h2><p>ბოლო ტექსტი</p>'
+        "</div></body></html>"
+    ).encode()
+
+    articles, excluded = extract_article_sections(page, tree)
+
+    assert list(articles) == ["1", "300"]
+    assert articles["1"]["authoritative_text_ka"] == (
+        "მუხლი 1. მოქმედი პირველი ტექსტი"
+    )
+    assert "ძველი ბლოკი" not in articles["1"]["authoritative_text_ka"]
+    assert excluded == {
+        "excluded_future_article_nodes": 0,
+        "excluded_ambiguous_article_nodes": 1,
+    }
+
+
+def test_legacy_tree_flattened_superscript_is_restored_from_exact_page_heading():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": {
+            "Title": "მუხლი 203. დამატებითი მუხლი",
+            "Anchor": "part_242",
+        },
+    }
+    page = (
+        '<html><body><div id="document-content">'
+        '<a name="part_242"></a><p><a name="part_242">'
+        "მუხლი 20<sup>3</sup>. დამატებითი მუხლი</a></p>"
+        "<p>ოფიციალური ტექსტი</p></div></body></html>"
+    ).encode()
+
+    articles, excluded = extract_article_sections(page, tree)
+
+    assert list(articles) == ["20-3"]
+    assert articles["20-3"]["authoritative_text_ka"].startswith("მუხლი 20³.")
+    assert excluded["excluded_ambiguous_article_nodes"] == 0
+
+
+def test_duplicate_tree_ref_prefers_only_semantically_proved_anchor():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {"Title": "მუხლი 134. სათაური", "Anchor": "part_439"},
+            {"Title": "მუხლი 134. სათაური", "Anchor": "part_457"},
+        ],
+    }
+    page = (
+        '<html><body><div id="document-content">'
+        '<a name="part_439"></a><p>ძველი ცარიელი მაჩვენებელი</p>'
+        '<a name="part_457">მუხლი 134. სათაური</a><p>ოფიციალური ტექსტი</p>'
+        "</div></body></html>"
+    ).encode()
+
+    articles, _excluded = extract_article_sections(page, tree)
+
+    assert list(articles) == ["134"]
+    assert "ძველი ცარიელი" not in articles["134"]["authoritative_text_ka"]
+
+
+def test_duplicate_semantic_tree_ref_is_quarantined_without_absorbing_its_text():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": [
+            {"Title": "მუხლი 1. მოქმედი", "Anchor": "part_1"},
+            {"Title": "მუხლი 156. პირველი", "Anchor": "part_194"},
+            {"Title": "მუხლი 156. მეორე", "Anchor": "part_533"},
+            {"Title": "მუხლი 300. მოქმედი", "Anchor": "part_300"},
+        ],
+    }
+    page = (
+        '<html><body><div id="document-content">'
+        '<a name="part_1">მუხლი 1. მოქმედი</a><p>პირველი მოქმედი ტექსტი</p>'
+        '<a name="part_194">მუხლი 156. პირველი</a><p>პირველი ტექსტი</p>'
+        '<a name="part_533">მუხლი 156. მეორე</a><p>მეორე ტექსტი</p>'
+        '<a name="part_300">მუხლი 300. მოქმედი</a><p>ბოლო მოქმედი ტექსტი</p>'
+        "</div></body></html>"
+    ).encode()
+
+    articles, excluded = extract_article_sections(page, tree)
+
+    assert list(articles) == ["1", "300"]
+    assert "156" not in articles
+    assert "პირველი ტექსტი" not in articles["1"]["authoritative_text_ka"]
+    assert excluded == {
+        "excluded_future_article_nodes": 0,
+        "excluded_ambiguous_article_nodes": 1,
     }
 
 

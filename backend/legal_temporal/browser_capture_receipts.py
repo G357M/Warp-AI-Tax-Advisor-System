@@ -8,6 +8,7 @@ It performs no network or database work.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 import hashlib
 from pathlib import Path
@@ -32,6 +33,7 @@ from legal_temporal.publication_editions import (
 BROWSER_RECEIPT_CONTRACT = "matsne-browser-capture-receipt-v1"
 BROWSER_RECEIPT_AUDIT_CONTRACT = "matsne-browser-capture-receipt-audit-v1"
 CAPTURE_METHOD = "same_origin_browser_fetch"
+AUDITOR_IMPLEMENTATION = "indexed-dom-anchors-2026-09-06.4"
 MAX_RECEIPT_BYTES = 64 * 1024
 RECEIPT_FIELDS = frozenset(
     {
@@ -63,6 +65,18 @@ RESPONSE_FIELDS = frozenset(
 )
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$")
+_DETAIL_FIELDS = frozenset(
+    {
+        "publication",
+        "ready",
+        "receipt_file",
+        "receipt_sha256",
+        "page_sha256",
+        "tree_sha256",
+        "article_count",
+        "errors",
+    }
+)
 
 
 def browser_receipt_file(publication: int) -> str:
@@ -200,12 +214,50 @@ def _inspect_receipt(
     return receipt
 
 
+def _reusable_ready_detail(
+    value: Any,
+    *,
+    publication: int,
+    receipt_file: str,
+    page_sha256: str | None,
+    tree_sha256: str | None,
+    receipt_sha256: str | None,
+) -> dict[str, Any] | None:
+    """Accept one result only from an externally hash-pinned checkpoint.
+
+    The caller remains responsible for authenticating the checkpoint envelope
+    and binding it to ``AUDITOR_IMPLEMENTATION`` and the exact capture plan.
+    This function additionally binds the reusable result to all three current
+    files so changed evidence is always re-audited.
+    """
+
+    if not isinstance(value, Mapping) or set(value) != _DETAIL_FIELDS:
+        return None
+    article_count = value.get("article_count")
+    if (
+        value.get("publication") != publication
+        or value.get("ready") is not True
+        or value.get("receipt_file") != receipt_file
+        or value.get("receipt_sha256") != receipt_sha256
+        or value.get("page_sha256") != page_sha256
+        or value.get("tree_sha256") != tree_sha256
+        or isinstance(article_count, bool)
+        or not isinstance(article_count, int)
+        or not 1 <= article_count <= MAX_ARTICLES_PER_EDITION
+        or value.get("errors") != []
+    ):
+        return None
+    return dict(value)
+
+
 def audit_browser_capture_receipts(
     plan_path: Path,
     bundle: Path,
     *,
     expected_plan_sha256: str,
     now: datetime | None = None,
+    resume_details: Mapping[int, Mapping[str, Any]] | None = None,
+    progress: Callable[[int, int, dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Audit all planned browser receipts and exact response bodies read-only."""
 
@@ -225,7 +277,8 @@ def audit_browser_capture_receipts(
     }
     total_bytes = 0
     details: list[dict[str, Any]] = []
-    for item in plan["items"]:
+    total_items = len(plan["items"])
+    for completed_items, item in enumerate(plan["items"], start=1):
         errors: list[str] = []
         page_raw: bytes | None = None
         tree_raw: bytes | None = None
@@ -258,10 +311,29 @@ def audit_browser_capture_receipts(
             except PublicationEditionValidationError as exc:
                 errors.append(str(exc))
 
+        page_sha = hashlib.sha256(page_raw).hexdigest() if page_raw else None
+        tree_sha = hashlib.sha256(tree_raw).hexdigest() if tree_raw else None
+        receipt_sha = hashlib.sha256(receipt_raw).hexdigest() if receipt_raw else None
+        cached = _reusable_ready_detail(
+            (resume_details or {}).get(item["publication"]),
+            publication=item["publication"],
+            receipt_file=receipt_file,
+            page_sha256=page_sha,
+            tree_sha256=tree_sha,
+            receipt_sha256=receipt_sha,
+        )
+
         article_count: int | None = None
-        if page_raw is not None and tree_raw is not None:
+        if cached is not None:
+            article_count = cached["article_count"]
+            counters["source_pairs_valid"] += 1
+            counters["valid_receipts"] += 1
+        elif page_raw is not None and tree_raw is not None:
             try:
-                decoded = page_raw[:200_000].decode("utf-8-sig")
+                # Decode before applying the text-prefix limit inside
+                # _contains_block_page. Slicing raw UTF-8 bytes at 200,000 can
+                # split a Georgian code point and quarantine a valid edition.
+                decoded = page_raw.decode("utf-8-sig")
                 if _contains_block_page(decoded):
                     raise PublicationEditionValidationError(
                         "page is an access/challenge response"
@@ -277,9 +349,7 @@ def audit_browser_capture_receipts(
             except (UnicodeError, PublicationEditionValidationError) as exc:
                 errors.append(str(exc))
 
-        receipt_sha: str | None = None
-        if receipt_raw is not None:
-            receipt_sha = hashlib.sha256(receipt_raw).hexdigest()
+        if cached is None and receipt_raw is not None:
             if page_raw is None or tree_raw is None:
                 errors.append("receipt has no complete source pair")
             else:
@@ -296,19 +366,19 @@ def audit_browser_capture_receipts(
                 except PublicationEditionValidationError as exc:
                     errors.append(str(exc))
 
-        ready = not errors and article_count is not None and receipt_sha is not None
-        details.append(
-            {
-                "publication": item["publication"],
-                "ready": ready,
-                "receipt_file": receipt_file,
-                "receipt_sha256": receipt_sha,
-                "page_sha256": hashlib.sha256(page_raw).hexdigest() if page_raw else None,
-                "tree_sha256": hashlib.sha256(tree_raw).hexdigest() if tree_raw else None,
-                "article_count": article_count,
-                "errors": errors,
-            }
-        )
+        detail = cached or {
+            "publication": item["publication"],
+            "ready": not errors and article_count is not None and receipt_sha is not None,
+            "receipt_file": receipt_file,
+            "receipt_sha256": receipt_sha,
+            "page_sha256": page_sha,
+            "tree_sha256": tree_sha,
+            "article_count": article_count,
+            "errors": errors,
+        }
+        details.append(detail)
+        if progress is not None:
+            progress(completed_items, total_items, dict(detail))
 
     pending = [detail for detail in details if not detail["ready"]]
     next_action = None
@@ -327,6 +397,7 @@ def audit_browser_capture_receipts(
 
     report = {
         "contract": BROWSER_RECEIPT_AUDIT_CONTRACT,
+        "auditor_implementation": AUDITOR_IMPLEMENTATION,
         "kind": "read_only_same_origin_browser_capture_audit",
         "plan_sha256": plan["plan_sha256"],
         "plan_file_sha256": plan_file_sha,
@@ -350,6 +421,7 @@ def audit_browser_capture_receipts(
 def compact_browser_receipt_audit(report: dict[str, Any]) -> dict[str, Any]:
     return {
         "contract": report["contract"],
+        "auditor_implementation": report["auditor_implementation"],
         "plan_sha256": report["plan_sha256"],
         "audit_sha256": report["audit_sha256"],
         **report["summary"],
