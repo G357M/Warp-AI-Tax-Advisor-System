@@ -63,6 +63,12 @@ The receipt records the exact planned and final URLs, selected non-secret HTTP
 headers, status, UTC observation time, length and SHA-256. Cookies and response
 bodies are never uploaded to another service.
 
+Matsne may declare the `/document/tree/` response as
+`text/html; charset=UTF-8` even when its body is JSON. The collector permits
+that known server declaration only for the tree endpoint and only after the
+body parses as a JSON object containing bounded Georgian article anchors that
+match the captured page. A real HTML response still fails before any write.
+
 To process a bounded segment, set this in the DevTools Console before running
 the snippet:
 

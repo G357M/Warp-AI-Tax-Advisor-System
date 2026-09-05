@@ -226,10 +226,20 @@ void (async () => {
   const validateBody = (kind, bytes, contentType) => {
     assert(bytes.length > 0 && bytes.length <= MAX_SOURCE_BYTES, `${kind} size is invalid`);
     const mediaType = contentType.split(";", 1)[0].trim().toLowerCase();
+    // Matsne currently serves the JSON tree endpoint with text/html on some
+    // responses. Accept that declaration only for a tree: the strict JSON,
+    // object-root and article-anchor checks below still have to pass before
+    // any bytes are written.
     const allowed =
       kind === "page"
         ? new Set(["text/html", "application/xhtml+xml"])
-        : new Set(["application/json", "text/json", "text/plain"]);
+        : new Set([
+            "application/json",
+            "text/json",
+            "text/plain",
+            "text/html",
+            "application/xhtml+xml",
+          ]);
     assert(allowed.has(mediaType), `${kind} content type is unexpected: ${contentType}`);
     const decoded = decodeUtf8(bytes, kind);
     const prefix = decoded.slice(0, 200000).toLowerCase();

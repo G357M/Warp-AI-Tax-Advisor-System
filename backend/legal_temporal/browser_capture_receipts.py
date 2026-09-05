@@ -110,11 +110,20 @@ def _validate_response_receipt(
         raise PublicationEditionValidationError(f"{kind} receipt status is not 200")
     content_type = _bounded_header(value["content_type"], field=f"{kind} content type")
     media_type = content_type.split(";", 1)[0].strip().casefold()
-    expected_media = {"text/html", "application/xhtml+xml"} if kind == "page" else {
-        "application/json",
-        "text/json",
-        "text/plain",
-    }
+    expected_media = (
+        {"text/html", "application/xhtml+xml"}
+        if kind == "page"
+        else {
+            "application/json",
+            "text/json",
+            "text/plain",
+            # Matsne can label its tree JSON as HTML. This declaration is
+            # accepted only because _validate_tree independently parses the
+            # exact stored body as strict JSON before an edition is ready.
+            "text/html",
+            "application/xhtml+xml",
+        }
+    )
     if media_type not in expected_media:
         raise PublicationEditionValidationError(
             f"{kind} receipt has unexpected content type"

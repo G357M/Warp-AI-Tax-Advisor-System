@@ -159,6 +159,37 @@ def test_complete_browser_receipts_bind_exact_sources(packet):
     ).hexdigest()
 
 
+def test_matsne_html_content_type_is_allowed_only_for_valid_tree_json(packet):
+    output, created, plan = packet
+    item = plan["items"][0]
+    receipt = _write_receipt(output, item, created["plan_sha256"])
+    receipt["tree"]["content_type"] = "text/html; charset=UTF-8"
+    receipt_path = output / browser_receipt_file(item["publication"])
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    report = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+    )
+    assert report["details"][0]["ready"]
+
+    html = b"<html><body>not a tree</body></html>"
+    (output / item["tree_file"]).write_bytes(html)
+    receipt["tree"].update(
+        {"byte_length": len(html), "sha256": hashlib.sha256(html).hexdigest()}
+    )
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    report = audit_browser_capture_receipts(
+        output / "capture_plan.json",
+        output,
+        expected_plan_sha256=created["plan_sha256"],
+        now=NOW,
+    )
+    assert not report["details"][0]["ready"]
+    assert any("strict UTF-8 JSON" in error for error in report["details"][0]["errors"])
+
+
 @pytest.mark.parametrize(
     "mutate,error",
     [
