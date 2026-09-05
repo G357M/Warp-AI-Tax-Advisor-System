@@ -23,7 +23,7 @@ void (async () => {
   const CONTRACT = "matsne-publication-capture-plan-v1";
   const RECEIPT_CONTRACT = "matsne-browser-capture-receipt-v1";
   const CAPTURE_METHOD = "same_origin_browser_fetch";
-  const COLLECTOR_VERSION = "2026-09-05.2";
+  const COLLECTOR_VERSION = "2026-09-05.3";
   const EXPECTED_ORIGIN = "https://matsne.gov.ge";
   const MAX_SOURCE_BYTES = 64 * 1024 * 1024;
   const BLOCK_MARKERS = [
@@ -269,33 +269,57 @@ void (async () => {
     }
   };
 
+  const normalizeArticleHeading = (value) =>
+    String(value || "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&(?:nbsp|#0*160|#x0*a0);/gi, " ")
+      .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, " ")
+      .trimStart();
+
+  const articleBaseNumber = (value) => {
+    const match = /^მუხლი\s*(\d+)/.exec(normalizeArticleHeading(value));
+    return match ? match[1] : null;
+  };
+
   const validateSourcePair = (pageBytes, treeBytes) => {
     const pageText = decodeUtf8(pageBytes, "page");
     const tree = JSON.parse(
       decodeUtf8(treeBytes, "tree").replace(/^\uFEFF/, ""),
     );
-    const anchors = [];
+    const articles = [];
     const visit = (value) => {
       if (Array.isArray(value)) {
         value.forEach(visit);
         return;
       }
       if (!isPlainObject(value)) return;
-      const title = typeof value.Title === "string" ? value.Title.trim() : "";
+      const title = typeof value.Title === "string" ? value.Title : "";
       const anchor = typeof value.Anchor === "string" ? value.Anchor.trim() : "";
-      if (/^მუხლი\s+\d/.test(title) && anchor) anchors.push(anchor);
+      const articleNumber = articleBaseNumber(title);
+      if (articleNumber && anchor) articles.push({ anchor, articleNumber });
       Object.values(value).forEach(visit);
     };
     visit(tree);
-    assert(anchors.length > 0 && anchors.length <= 5000, "tree article count is invalid");
+    assert(articles.length > 0 && articles.length <= 5000, "tree article count is invalid");
     const parsedPage = new DOMParser().parseFromString(pageText, "text/html");
-    const idCounts = new Map();
-    parsedPage.querySelectorAll("[id]").forEach((element) => {
-      idCounts.set(element.id, (idCounts.get(element.id) || 0) + 1);
+    const pageAnchors = new Map();
+    parsedPage.querySelectorAll("[id],[name]").forEach((element) => {
+      const keys = new Set([element.id, element.getAttribute("name")].filter(Boolean));
+      keys.forEach((key) => {
+        const matches = pageAnchors.get(key) || [];
+        matches.push(element);
+        pageAnchors.set(key, matches);
+      });
     });
     assert(
-      anchors.some((anchor) => idCounts.get(anchor) === 1),
-      "page and tree have no matching unique article anchor",
+      articles.some(({ anchor, articleNumber }) => {
+        const semanticMatches = (pageAnchors.get(anchor) || []).filter(
+          (element) => articleBaseNumber(element.textContent) === articleNumber,
+        );
+        return semanticMatches.length === 1;
+      }),
+      "page and tree have no matching unambiguous article anchor",
     );
   };
 

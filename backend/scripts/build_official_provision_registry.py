@@ -38,8 +38,12 @@ def _walk(node: Any) -> Iterator[dict[str, Any]]:
     if not isinstance(node, dict):
         return
     yield node
-    for child in node.get("DocumentPart") or []:
-        yield from _walk(child)
+    children = node.get("DocumentPart")
+    if isinstance(children, dict):
+        yield from _walk(children)
+    elif isinstance(children, list):
+        for child in children:
+            yield from _walk(child)
 
 
 def canonical_article_ref(title: str) -> str | None:

@@ -35,7 +35,10 @@ ACT = {
 def _page(publication: int) -> bytes:
     return (
         "<!doctype html><html><body><main><div id=\"document-content\">"
-        f"<a id=\"part_{publication}\"></a><section><h2>მუხლი 1. სათაური</h2>"
+        f"<a class=\"oldStyleDocumentPart\" name=\"part_{publication}\"></a>"
+        f"<section><h2><a class=\"oldStyleDocumentPart\" "
+        f"name=\"part_{publication}\"><span>&nbsp;&nbsp;&nbsp; "
+        f"მუხლი 1. სათაური</span></a></h2>"
         f"<p>ოფიციალური ტექსტი {publication}</p></section>"
         "</div></main></body></html>"
     ).encode()
@@ -47,7 +50,10 @@ def _tree(publication: int) -> bytes:
             "Title": "ROOT",
             "Anchor": "ROOT",
             "DocumentPart": [
-                {"Title": "მუხლი 1. სათაური", "Anchor": f"part_{publication}"}
+                {
+                    "Title": "&nbsp;&nbsp;&nbsp; მუხლი 1. სათაური",
+                    "Anchor": f"part_{publication}",
+                }
             ],
         },
         ensure_ascii=False,
@@ -320,7 +326,9 @@ def test_browser_collector_is_syntax_valid_and_has_safety_controls():
     assert 'cache: "no-store"' in source
     assert "writeNewOrMatch" in source
     assert "__MATSNE_CAPTURE_ABORT__" in source
-    assert 'COLLECTOR_VERSION = "2026-09-05.2"' in source
+    assert 'COLLECTOR_VERSION = "2026-09-05.3"' in source
+    assert "&(?:nbsp|#0*160|#x0*a0);" in source
+    assert "matching unambiguous article anchor" in source
     assert "capture_plan.json was not found" in source
     assert "missing directory" in source
     assert "database_writes_allowed: false" in source

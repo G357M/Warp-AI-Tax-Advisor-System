@@ -331,6 +331,42 @@ def _matching_anchor_tags(soup: BeautifulSoup, anchor: str) -> list[Tag]:
     ]
 
 
+def _article_anchor_marker(soup: BeautifulSoup, article_ref: str, anchor: str) -> Tag:
+    """Choose the one Matsne anchor that carries this article heading.
+
+    Old-style Matsne editions may repeat a ``name=part_N`` marker: first as an
+    empty range boundary and then as the linked article heading.  The heading
+    proves the pair when exactly one duplicate decodes to the tree's
+    article reference.  Extraction starts at the preceding empty boundary so
+    the heading and body remain inside the article range.  A genuinely unique
+    marker remains supported for newer and synthetic editions.
+    """
+    matches = _matching_anchor_tags(soup, anchor)
+    semantic = [
+        tag
+        for tag in matches
+        if canonical_article_ref(tag.get_text(" ", strip=True)) == article_ref
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(semantic) == 1:
+        heading = semantic[0]
+        boundaries = [
+            tag
+            for tag in matches
+            if tag is not heading and not tag.get_text(" ", strip=True)
+        ]
+        if (
+            len(boundaries) == 1
+            and matches.index(boundaries[0]) < matches.index(heading)
+        ):
+            return boundaries[0]
+    raise PublicationEditionValidationError(
+        f"article {article_ref} anchor must occur exactly once or as one "
+        "verified old-style boundary/heading pair in page HTML"
+    )
+
+
 def _common_ancestor(tags: list[Tag]) -> Tag:
     if not tags:
         raise PublicationEditionValidationError("edition has no article anchors")
@@ -390,12 +426,7 @@ def extract_article_sections(
             node.string = value.translate(superscript)
     markers: list[tuple[str, str, Tag]] = []
     for ref, anchor in ordered:
-        matches = _matching_anchor_tags(soup, anchor)
-        if len(matches) != 1:
-            raise PublicationEditionValidationError(
-                f"article {ref} anchor must occur exactly once in page HTML"
-            )
-        markers.append((ref, anchor, matches[0]))
+        markers.append((ref, anchor, _article_anchor_marker(soup, ref, anchor)))
     container = _common_ancestor([marker for _, _, marker in markers])
     marker_identity = {id(marker): ref for ref, _, marker in markers}
     extracted: dict[str, dict[str, Any]] = {}

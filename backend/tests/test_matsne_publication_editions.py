@@ -257,6 +257,40 @@ def test_superscript_and_tree_exclusions_are_deterministic():
     }
 
 
+def test_old_style_nbsp_heading_duplicate_name_and_singleton_tree_node_are_supported():
+    tree = {
+        "Title": "ROOT",
+        "Anchor": "ROOT",
+        "DocumentPart": {
+            "Title": "თავი I",
+            "Anchor": "part_1",
+            "DocumentPart": {
+                "Title": "&nbsp;&nbsp;&nbsp; მუხლი 1. სათაური",
+                "Anchor": "part_2",
+            },
+        },
+    }
+    page = (
+        '<html><body><div id="document-content">'
+        '<a class="oldStyleDocumentPart" name="part_2"></a>'
+        '<section><h2><a class="oldStyleDocumentPart" name="part_2">'
+        '<span>&nbsp;&nbsp;&nbsp; მუხლი 1. სათაური</span></a></h2>'
+        '<p>ოფიციალური ტექსტი</p></section></div></body></html>'
+    ).encode()
+
+    articles, excluded = extract_article_sections(page, tree)
+
+    assert list(articles) == ["1"]
+    assert articles["1"]["anchor"] == "part_2"
+    assert articles["1"]["authoritative_text_ka"] == (
+        "მუხლი 1. სათაური ოფიციალური ტექსტი"
+    )
+    assert excluded == {
+        "excluded_future_article_nodes": 0,
+        "excluded_ambiguous_article_nodes": 0,
+    }
+
+
 @pytest.mark.parametrize(
     "mutate,error",
     [
