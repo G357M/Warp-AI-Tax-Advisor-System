@@ -20,6 +20,83 @@ bypass that protection. An operator saves the Georgian publication page and
 its matching `/ka/document/tree/<document>/<publication>` response through a
 normal browser session. The evidence bundle then works fully offline.
 
+## Automated same-origin browser capture
+
+The repository includes `backend/scripts/matsne_same_origin_capture.js` for
+Chrome or Edge DevTools. It is not a crawler and does not bypass Matsne access
+controls. It runs only while the active top-level page has the exact origin
+`https://matsne.gov.ge`, uses that browser session for same-origin requests and
+writes only to a directory explicitly selected by the operator.
+
+One-time operator procedure:
+
+1. Open an official Matsne page in a current Chrome or Edge window and confirm
+   that the page itself is readable (not an access/challenge response).
+2. Open Developer Tools (`F12`), select **Sources**, then **Snippets**, create a
+   new snippet and paste the complete contents of
+   `backend/scripts/matsne_same_origin_capture.js`.
+3. Run the snippet with `Ctrl+Enter`, then click the temporary blue
+   **Start verified Matsne capture** button at the top right of the Matsne page.
+   In the directory picker select the root of the pre-created capture packet:
+   the directory that directly contains `capture_plan.json` and
+   `edition_metadata.csv`. The button exists only to provide the browser-required
+   user gesture and removes itself immediately after selection.
+4. Leave that Matsne tab open until the console reports completion. The default
+   delay is one second after every newly captured publication. Existing valid
+   receipts are verified and skipped, so rerunning the snippet safely resumes a
+   stopped pass.
+
+The collector processes the immutable plan, not hand-written URLs. For every
+publication it fetches the page and tree sequentially, rejects redirects,
+non-200 responses, unexpected media types, oversized bodies, invalid JSON and
+known challenge-page markers, then writes:
+
+```text
+editions/000000/page.html
+editions/000000/tree.json
+editions/000000/browser_capture_receipt.json
+```
+
+Source files are new-only. A file already present is reused only when its bytes
+match the newly observed SHA-256; a mismatch stops the pass without overwrite.
+The receipt records the exact planned and final URLs, selected non-secret HTTP
+headers, status, UTC observation time, length and SHA-256. Cookies and response
+bodies are never uploaded to another service.
+
+To process a bounded segment, set this in the DevTools Console before running
+the snippet:
+
+```javascript
+window.__MATSNE_CAPTURE_OPTIONS__ = {
+  startPublication: 100,
+  maxNewCaptures: 25,
+  delayMs: 1000,
+};
+```
+
+To stop safely between publications:
+
+```javascript
+window.__MATSNE_CAPTURE_ABORT__ = true;
+```
+
+After a pass, independently audit the receipts and exact stored bodies from
+`backend`:
+
+```bash
+python scripts/audit_matsne_browser_capture_receipts.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256>
+```
+
+This audit is read-only and exits `2` while any source pair or receipt is
+missing or inconsistent. It recomputes every source hash, validates every tree
+and article boundary, and returns one exact `next_action`. A green receipt audit
+proves a complete, internally consistent browser observation; it does not
+establish when a publication entered into force and does not authorize public
+answers.
+
 ## Evidence bundle v1
 
 The directory contains `manifest.json` plus unique source files. The manifest

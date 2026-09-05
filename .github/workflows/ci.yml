@@ -57,6 +57,7 @@ jobs:
           scripts/audit_legal_temporal_backfill.py
           scripts/audit_legal_temporal_schema.py
           scripts/audit_matsne_publication_capture.py
+          scripts/audit_matsne_browser_capture_receipts.py
           scripts/build_legal_answer_contract_canary.py
           scripts/build_legal_temporal_backfill_bundle.py
           scripts/build_matsne_publication_editions.py
@@ -128,6 +129,7 @@ jobs:
           tests/test_legal_temporal_foundation.py
           tests/test_matsne_publication_editions.py
           tests/test_matsne_publication_capture.py
+          tests/test_matsne_browser_capture_receipts.py
           tests/test_infohub_duplicate_verification.py
           tests/test_duplicate_expert_prefill.py
           -q -p no:cacheprovider
@@ -256,6 +258,8 @@ jobs:
       - run: npm run lint
       - run: npm run type-check
       - run: npm run build
+      - name: Validate same-origin Matsne browser collector syntax
+        run: node --check ../backend/scripts/matsne_same_origin_capture.js
 
       # Production dependencies must remain free of high/critical advisories.
       - run: npm audit --omit=dev --audit-level=high
