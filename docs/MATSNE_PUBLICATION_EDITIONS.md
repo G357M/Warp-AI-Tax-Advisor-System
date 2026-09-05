@@ -57,6 +57,59 @@ has this exact shape:
 }
 ```
 
+## Mass capture packet
+
+Do not construct 246 URLs, directories or hashes manually. Generate the
+Tax Code capture packet once:
+
+```bash
+python scripts/plan_matsne_publication_capture.py \
+  --output-dir /secure/evidence/tax-code-capture \
+  --act-key ge-tax-code \
+  --document-id 1043717 \
+  --title-ka "საქართველოს საგადასახადო კოდექსი" \
+  --first-publication 0 \
+  --last-publication 245
+```
+
+The packet contains an immutable `capture_plan.json`, an Excel-compatible
+UTF-8 `edition_metadata.csv` and one pre-created directory per publication.
+Only these metadata columns are editable: `valid_from`, the effective-date
+evidence fields, `date_evidence_state`, reviewer, UTC review time, rationale
+and notes. URL and file columns are immutable and validated against the plan.
+
+After browser capture, run the read-only audit as often as needed:
+
+```bash
+python scripts/audit_matsne_publication_capture.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --metadata /secure/evidence/tax-code-capture/edition_metadata.csv \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256>
+```
+
+An incomplete audit exits `2` and prints one exact `next_action` with the page
+URL, tree URL, destination files and blockers. It does not create a manifest.
+Access/challenge pages, missing files, bad trees and unconfirmed dates remain
+quarantined instead of becoming partial legal history.
+
+When all publications are ready, finalize once:
+
+```bash
+python scripts/finalize_matsne_publication_capture.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --metadata /secure/evidence/tax-code-capture/edition_metadata.csv \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256> \
+  --manifest-output /secure/evidence/tax-code-capture/manifest.json \
+  --admission-output /secure/evidence/tax-code-capture/capture_admission.json
+```
+
+Finalization calculates every source hash and article count automatically. The
+admission sidecar binds the plan, reviewed metadata, full read-only audit and
+generated manifest by SHA-256. Both outputs are new-only; no source capture is
+overwritten.
+
 Publication numbers must increase; effective dates may repeat but must not go
 backwards. When several consolidated publications start on the same date, the
 last numbered publication is the queryable state and every suppressed edition

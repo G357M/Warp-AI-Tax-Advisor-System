@@ -199,6 +199,14 @@ URL/document/publication с exact SHA-256, извлекает грузински
 `authoritative_for_public_answers=false`; database write и public routing в
 этом контуре отсутствуют до независимой юридической проверки.
 
+Массовый capture planner убирает ручное построение 246×2 ссылок и файлов для
+публикаций Налогового кодекса. Он создаёт immutable plan и UTF-8 CSV, read-only
+аудит показывает следующий отсутствующий/невалидный источник, а finalizer
+вычисляет source hashes и article counts только при 100% готовности. Pending или
+deferred effective date, challenge HTML, изменённая служебная колонка либо
+неполный диапазон не создают даже частичный manifest. Capture admission связывает
+plan, CSV, audit и manifest отдельными SHA-256 без записи в БД.
+
 Пользовательский контур:
 - браузерная сессия хранится в `HttpOnly`, `SameSite=Lax` cookie; Bearer JWT
   сохранён как совместимый API-механизм, но новый frontend не пишет JWT в
