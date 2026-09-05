@@ -23,6 +23,7 @@ void (async () => {
   const CONTRACT = "matsne-publication-capture-plan-v1";
   const RECEIPT_CONTRACT = "matsne-browser-capture-receipt-v1";
   const CAPTURE_METHOD = "same_origin_browser_fetch";
+  const COLLECTOR_VERSION = "2026-09-05.2";
   const EXPECTED_ORIGIN = "https://matsne.gov.ge";
   const MAX_SOURCE_BYTES = 64 * 1024 * 1024;
   const BLOCK_MARKERS = [
@@ -116,8 +117,19 @@ void (async () => {
 
   const getDirectory = async (root, parts) => {
     let current = root;
+    const visited = [];
     for (const part of parts) {
-      current = await current.getDirectoryHandle(part, { create: false });
+      visited.push(part);
+      try {
+        current = await current.getDirectoryHandle(part, { create: false });
+      } catch (error) {
+        if (error && error.name === "NotFoundError") {
+          fail(
+            `selected folder is not the capture-packet root; missing directory ${visited.join("/")}`,
+          );
+        }
+        throw error;
+      }
     }
     return current;
   };
@@ -386,7 +398,17 @@ void (async () => {
 
   window.__MATSNE_CAPTURE_ABORT__ = false;
   const root = await chooseCaptureDirectory();
-  const planHandle = await root.getFileHandle("capture_plan.json", { create: false });
+  let planHandle;
+  try {
+    planHandle = await root.getFileHandle("capture_plan.json", { create: false });
+  } catch (error) {
+    if (error && error.name === "NotFoundError") {
+      fail(
+        "capture_plan.json was not found; select tax-code-p000-p245 itself, not its editions folder",
+      );
+    }
+    throw error;
+  }
   const planBytes = new Uint8Array(
     await (await planHandle.getFile()).arrayBuffer(),
   );
@@ -400,6 +422,7 @@ void (async () => {
 
   const result = {
     contract: "matsne-same-origin-capture-run-v1",
+    collector_version: COLLECTOR_VERSION,
     plan_sha256: plan.plan_sha256,
     started_at_utc: new Date().toISOString(),
     completed_at_utc: null,
@@ -416,7 +439,7 @@ void (async () => {
     (item) => options.startPublication === null || item.publication >= options.startPublication,
   );
   console.info(
-    `Matsne capture started: ${eligible.length} planned publications, ` +
+    `Matsne capture ${COLLECTOR_VERSION} started: ${eligible.length} planned publications, ` +
       `${options.delayMs} ms minimum delay`,
   );
 

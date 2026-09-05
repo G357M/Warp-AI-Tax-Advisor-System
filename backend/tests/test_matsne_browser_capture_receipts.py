@@ -320,6 +320,9 @@ def test_browser_collector_is_syntax_valid_and_has_safety_controls():
     assert 'cache: "no-store"' in source
     assert "writeNewOrMatch" in source
     assert "__MATSNE_CAPTURE_ABORT__" in source
+    assert 'COLLECTOR_VERSION = "2026-09-05.2"' in source
+    assert "capture_plan.json was not found" in source
+    assert "missing directory" in source
     assert "database_writes_allowed: false" in source
     node = "node.exe" if os.name == "nt" else "node"
     result = subprocess.run(
