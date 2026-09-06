@@ -123,6 +123,61 @@ pin. Reuse is also bound to the capture-plan file, auditor implementation and
 the current page, tree and receipt hashes. A changed source or changed parsing
 contract is audited again instead of being accepted from cache.
 
+## Mass effective-date review
+
+After the source and receipt audit is complete, do not copy 246 applicability
+dates by hand. Matsne's saved page for each bounded edition contains an exact
+visible interval such as `კონსოლიდირებული ვერსია (10/06/2026 - 25/06/2026)`.
+The final edition is identified by `კონსოლიდირებული ვერსია (საბოლოო)`; its
+active sidebar date must equal the end of the preceding interval.
+
+Draft a separate review CSV and an immutable candidate report outside the
+evidence bundle:
+
+```bash
+python scripts/draft_matsne_effective_date_candidates.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --metadata /secure/evidence/tax-code-capture/edition_metadata.csv \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256> \
+  --output-metadata /secure/review/edition_metadata.candidates.csv \
+  --report-output /secure/review/effective_date_candidates.json
+```
+
+The draft is fail-closed: it requires one exact hint per page, validates real
+dates, checks every adjacent interval, cross-checks active sidebar dates and
+never overwrites existing review work. It fills only candidate dates and exact
+quotes. Every row remains `pending`; no reviewer is invented, no date is
+legally confirmed and no database or public answer path changes. An official
+interval whose end precedes its start is retained with its exact evidence but
+blocked for bitemporal legal review; it is never silently reordered or fixed.
+
+An expert can inspect that CSV and JSON, calculate the exact report file hash,
+and apply one explicit, pinned batch attestation:
+
+```bash
+python scripts/approve_matsne_effective_date_candidates.py \
+  --plan /secure/evidence/tax-code-capture/capture_plan.json \
+  --candidate-metadata /secure/review/edition_metadata.candidates.csv \
+  --candidate-report /secure/review/effective_date_candidates.json \
+  --bundle /secure/evidence/tax-code-capture \
+  --expected-plan-sha256 <plan-sha256> \
+  --expected-report-file-sha256 <candidate-report-file-sha256> \
+  --approval-phrase I_REVIEWED_THE_OFFICIAL_DATE_EVIDENCE \
+  --reviewer "<legal expert>" \
+  --reviewed-at-utc 2026-09-06T12:00:00Z \
+  --rationale "<expert rationale covering the reviewed interval chain>" \
+  --output-metadata /secure/review/edition_metadata.confirmed.csv \
+  --approval-output /secure/review/effective_date_approval.json
+```
+
+Approval revalidates the report identity, exact candidate CSV, every quoted
+source passage and chronological order. It confirms the reviewed candidate
+subset and preserves every blocked row as pending. The separate SHA-bound
+approval receipt reports both counts and whether the whole set is complete.
+It still performs no finalization, database write, materialization or public
+routing change.
+
 ## Evidence bundle v1
 
 The directory contains `manifest.json` plus unique source files. The manifest
