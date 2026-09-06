@@ -3,6 +3,7 @@
 from datetime import timedelta
 from types import ModuleType, SimpleNamespace
 import sys
+from uuid import UUID
 
 import pytest
 from fastapi import FastAPI
@@ -47,7 +48,15 @@ sys.modules.update(_stubbed_rag_modules)
 from api.routes import account, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
-from models import AuthActionToken, Conversation, Message, Payment, Subscription, User
+from models import (
+    AuthActionToken,
+    BillingCheckout,
+    Conversation,
+    Message,
+    Payment,
+    Subscription,
+    User,
+)
 
 # The imported API modules retain the lightweight boundaries above. Restore the
 # process module registry so later-collected tests load the real RAG v2 package.
@@ -88,6 +97,7 @@ TEST_TABLES = [
     Message.__table__,
     Subscription.__table__,
     Payment.__table__,
+    BillingCheckout.__table__,
 ]
 
 
@@ -148,6 +158,119 @@ def test_cookie_session_authenticates_account(client):
     assert response.status_code == 200
     assert response.json()["username"] == "account-user"
     assert response.json()["plan"] == "free"
+
+
+def test_billing_catalog_is_public_and_marks_unwired_banks_unavailable(client):
+    client.cookies.clear()
+
+    response = client.get("/api/v1/billing/catalog")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["version"] == "2026-09-07"
+    assert payload["currency_minor_unit"] == 2
+    assert {plan["id"]: plan["price_minor"] for plan in payload["plans"]} == {
+        "free": 0,
+        "pro": 4900,
+        "business": 14900,
+    }
+    methods = {method["provider"]: method for method in payload["payment_methods"]}
+    assert methods["manual"]["status"] == "available"
+    assert methods["manual"]["contact_email"] is None
+    assert methods["tbc"]["status"] == "requires_merchant_activation"
+    assert methods["bog"]["status"] == "requires_merchant_activation"
+
+
+def test_checkout_is_server_priced_persisted_and_idempotent(client):
+    register_and_login(client, "checkout-user")
+    headers = {"Idempotency-Key": "checkout-user-pro-001"}
+
+    created = client.post(
+        "/api/v1/billing/checkout",
+        headers=headers,
+        json={"plan": "pro", "provider": "manual"},
+    )
+
+    assert created.status_code == 200
+    payload = created.json()
+    assert payload["replayed"] is False
+    assert payload["checkout"]["amount_minor"] == 4900
+    assert payload["checkout"]["currency"] == "GEL"
+    assert payload["checkout"]["status"] == "pending"
+    assert payload["payment_method"]["instruction_code"] == "contact_for_invoice"
+
+    replay = client.post(
+        "/api/v1/billing/checkout",
+        headers=headers,
+        json={"plan": "pro", "provider": "manual"},
+    )
+    assert replay.status_code == 200
+    assert replay.json()["replayed"] is True
+    assert replay.json()["checkout"]["id"] == payload["checkout"]["id"]
+
+    conflict = client.post(
+        "/api/v1/billing/checkout",
+        headers=headers,
+        json={"plan": "business", "provider": "manual"},
+    )
+    assert conflict.status_code == 409
+
+    overview = client.get("/api/v1/billing/overview")
+    assert overview.status_code == 200
+    assert overview.json()["checkouts"][0]["id"] == payload["checkout"]["id"]
+
+    db = TestingSessionLocal()
+    try:
+        assert db.query(BillingCheckout).filter_by(plan="pro").count() >= 1
+    finally:
+        db.close()
+
+
+def test_admin_checkout_settlement_is_idempotent(client):
+    customer_username = "settlement-customer"
+    register_and_login(client, customer_username)
+    checkout_response = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "settlement-customer-pro-001"},
+        json={"plan": "pro"},
+    )
+    checkout_id = checkout_response.json()["checkout"]["id"]
+
+    admin_username = "settlement-admin"
+    register_and_login(client, admin_username)
+    db = TestingSessionLocal()
+    admin_user = db.query(User).filter_by(username=admin_username).one()
+    admin_user.role = "admin"
+    db.commit()
+    db.close()
+
+    activated = client.post(
+        "/api/v1/billing/admin/activate",
+        json={"checkout_id": checkout_id},
+    )
+    assert activated.status_code == 200
+    assert activated.json()["replayed"] is False
+    assert activated.json()["plan"] == "pro"
+
+    replay = client.post(
+        "/api/v1/billing/admin/activate",
+        json={"checkout_id": checkout_id},
+    )
+    assert replay.status_code == 200
+    assert replay.json()["replayed"] is True
+    assert replay.json()["payment_id"] == activated.json()["payment_id"]
+
+    db = TestingSessionLocal()
+    try:
+        customer = db.query(User).filter_by(username=customer_username).one()
+        subscription = db.query(Subscription).filter_by(user_id=customer.id).one()
+        assert subscription.plan == "pro"
+        assert db.query(Payment).filter_by(subscription_id=subscription.id).count() == 1
+        checkout = db.get(BillingCheckout, UUID(checkout_id))
+        assert checkout.status == "paid"
+        assert str(checkout.settled_payment_id) == activated.json()["payment_id"]
+    finally:
+        db.close()
 
 
 def test_free_account_cannot_read_conversation_history(client):

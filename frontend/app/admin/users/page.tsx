@@ -37,6 +37,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [checkoutId, setCheckoutId] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState<'pro' | 'business'>('pro');
   const [months, setMonths] = useState(1);
@@ -69,6 +70,24 @@ export default function AdminUsers() {
     }
   };
 
+  const settleCheckout = async () => {
+    setMessage(null);
+    const res = await authFetch('/api/v1/billing/admin/activate', {
+      method: 'POST',
+      body: JSON.stringify({ checkout_id: checkoutId.trim() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setMessage(
+        `${data.replayed ? 'Уже подтверждено' : 'Оплата подтверждена'}: ${data.email} → ${data.plan} до ${new Date(data.period_end).toLocaleDateString('ru-RU')}`,
+      );
+      setCheckoutId('');
+      load();
+    } else {
+      setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось подтвердить заявку.');
+    }
+  };
+
   const setRole = async (user: AdminUser, role: string) => {
     setMessage(null);
     const res = await authFetch(`/api/v1/admin/users/${user.id}/role`, {
@@ -86,7 +105,32 @@ export default function AdminUsers() {
 
       <div style={card}>
         <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
-          Активировать подписку вручную (после оплаты по счёту)
+          Подтвердить созданную клиентом заявку после поступления оплаты
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+          <input
+            style={{ ...input, width: '380px', maxWidth: '100%' }}
+            placeholder="UUID заявки из кабинета клиента"
+            value={checkoutId}
+            onChange={(e) => setCheckoutId(e.target.value)}
+          />
+          <button
+            onClick={settleCheckout}
+            disabled={!checkoutId.trim()}
+            style={{
+              ...input,
+              background: '#dc2626',
+              border: 'none',
+              cursor: checkoutId.trim() ? 'pointer' : 'not-allowed',
+              opacity: checkoutId.trim() ? 1 : 0.5,
+            }}
+          >
+            Подтвердить оплату
+          </button>
+        </div>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
+        <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
+          Резервный режим без заявки (для старых счетов)
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
           <input

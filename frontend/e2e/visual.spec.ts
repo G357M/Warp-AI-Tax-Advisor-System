@@ -56,6 +56,66 @@ const laws = {
   ],
 };
 
+const billingCatalog = {
+  version: '2026-09-07',
+  currency_minor_unit: 2,
+  plans: [
+    {
+      id: 'free', name: 'Free', price_minor: 0, currency: 'GEL', billing_period: null,
+      daily_questions: 5, history_enabled: false,
+      feature_codes: ['daily_questions_5', 'precise_sources', 'no_chat_history'],
+      highlighted: false, pricing_preliminary: true,
+    },
+    {
+      id: 'pro', name: 'Pro', price_minor: 4900, currency: 'GEL', billing_period: 'month',
+      daily_questions: null, history_enabled: true,
+      feature_codes: ['unlimited_questions', 'chat_history', 'dispute_statistics', 'law_change_timeline'],
+      highlighted: true, pricing_preliminary: true,
+    },
+    {
+      id: 'business', name: 'Business', price_minor: 14900, currency: 'GEL', billing_period: 'month',
+      daily_questions: null, history_enabled: true,
+      feature_codes: ['everything_in_pro', 'company_invoice', 'priority_support'],
+      highlighted: false, pricing_preliminary: true,
+    },
+  ],
+  payment_methods: [
+    {
+      id: 'manual_invoice', provider: 'manual', status: 'available', recurring: false,
+      contact_email: 'billing@tax-advisor.ge',
+    },
+    {
+      id: 'tbc_checkout', provider: 'tbc', status: 'requires_merchant_activation', recurring: true,
+      contact_email: null,
+    },
+    {
+      id: 'bog_checkout', provider: 'bog', status: 'requires_merchant_activation', recurring: true,
+      contact_email: null,
+    },
+  ],
+};
+
+const billingOverview = {
+  subscription: {
+    plan: 'pro', status: 'active', period_start: '2026-09-01T00:00:00',
+    period_end: '2026-10-01T00:00:00', auto_renew: false, payment_provider: 'manual',
+  },
+  checkouts: [
+    {
+      id: '8e8bba4e-9638-45f0-9062-ff2bd4f3f953', plan: 'business', months: 1,
+      amount_minor: 14900, currency: 'GEL', provider: 'manual', status: 'pending',
+      expires_at: '2026-09-14T10:00:00', created_at: '2026-09-07T10:00:00',
+    },
+  ],
+  payments: [
+    {
+      id: '0c88b35e-97df-4949-b311-8101b622a7f2', amount_minor: 4900,
+      currency: 'GEL', provider: 'manual', status: 'succeeded', created_at: '2026-09-01T10:30:00',
+    },
+  ],
+  payment_methods: billingCatalog.payment_methods,
+};
+
 async function setLanguage(page: Page, lang: Lang) {
   await page.addInitScript((selectedLanguage) => {
     window.localStorage.setItem('ta_lang', selectedLanguage);
@@ -92,6 +152,54 @@ async function mockApi(page: Page) {
       body: JSON.stringify({ detail: 'Incorrect username or password' }),
     }),
   );
+  await page.route('**/api/v1/billing/catalog', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(billingCatalog) }),
+  );
+}
+
+async function openAccountStable(page: Page, lang: Lang) {
+  await page.addInitScript((selectedLanguage) => {
+    window.localStorage.setItem('ta_lang', selectedLanguage);
+    window.localStorage.setItem('ta_authenticated', '1');
+    window.localStorage.removeItem('ta_token');
+  }, lang);
+  await mockApi(page);
+  await page.route('**/api/v1/account', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        email: 'nino.beridze@example.ge', username: 'nino.beridze', full_name: 'Nino Beridze',
+        role: 'user', plan: 'pro', usage: { questions_today: 12, daily_limit: null },
+      }),
+    }),
+  );
+  await page.route('**/api/v1/billing/overview', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(billingOverview) }),
+  );
+  await page.route('**/api/v1/query/conversations?limit=20', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 'e8477029-7b13-49cb-bda1-5248adf553ba',
+          title: 'НДС при оказании услуг нерезиденту',
+          created_at: '2026-09-03T09:00:00', updated_at: '2026-09-05T14:30:00', messages_count: 6,
+        },
+        {
+          id: '07f8973f-f340-4fb4-9c4d-018d1461fb2c',
+          title: 'Срок обжалования решения налоговой',
+          created_at: '2026-08-27T11:00:00', updated_at: '2026-08-27T11:20:00', messages_count: 4,
+        },
+      ]),
+    }),
+  );
+  await page.goto('/account', { waitUntil: 'networkidle' });
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
 }
 
 async function openStable(page: Page, path: string, lang: Lang) {
@@ -225,4 +333,21 @@ test('English invalid reset token on mobile', async ({ page }) => {
   await expect(page.getByText('The link is invalid or expired. Request a new one.', { exact: false })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expect(page.locator('main')).toHaveScreenshot('reset-en-invalid-mobile.png');
+});
+
+test('Russian client billing center on desktop', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await openAccountStable(page, 'ru');
+  await expect(page.getByRole('heading', { name: 'Способы оплаты' })).toBeVisible();
+  await expect(page.getByText('8e8bba4e-9638-45f0-9062-ff2bd4f3f953')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expect(page.locator('main')).toHaveScreenshot('account-billing-ru-desktop.png');
+});
+
+test('Georgian client billing center on mobile', async ({ page }) => {
+  await page.setViewportSize(MOBILE);
+  await openAccountStable(page, 'ka');
+  await expect(page.getByRole('heading', { name: 'გადახდის მეთოდები' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expect(page.locator('main')).toHaveScreenshot('account-billing-ka-mobile.png');
 });

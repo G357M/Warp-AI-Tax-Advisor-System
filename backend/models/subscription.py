@@ -3,7 +3,18 @@ SQLAlchemy models for subscriptions and payments.
 """
 from uuid import uuid4
 
-from sqlalchemy import Column, String, DateTime, Boolean, Float, ForeignKey, JSON, Index
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    JSON,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -49,3 +60,45 @@ class Payment(Base):
 
 Index("idx_payments_subscription", Payment.subscription_id)
 Index("idx_payments_provider_tx", Payment.provider_tx_id)
+
+
+class BillingCheckout(Base):
+    """Immutable-price payment intent created from the server plan catalog."""
+
+    __tablename__ = "billing_checkouts"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "idempotency_key",
+            name="uq_billing_checkouts_user_idempotency",
+        ),
+        Index("ix_billing_checkouts_user_created", "user_id", "created_at"),
+        Index("ix_billing_checkouts_status_expires", "status", "expires_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    plan = Column(String(20), nullable=False)
+    months = Column(Integer, nullable=False, default=1)
+    amount_minor = Column(Integer, nullable=False)
+    currency = Column(String(3), nullable=False, default="GEL")
+    provider = Column(String(20), nullable=False, default="manual")
+    status = Column(String(20), nullable=False, default="pending")
+    idempotency_key = Column(String(128), nullable=False)
+    provider_order_id = Column(String(255), nullable=True)
+    settled_payment_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("payments.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    user = relationship("User")
+    settled_payment = relationship("Payment", foreign_keys=[settled_payment_id])

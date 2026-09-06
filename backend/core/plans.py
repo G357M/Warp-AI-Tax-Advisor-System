@@ -17,8 +17,8 @@ from core.database import get_db
 from core.security import get_current_user
 from core.time_utils import utc_now
 from models import User, Subscription
+from billing.catalog import PLAN_ORDER
 
-PLAN_ORDER = {"free": 0, "pro": 1, "business": 2}
 FREE_DAILY_QUESTIONS = 5
 
 _redis_client: Optional[redis.Redis] = None

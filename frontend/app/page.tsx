@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChatPanel } from '@/components/ChatPanel';
 import { isLoggedIn } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
-import { PLANS } from '@/lib/plans';
+import { BillingPlan, loadBillingCatalog, PLANS } from '@/lib/plans';
 import { useT, formatNum } from '@/lib/i18n';
 
 interface DecisionStats {
@@ -15,10 +15,17 @@ interface DecisionStats {
   top_articles: { article: string; total: number; taxpayer_relief_rate: number | null }[];
 }
 
-const PLAN_FEATURE_KEYS: Record<string, string[]> = {
-  free: ['plan.free.f1', 'plan.free.f2', 'plan.free.f3'],
-  pro: ['plan.pro.f1', 'plan.pro.f2'],
-  business: ['plan.business.f1', 'plan.business.f2', 'plan.business.f3'],
+const PLAN_FEATURE_KEYS: Record<string, string> = {
+  daily_questions_5: 'plan.free.f1',
+  precise_sources: 'plan.free.f2',
+  no_chat_history: 'plan.free.f3',
+  unlimited_questions: 'plan.pro.f1',
+  chat_history: 'plan.pro.f2',
+  dispute_statistics: 'plan.pro.f3',
+  law_change_timeline: 'plan.pro.f4',
+  everything_in_pro: 'plan.business.f1',
+  company_invoice: 'plan.business.f2',
+  priority_support: 'plan.business.f3',
 };
 
 const ECOSYSTEM = [
@@ -64,6 +71,7 @@ export default function Home() {
   // placeholder numbers — if the data didn't arrive, it says so.
   const [statsState, setStatsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [statsAttempt, setStatsAttempt] = useState(0);
+  const [plans, setPlans] = useState<BillingPlan[]>(PLANS);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -85,6 +93,14 @@ export default function Home() {
       controller.abort();
     };
   }, [statsAttempt]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadBillingCatalog(controller.signal)
+      .then((catalog) => setPlans(catalog.plans))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   const docCount = stats?.coverage.documents_total ?? null;
   const reliefPct =
@@ -288,7 +304,7 @@ export default function Home() {
             {t('pricing.heading')}
           </h2>
           <div className="mt-14 grid gap-6 text-left md:grid-cols-3">
-            {PLANS.map((plan) => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`liquid-glass flex flex-col rounded-2xl p-8 ${
@@ -305,9 +321,9 @@ export default function Home() {
                 </div>
                 <div className="mt-4 flex items-baseline gap-1.5">
                   <span className="font-heading text-5xl italic leading-none text-white">
-                    {plan.priceGel === 0 ? '0 ₾' : `${plan.priceGel} ₾`}
+                    {plan.price_minor === 0 ? '0 ₾' : `${plan.price_minor / 100} ₾`}
                   </span>
-                  {plan.priceGel > 0 && (
+                  {plan.price_minor > 0 && (
                     <span className="font-body text-[13px] font-light text-white/50">
                       {t('pricing.month')}
                     </span>
@@ -317,10 +333,10 @@ export default function Home() {
                   {t(`plan.${plan.id}.tagline`)}
                 </div>
                 <ul className="mt-6 flex-1 space-y-2.5">
-                  {(PLAN_FEATURE_KEYS[plan.id] ?? []).map((key) => (
-                    <li key={key} className="flex gap-2.5 font-body text-sm font-light leading-snug text-white/80">
+                  {plan.feature_codes.map((code) => (
+                    <li key={code} className="flex gap-2.5 font-body text-sm font-light leading-snug text-white/80">
                       <span aria-hidden className="mt-[3px] h-3.5 w-[3px] shrink-0 rounded-full bg-primary/70" />
-                      {t(key)}
+                      {t(PLAN_FEATURE_KEYS[code] ?? code)}
                     </li>
                   ))}
                 </ul>

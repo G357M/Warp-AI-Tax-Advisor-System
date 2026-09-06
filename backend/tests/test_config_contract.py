@@ -74,6 +74,15 @@ def test_embedding_download_policy_can_be_disabled(monkeypatch):
     assert settings.EMBEDDING_ALLOW_DOWNLOAD is False
 
 
+def test_billing_checkout_ttl_has_a_bounded_configuration(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("BILLING_MANUAL_CHECKOUT_TTL_HOURS", "72")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.BILLING_MANUAL_CHECKOUT_TTL_HOURS == 72
+
+
 def test_env_file_ignores_unrelated_legacy_entries(monkeypatch):
     for name in (*REQUIRED_ENV, "CORS_ORIGINS"):
         monkeypatch.delenv(name, raising=False)

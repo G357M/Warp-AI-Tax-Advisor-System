@@ -116,6 +116,11 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
 
+    # Billing stays manual until a separately verified merchant adapter is
+    # enabled.  This address is public checkout contact data, not a secret.
+    BILLING_CONTACT_EMAIL: str = "ggrishikashvili@gmail.com"
+    BILLING_MANUAL_CHECKOUT_TTL_HOURS: int = Field(default=168, ge=1, le=2160)
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
