@@ -51,6 +51,7 @@ from core.database import Base, get_db
 from models import (
     AuthActionToken,
     BillingCheckout,
+    BillingProviderEvent,
     Conversation,
     Message,
     Payment,
@@ -98,6 +99,7 @@ TEST_TABLES = [
     Subscription.__table__,
     Payment.__table__,
     BillingCheckout.__table__,
+    BillingProviderEvent.__table__,
 ]
 
 
@@ -269,6 +271,112 @@ def test_admin_checkout_settlement_is_idempotent(client):
         checkout = db.get(BillingCheckout, UUID(checkout_id))
         assert checkout.status == "paid"
         assert str(checkout.settled_payment_id) == activated.json()["payment_id"]
+        payment = db.query(Payment).filter_by(subscription_id=subscription.id).one()
+        assert payment.amount_minor == 4900
+    finally:
+        db.close()
+
+
+def test_tbc_checkout_is_unavailable_without_explicit_merchant_activation(client):
+    register_and_login(client, "tbc-disabled-user")
+
+    response = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "tbc-disabled-checkout-001"},
+        json={"plan": "pro", "provider": "tbc", "language": "ka"},
+    )
+
+    assert response.status_code == 503
+    db = TestingSessionLocal()
+    try:
+        user = db.query(User).filter_by(username="tbc-disabled-user").one()
+        assert db.query(BillingCheckout).filter_by(user_id=user.id).count() == 0
+    finally:
+        db.close()
+
+
+def test_verified_tbc_status_settles_once_and_records_only_a_digest(
+    client,
+    monkeypatch,
+):
+    from billing.gateway import ProviderPayment
+
+    class FakeTBCGateway:
+        amount_minor = 4900
+
+        def create_checkout(self, checkout, _user, _plan, language):
+            assert language == "ka"
+            return {
+                "provider": "tbc",
+                "method_id": "tbc_checkout",
+                "status": "available",
+                "instruction_code": "redirect_to_bank",
+                "contact_email": None,
+                "redirect_url": "https://tpay.tbcbank.ge/checkout/test-pay-001",
+                "provider_order_id": "test-pay-001",
+                "provider_status": "Created",
+                "expires_in_minutes": 12,
+            }
+
+        def get_payment(self, provider_order_id):
+            assert provider_order_id == "test-pay-001"
+            return ProviderPayment(
+                provider_order_id=provider_order_id,
+                status="Succeeded",
+                amount_minor=self.amount_minor,
+                currency="GEL",
+            )
+
+    real_get_gateway = billing.get_gateway
+    monkeypatch.setattr(
+        billing,
+        "get_gateway",
+        lambda provider="manual": FakeTBCGateway()
+        if provider == "tbc"
+        else real_get_gateway(provider),
+    )
+    register_and_login(client, "tbc-success-user")
+
+    created = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "tbc-success-checkout-001"},
+        json={"plan": "pro", "provider": "tbc", "language": "ka"},
+    )
+    assert created.status_code == 200
+    checkout_id = created.json()["checkout"]["id"]
+    assert created.json()["payment_method"]["redirect_url"].startswith(
+        "https://tpay.tbcbank.ge/"
+    )
+
+    refreshed = client.post(f"/api/v1/billing/checkout/{checkout_id}/refresh")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["checkout"]["status"] == "paid"
+
+    duplicate_callback = client.post(
+        "/api/v1/billing/providers/tbc/callback",
+        json={"PaymentId": "test-pay-001"},
+    )
+    assert duplicate_callback.status_code == 200
+    assert duplicate_callback.json()["replayed"] is True
+
+    FakeTBCGateway.amount_minor = 5000
+    conflicting_callback = client.post(
+        "/api/v1/billing/providers/tbc/callback",
+        json={"PaymentId": "test-pay-001"},
+    )
+    assert conflicting_callback.status_code == 200
+    assert conflicting_callback.json()["replayed"] is False
+    assert conflicting_callback.json()["checkout"]["status"] == "provider_review"
+
+    db = TestingSessionLocal()
+    try:
+        checkout = db.get(BillingCheckout, UUID(checkout_id))
+        assert checkout.provider_status == "Succeeded"
+        assert db.query(Payment).filter_by(provider="tbc").count() == 1
+        event = db.query(BillingProviderEvent).filter_by(checkout_id=checkout.id).one()
+        assert event.processing_status == "error"
+        assert len(event.payload_sha256) == 64
+        assert event.error_code == "event_digest_mismatch"
     finally:
         db.close()
 

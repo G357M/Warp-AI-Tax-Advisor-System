@@ -11,6 +11,7 @@ import {
   Landmark,
   LifeBuoy,
   ReceiptText,
+  RefreshCw,
   X,
 } from 'lucide-react';
 import { authFetch, isLoggedIn, logout } from '@/lib/auth';
@@ -51,8 +52,11 @@ interface BillingCheckout {
   months: number;
   amount_minor: number;
   currency: string;
-  provider: string;
-  status: 'pending' | 'paid' | 'expired' | 'cancelled';
+  provider: 'manual' | 'tbc';
+  status: 'pending' | 'paid' | 'expired' | 'cancelled' | 'failed' | 'provider_unknown' | 'provider_review';
+  provider_status: string | null;
+  provider_redirect_url: string | null;
+  provider_checked_at: string | null;
   expires_at: string;
   created_at: string;
 }
@@ -75,7 +79,7 @@ interface BillingOverview {
 
 interface CheckoutResponse {
   checkout: BillingCheckout;
-  payment_method: PaymentMethod & { instruction_code?: string };
+  payment_method: PaymentMethod & { instruction_code?: string; redirect_url?: string | null };
   replayed: boolean;
 }
 
@@ -120,7 +124,7 @@ const FALLBACK_METHODS: PaymentMethod[] = [
     id: 'tbc_checkout',
     provider: 'tbc',
     status: 'requires_merchant_activation',
-    recurring: true,
+    recurring: false,
     contact_email: null,
   },
   {
@@ -132,6 +136,25 @@ const FALLBACK_METHODS: PaymentMethod[] = [
   },
 ];
 
+function trustedTbcRedirect(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const redirect = new URL(value);
+    if (
+      redirect.protocol !== 'https:'
+      || redirect.hostname !== 'tpay.tbcbank.ge'
+      || (redirect.port && redirect.port !== '443')
+      || redirect.username
+      || redirect.password
+    ) {
+      return null;
+    }
+    return redirect.toString();
+  } catch {
+    return null;
+  }
+}
+
 function PaymentMethodIcon({ provider }: { provider: PaymentMethod['provider'] }) {
   if (provider === 'manual') return <FileText aria-hidden className="h-5 w-5" />;
   if (provider === 'tbc') return <Landmark aria-hidden className="h-5 w-5" />;
@@ -142,13 +165,17 @@ export default function AccountPage() {
   const router = useRouter();
   const { lang, t } = useT();
   const locale = DATE_LOCALES[lang];
-  const checkoutKeys = useRef<Partial<Record<'pro' | 'business', string>>>({});
+  const checkoutKeys = useRef<Record<string, string>>({});
   const [account, setAccount] = useState<Account | null>(null);
   const [catalog, setCatalog] = useState<BillingCatalog | null>(null);
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [latestCheckout, setLatestCheckout] = useState<BillingCheckout | null>(null);
   const [checkoutContact, setCheckoutContact] = useState<string | null>(null);
   const [billingState, setBillingState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [selectedProvider, setSelectedProvider] = useState<'manual' | 'tbc'>('manual');
+  const [paymentReturnState, setPaymentReturnState] = useState<
+    'idle' | 'checking' | 'paid' | 'pending' | 'review' | 'error'
+  >('idle');
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyState, setHistoryState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [upgradingPlan, setUpgradingPlan] = useState<'pro' | 'business' | null>(null);
@@ -162,17 +189,64 @@ export default function AccountPage() {
     try {
       const response = await authFetch('/api/v1/billing/overview');
       if (!response.ok) throw new Error('billing');
-      const data: BillingOverview = await response.json();
+      let data: BillingOverview = await response.json();
+      const returnParams = new URLSearchParams(window.location.search);
+      const returnedFromTbc = returnParams.get('payment_return') === 'tbc';
+      const returnedCheckoutId = returnParams.get('checkout_id');
+      const returnedCheckout = data.checkouts.find(
+        (row) => row.provider === 'tbc'
+          && (!returnedCheckoutId || row.id === returnedCheckoutId)
+          && ['pending', 'expired', 'failed'].includes(row.status),
+      );
+      if (returnedFromTbc) {
+        if (returnedCheckout) {
+          setPaymentReturnState('checking');
+          const refresh = await authFetch(`/api/v1/billing/checkout/${returnedCheckout.id}/refresh`, {
+            method: 'POST',
+          });
+          if (refresh.ok) {
+            const refreshed: { checkout: BillingCheckout } = await refresh.json();
+            setPaymentReturnState(
+              refreshed.checkout.status === 'paid'
+                ? 'paid'
+                : refreshed.checkout.status === 'provider_review'
+                  ? 'review'
+                  : 'pending',
+            );
+            const updated = await authFetch('/api/v1/billing/overview');
+            if (updated.ok) data = await updated.json();
+          } else {
+            setPaymentReturnState('error');
+          }
+        } else {
+          setPaymentReturnState('error');
+        }
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('payment_return');
+        cleanUrl.searchParams.delete('checkout_id');
+        window.history.replaceState({}, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
+      }
       setOverview(data);
-      setLatestCheckout(data.checkouts.find((row) => row.status === 'pending') ?? null);
+      setLatestCheckout(
+        data.checkouts.find((row) =>
+          ['pending', 'provider_unknown', 'provider_review'].includes(row.status),
+        ) ?? null,
+      );
       setCheckoutContact(
         data.payment_methods.find((method) => method.provider === 'manual')?.contact_email ?? null,
+      );
+      setSelectedProvider((current) =>
+        data.payment_methods.some(
+          (method) => method.provider === current && method.status === 'available',
+        )
+          ? current
+          : 'manual',
       );
       setBillingState('ready');
     } catch {
       setBillingState('error');
     }
-  }, []);
+  }, [setSelectedProvider]);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -229,15 +303,16 @@ export default function AccountPage() {
   const upgrade = async (plan: 'pro' | 'business') => {
     setUpgradingPlan(plan);
     setUpgradeState('idle');
-    checkoutKeys.current[plan] ??= `checkout:${crypto.randomUUID()}`;
+    const key = `${plan}:${selectedProvider}`;
+    checkoutKeys.current[key] ??= `checkout:${crypto.randomUUID()}`;
     try {
       const res = await authFetch('/api/v1/billing/checkout', {
         method: 'POST',
-        headers: { 'Idempotency-Key': checkoutKeys.current[plan] },
-        body: JSON.stringify({ plan, provider: 'manual' }),
+        headers: { 'Idempotency-Key': checkoutKeys.current[key] },
+        body: JSON.stringify({ plan, provider: selectedProvider, language: lang }),
       });
       if (!res.ok) {
-        if (res.status === 409) delete checkoutKeys.current[plan];
+        if (res.status === 409 && selectedProvider === 'manual') delete checkoutKeys.current[key];
         throw new Error();
       }
       const data: CheckoutResponse = await res.json();
@@ -254,10 +329,37 @@ export default function AccountPage() {
             }
           : current,
       );
+      const redirectUrl = data.payment_method.redirect_url;
+      if (selectedProvider === 'tbc' && redirectUrl) {
+        const trustedRedirect = trustedTbcRedirect(redirectUrl);
+        if (!trustedRedirect) throw new Error('untrusted_payment_redirect');
+        window.location.assign(trustedRedirect);
+      }
     } catch {
       setUpgradeState('error');
     } finally {
       setUpgradingPlan(null);
+    }
+  };
+
+  const refreshOnlineCheckout = async (checkout: BillingCheckout) => {
+    setPaymentReturnState('checking');
+    try {
+      const response = await authFetch(`/api/v1/billing/checkout/${checkout.id}/refresh`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('refresh');
+      const refreshed: { checkout: BillingCheckout } = await response.json();
+      setPaymentReturnState(
+        refreshed.checkout.status === 'paid'
+          ? 'paid'
+          : refreshed.checkout.status === 'provider_review'
+            ? 'review'
+            : 'pending',
+      );
+      await loadBilling();
+    } catch {
+      setPaymentReturnState('error');
     }
   };
 
@@ -274,6 +376,12 @@ export default function AccountPage() {
   const subscription = overview?.subscription;
   const activePlan = subscription?.plan ?? account.plan;
   const currentCheckout = latestCheckout;
+  const currentCheckoutRedirect = currentCheckout?.provider === 'tbc'
+    ? trustedTbcRedirect(currentCheckout.provider_redirect_url)
+    : null;
+  const currentCheckoutNeedsReview = currentCheckout
+    ? ['provider_unknown', 'provider_review'].includes(currentCheckout.status)
+    : false;
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-12 sm:py-16">
@@ -430,8 +538,13 @@ export default function AccountPage() {
           <div className="divide-y divide-white/10">
             {methods.map((method) => {
               const available = method.status === 'available';
+              const selectable = available && (method.provider === 'manual' || method.provider === 'tbc');
+              const selected = selectable && selectedProvider === method.provider;
               return (
-                <div key={method.id} className="flex items-start gap-4 p-6 sm:items-center sm:p-7">
+                <div
+                  key={method.id}
+                  className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-4 p-6 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-7"
+                >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-white">
                     <PaymentMethodIcon provider={method.provider} />
                   </div>
@@ -452,6 +565,16 @@ export default function AccountPage() {
                       {t(`acc.method.${method.provider}.hint`)}
                     </p>
                   </div>
+                  {selectable && (
+                    <Button
+                      variant={selected ? 'primary' : 'glass'}
+                      aria-pressed={selected}
+                      onClick={() => setSelectedProvider(method.provider as 'manual' | 'tbc')}
+                      className="col-span-2 w-full sm:col-span-1 sm:w-auto"
+                    >
+                      {selected ? t('acc.method.selected') : t('acc.method.select')}
+                    </Button>
+                  )}
                 </div>
               );
             })}
@@ -465,23 +588,51 @@ export default function AccountPage() {
           </div>
         )}
 
-        {currentCheckout && currentCheckout.status === 'pending' && (
+        {paymentReturnState !== 'idle' && (
+          <p
+            className={`mt-4 text-[13px] ${
+              paymentReturnState === 'paid'
+                ? 'text-emerald-300'
+                : paymentReturnState === 'review' || paymentReturnState === 'error'
+                  ? 'text-error-foreground'
+                  : 'text-white/65'
+            }`}
+            role="status"
+          >
+            {t(`acc.payment_return.${paymentReturnState}`)}
+          </p>
+        )}
+
+        {currentCheckout && (
           <div className="mt-6 rounded-2xl bg-secondary p-6 sm:p-7" role="status">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
               <div className="flex gap-4">
                 <ReceiptText aria-hidden className="mt-1 h-5 w-5 shrink-0 text-primary" />
                 <div>
-                  <h3 className="text-[16px] font-semibold text-white">{t('acc.checkout_ready')}</h3>
+                  <h3 className="text-[16px] font-semibold text-white">
+                    {currentCheckoutNeedsReview ? t('acc.checkout_review_title') : t('acc.checkout_ready')}
+                  </h3>
                   <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/65">
-                    {t('acc.checkout_instructions', {
-                      plan: PLAN_LABELS[currentCheckout.plan],
-                      amount: formatMinorMoney(
-                        currentCheckout.amount_minor,
-                        currentCheckout.currency,
-                        locale,
-                      ),
-                      email: checkoutContact ?? t('acc.support_email_pending'),
-                    })}
+                    {currentCheckoutNeedsReview
+                      ? t('acc.checkout_review_hint')
+                      : currentCheckout.provider === 'tbc'
+                        ? t('acc.checkout_online_instructions', {
+                            plan: PLAN_LABELS[currentCheckout.plan],
+                            amount: formatMinorMoney(
+                              currentCheckout.amount_minor,
+                              currentCheckout.currency,
+                              locale,
+                            ),
+                          })
+                        : t('acc.checkout_instructions', {
+                            plan: PLAN_LABELS[currentCheckout.plan],
+                            amount: formatMinorMoney(
+                              currentCheckout.amount_minor,
+                              currentCheckout.currency,
+                              locale,
+                            ),
+                            email: checkoutContact ?? t('acc.support_email_pending'),
+                          })}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/50">
                     <span>
@@ -489,19 +640,44 @@ export default function AccountPage() {
                     </span>
                     <span>
                       {t('acc.checkout_expires', {
-                        d: new Date(currentCheckout.expires_at).toLocaleDateString(locale),
+                        d: currentCheckout.provider === 'tbc'
+                          ? new Date(currentCheckout.expires_at).toLocaleString(locale)
+                          : new Date(currentCheckout.expires_at).toLocaleDateString(locale),
                       })}
                     </span>
+                    {currentCheckout.provider_status && (
+                      <span>{t('acc.provider_status')}: {currentCheckout.provider_status}</span>
+                    )}
                   </div>
                 </div>
               </div>
-              {checkoutContact && (
+              {currentCheckout.provider === 'manual' && checkoutContact && (
                 <a
                   href={`mailto:${checkoutContact}?subject=${encodeURIComponent(`Tax Advisor ${currentCheckout.plan} ${currentCheckout.id}`)}`}
                   className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-white transition-colors duration-300 hover:bg-[#B91C1C]"
                 >
                   {t('acc.request_invoice')}
                 </a>
+              )}
+              {currentCheckout.provider === 'tbc' && !currentCheckoutNeedsReview && (
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {currentCheckoutRedirect && (
+                    <a
+                      href={currentCheckoutRedirect}
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-white transition-colors duration-300 hover:bg-[#B91C1C]"
+                    >
+                      {t('acc.continue_to_bank')}
+                    </a>
+                  )}
+                  <Button
+                    variant="glass"
+                    onClick={() => refreshOnlineCheckout(currentCheckout)}
+                    disabled={paymentReturnState === 'checking'}
+                  >
+                    <RefreshCw aria-hidden className="h-4 w-4" />
+                    {t('acc.check_payment')}
+                  </Button>
+                </div>
               )}
             </div>
           </div>

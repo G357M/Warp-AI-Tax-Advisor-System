@@ -85,7 +85,7 @@ const billingCatalog = {
       contact_email: 'billing@tax-advisor.ge',
     },
     {
-      id: 'tbc_checkout', provider: 'tbc', status: 'requires_merchant_activation', recurring: true,
+      id: 'tbc_checkout', provider: 'tbc', status: 'requires_merchant_activation', recurring: false,
       contact_email: null,
     },
     {
@@ -350,4 +350,112 @@ test('Georgian client billing center on mobile', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'გადახდის მეთოდები' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expect(page.locator('main')).toHaveScreenshot('account-billing-ka-mobile.png');
+});
+
+test('TBC return verifies the bank once and activates the subscription', async ({ page }) => {
+  const checkoutId = '615bfb5e-a87c-4d27-9709-7ca8ee1ce313';
+  const pendingCheckout = {
+    id: checkoutId,
+    plan: 'pro',
+    months: 1,
+    amount_minor: 4900,
+    currency: 'GEL',
+    provider: 'tbc',
+    status: 'pending',
+    provider_status: 'Processing',
+    provider_redirect_url: 'https://tpay.tbcbank.ge/payments/615bfb5e-a87c-4d27-9709-7ca8ee1ce313',
+    provider_checked_at: null,
+    expires_at: '2026-09-07T10:12:00',
+    created_at: '2026-09-07T10:00:00',
+  };
+  const paidCheckout = {
+    ...pendingCheckout,
+    status: 'paid',
+    provider_status: 'Succeeded',
+    provider_checked_at: '2026-09-07T10:04:00',
+  };
+  let overviewRequests = 0;
+  let refreshRequests = 0;
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem('ta_lang', 'en');
+    window.localStorage.setItem('ta_authenticated', '1');
+    window.localStorage.removeItem('ta_token');
+  });
+  await mockApi(page);
+  await page.route('**/api/v1/billing/catalog', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...billingCatalog,
+        payment_methods: billingCatalog.payment_methods.map((method) =>
+          method.provider === 'tbc'
+            ? { ...method, status: 'available', recurring: false }
+            : method,
+        ),
+      }),
+    }),
+  );
+  await page.route('**/api/v1/account', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        email: 'nino.beridze@example.ge',
+        username: 'nino.beridze',
+        full_name: 'Nino Beridze',
+        role: 'user',
+        plan: 'free',
+        usage: { questions_today: 0, daily_limit: 5 },
+      }),
+    }),
+  );
+  await page.route('**/api/v1/billing/overview', (route) => {
+    overviewRequests += 1;
+    const settled = overviewRequests > 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        subscription: settled
+          ? {
+              plan: 'pro', status: 'active', period_start: '2026-09-07T10:04:00',
+              period_end: '2026-10-07T10:04:00', auto_renew: false, payment_provider: 'tbc',
+            }
+          : {
+              plan: 'free', status: null, period_start: null, period_end: null,
+              auto_renew: false, payment_provider: null,
+            },
+        checkouts: [settled ? paidCheckout : pendingCheckout],
+        payments: settled
+          ? [{
+              id: 'fee4f6b4-4db7-4bb7-b52f-e1261c253521', amount_minor: 4900,
+              currency: 'GEL', provider: 'tbc', status: 'succeeded',
+              created_at: '2026-09-07T10:04:00',
+            }]
+          : [],
+        payment_methods: billingCatalog.payment_methods.map((method) =>
+          method.provider === 'tbc'
+            ? { ...method, status: 'available', recurring: false }
+            : method,
+        ),
+      }),
+    });
+  });
+  await page.route(`**/api/v1/billing/checkout/${checkoutId}/refresh`, (route) => {
+    refreshRequests += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ checkout: paidCheckout }),
+    });
+  });
+
+  await page.goto(`/account?payment_return=tbc&checkout_id=${checkoutId}`, { waitUntil: 'networkidle' });
+
+  await expect(page.getByText('Payment confirmed and subscription activated.')).toBeVisible();
+  await expect(page).toHaveURL(/\/account$/);
+  expect(refreshRequests).toBe(1);
+  expect(overviewRequests).toBe(2);
 });

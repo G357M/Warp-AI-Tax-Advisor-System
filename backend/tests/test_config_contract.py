@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from core.config import Settings
 from rag_v2.adapters import load_backend_config
 
@@ -81,6 +84,64 @@ def test_billing_checkout_ttl_has_a_bounded_configuration(monkeypatch):
     settings = Settings(_env_file=None)
 
     assert settings.BILLING_MANUAL_CHECKOUT_TTL_HOURS == 72
+
+
+def test_tbc_checkout_cannot_be_enabled_with_partial_credentials(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("BILLING_TBC_ENABLED", "true")
+    monkeypatch.setenv("TBC_API_KEY", "api-key")
+    monkeypatch.delenv("TBC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("TBC_CLIENT_SECRET", raising=False)
+
+    with pytest.raises(ValidationError, match="TBC_CLIENT_ID"):
+        Settings(_env_file=None)
+
+
+def test_tbc_checkout_accepts_complete_https_configuration(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("BILLING_TBC_ENABLED", "true")
+    monkeypatch.setenv("TBC_API_KEY", "api-key")
+    monkeypatch.setenv("TBC_CLIENT_ID", "merchant-id")
+    monkeypatch.setenv("TBC_CLIENT_SECRET", "merchant-secret")
+    monkeypatch.setenv("TBC_API_BASE_URL", "https://api.tbcbank.ge")
+    monkeypatch.setenv("TBC_RETURN_URL", "https://tax-advisor.ge/account?payment_return=tbc")
+    monkeypatch.setenv(
+        "TBC_CALLBACK_URL",
+        "https://tax-advisor.ge/api/v1/billing/providers/tbc/callback",
+    )
+
+    configured = Settings(_env_file=None)
+
+    assert configured.BILLING_TBC_ENABLED is True
+    assert configured.TBC_CLIENT_SECRET is not None
+    assert configured.TBC_CLIENT_SECRET.get_secret_value() == "merchant-secret"
+
+
+def test_production_tbc_rejects_an_untrusted_api_origin(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("BILLING_TBC_ENABLED", "true")
+    monkeypatch.setenv("TBC_API_KEY", "api-key")
+    monkeypatch.setenv("TBC_CLIENT_ID", "merchant-id")
+    monkeypatch.setenv("TBC_CLIENT_SECRET", "merchant-secret")
+    monkeypatch.setenv("TBC_API_BASE_URL", "https://payments.example.com")
+
+    with pytest.raises(ValidationError, match="api.tbcbank.ge"):
+        Settings(_env_file=None)
+
+
+def test_production_tbc_rejects_a_non_origin_api_base(monkeypatch):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("BILLING_TBC_ENABLED", "true")
+    monkeypatch.setenv("TBC_API_KEY", "api-key")
+    monkeypatch.setenv("TBC_CLIENT_ID", "merchant-id")
+    monkeypatch.setenv("TBC_CLIENT_SECRET", "merchant-secret")
+    monkeypatch.setenv("TBC_API_BASE_URL", "https://api.tbcbank.ge/untrusted-prefix")
+
+    with pytest.raises(ValidationError, match="clean HTTPS origin"):
+        Settings(_env_file=None)
 
 
 def test_env_file_ignores_unrelated_legacy_entries(monkeypatch):

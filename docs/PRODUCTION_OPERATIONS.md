@@ -1162,3 +1162,61 @@ old-session-revocation smoke flow using a dedicated test account. Never log or
 store a raw action token; PostgreSQL contains only its SHA-256 digest. If email
 delivery is disabled, registrations remain immediately usable and recovery
 request endpoints return `503`.
+
+## TBC hosted checkout activation
+
+The TBC adapter is deployed disabled by default. It never receives card data:
+the authenticated client creates a server-priced checkout and is redirected to
+`https://tpay.tbcbank.ge`. A browser return is not payment evidence. Both the
+return flow and TBC callback cause the backend to retrieve the current payment
+through TBC's authenticated Get Payment endpoint before any entitlement changes.
+
+The additive schema migration is dry-run-first and pinned to the reviewed DDL:
+
+```bash
+python3 backend/scripts/add_billing_provider_foundation.py
+python3 backend/scripts/add_billing_provider_foundation.py \
+  --apply \
+  --expected-contract-sha256 e452a92829e9e3d8aaf5e7c8227d1fd5e477c095ade99856135ca338ffe1baad
+```
+
+The production deploy script runs the second command automatically before
+replacing application containers. It backfills legacy GEL amounts into integer
+tetri, creates uniqueness guards for provider transactions/orders and installs
+the normalized provider-event ledger. It is idempotent and audits the expected
+columns and duplicate constraints after applying.
+
+Keep these settings in `/root/infohub/.env`, never in Git or command output:
+
+```dotenv
+BILLING_TBC_ENABLED=false
+TBC_API_BASE_URL=https://api.tbcbank.ge
+TBC_API_KEY=<merchant-api-key>
+TBC_CLIENT_ID=<merchant-client-id>
+TBC_CLIENT_SECRET=<merchant-client-secret>
+TBC_RETURN_URL=https://tax-advisor.ge/account?payment_return=tbc
+TBC_CALLBACK_URL=https://tax-advisor.ge/api/v1/billing/providers/tbc/callback
+TBC_HTTP_TIMEOUT_SECONDS=12
+TBC_CHECKOUT_EXPIRATION_MINUTES=12
+```
+
+Activation is allowed only after all of the following evidence exists:
+
+1. TBC confirms the production merchant, API credentials and callback URL.
+2. A current database/off-site backup and rollback point are verified.
+3. The direct Hetzner ingress receives a real TBC sandbox/test callback through
+   the exact Nginx allowlist. The allowlist contains only TBC's four documented
+   callback IPs; do not place a CDN proxy in front of it without redesigning
+   trusted-proxy handling.
+4. Success, rejection, duplicate callback, browser-return-only, delayed callback,
+   provider outage and returned-payment paths pass with a dedicated test user.
+5. Operators can inspect `provider_unknown` and `provider_review` records before
+   enabling customer traffic. No current command performs a refund.
+6. Set `BILLING_TBC_ENABLED=true`, deploy, and confirm the public catalog exposes
+   TBC as `available`. Do not log access tokens, merchant secrets or raw callback
+   bodies during the smoke test.
+
+Emergency disablement is fail-closed: set `BILLING_TBC_ENABLED=false` and deploy.
+Existing TBC checkouts remain auditable, manual invoices remain available and no
+automatic retry or recurring charge is started. Recurring billing is explicitly
+out of scope until it is separately approved by TBC and implemented.

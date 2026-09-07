@@ -2,6 +2,7 @@
 
 import json
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -120,6 +121,15 @@ class Settings(BaseSettings):
     # enabled.  This address is public checkout contact data, not a secret.
     BILLING_CONTACT_EMAIL: str = "ggrishikashvili@gmail.com"
     BILLING_MANUAL_CHECKOUT_TTL_HOURS: int = Field(default=168, ge=1, le=2160)
+    BILLING_TBC_ENABLED: bool = False
+    TBC_API_BASE_URL: str = "https://api.tbcbank.ge"
+    TBC_API_KEY: Optional[SecretStr] = None
+    TBC_CLIENT_ID: Optional[SecretStr] = None
+    TBC_CLIENT_SECRET: Optional[SecretStr] = None
+    TBC_RETURN_URL: str = "https://tax-advisor.ge/account?payment_return=tbc"
+    TBC_CALLBACK_URL: str = "https://tax-advisor.ge/api/v1/billing/providers/tbc/callback"
+    TBC_HTTP_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=30)
+    TBC_CHECKOUT_EXPIRATION_MINUTES: int = Field(default=12, ge=1, le=12)
 
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -196,6 +206,58 @@ class Settings(BaseSettings):
             raise ValueError("SMTP_USE_TLS and SMTP_USE_SSL cannot both be enabled")
         if self.ENVIRONMENT == "production" and not self.AUTH_PUBLIC_BASE_URL.startswith("https://"):
             raise ValueError("AUTH_PUBLIC_BASE_URL must use HTTPS in production")
+        return self
+
+    @model_validator(mode="after")
+    def validate_tbc_checkout(self) -> "Settings":
+        """An incomplete merchant setup must never make TBC appear available."""
+        if not self.BILLING_TBC_ENABLED:
+            return self
+        missing = [
+            name
+            for name, value in {
+                "TBC_API_KEY": self.TBC_API_KEY,
+                "TBC_CLIENT_ID": self.TBC_CLIENT_ID,
+                "TBC_CLIENT_SECRET": self.TBC_CLIENT_SECRET,
+            }.items()
+            if value is None or not value.get_secret_value()
+        ]
+        if missing:
+            raise ValueError("BILLING_TBC_ENABLED requires " + ", ".join(missing))
+
+        api_url = urlparse(self.TBC_API_BASE_URL)
+        return_url = urlparse(self.TBC_RETURN_URL)
+        callback_url = urlparse(self.TBC_CALLBACK_URL)
+        if api_url.scheme != "https" or not api_url.hostname:
+            raise ValueError("TBC_API_BASE_URL must be an HTTPS origin")
+        if (
+            api_url.username
+            or api_url.password
+            or api_url.port not in {None, 443}
+            or api_url.path not in {"", "/"}
+            or api_url.query
+            or api_url.fragment
+        ):
+            raise ValueError("TBC_API_BASE_URL must be a clean HTTPS origin")
+        if self.ENVIRONMENT == "production" and api_url.hostname != "api.tbcbank.ge":
+            raise ValueError("Production TBC_API_BASE_URL must use api.tbcbank.ge")
+        for name, parsed in {
+            "TBC_RETURN_URL": return_url,
+            "TBC_CALLBACK_URL": callback_url,
+        }.items():
+            if parsed.scheme != "https" or not parsed.hostname:
+                raise ValueError(f"{name} must be an HTTPS URL")
+            if parsed.username or parsed.password or parsed.port not in {None, 443} or parsed.fragment:
+                raise ValueError(f"{name} must not contain credentials, a custom port or fragment")
+        if self.ENVIRONMENT == "production":
+            if return_url.hostname != "tax-advisor.ge" or return_url.path != "/account":
+                raise ValueError("Production TBC_RETURN_URL must use tax-advisor.ge/account")
+            if (
+                callback_url.hostname != "tax-advisor.ge"
+                or callback_url.path != "/api/v1/billing/providers/tbc/callback"
+                or callback_url.query
+            ):
+                raise ValueError("Production TBC_CALLBACK_URL must use the registered Tax Advisor endpoint")
         return self
 
 

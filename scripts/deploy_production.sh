@@ -90,6 +90,15 @@ docker compose run --rm --no-deps backend \
         --execute \
         --expected-contract-sha256 "$LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256"
 
+# Add integer payment amounts, verified provider state and the idempotent event
+# ledger before a provider-capable backend can start. The schema remains safe
+# while TBC is disabled and never creates or settles a remote payment itself.
+BILLING_PROVIDER_SCHEMA_CONTRACT_SHA256="e452a92829e9e3d8aaf5e7c8227d1fd5e477c095ade99856135ca338ffe1baad"
+docker compose run --rm --no-deps backend \
+    python scripts/add_billing_provider_foundation.py \
+        --apply \
+        --expected-contract-sha256 "$BILLING_PROVIDER_SCHEMA_CONTRACT_SHA256"
+
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.
 docker compose run --rm --no-deps backend python scripts/add_auth_recovery.py

@@ -51,6 +51,7 @@ jobs:
           decision_fact_contract.py
           scripts/admit_legal_temporal_review.py
           scripts/add_auth_recovery.py
+          scripts/add_billing_provider_foundation.py
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
           scripts/audit_legal_answer_coverage.py
@@ -89,6 +90,7 @@ jobs:
         run: >-
           python -m pytest
           tests/test_config_contract.py
+          tests/test_billing_gateway.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py
           tests/test_production_storage_audit.py
@@ -157,6 +159,9 @@ jobs:
           python scripts/audit_legal_answer_coverage.py
           python scripts/build_legal_answer_contract_canary.py
 
+      - name: Validate billing provider schema plan
+        run: python scripts/add_billing_provider_foundation.py
+
       - name: Validate read-only decision-facts quality plan
         run: python scripts/evaluate_decision_facts_quality.py
 
@@ -197,6 +202,7 @@ jobs:
       RATE_LIMIT_ENABLED: "false"
       LEGAL_TEMPORAL_POSTGRES_TESTS: "1"
       LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256: b69e7bcc73da12c5b80a69ec6fc436758842a11b838895d02241dcde0af07e98
+      BILLING_PROVIDER_POSTGRES_TESTS: "1"
 
     steps:
       - uses: actions/checkout@v7
@@ -229,6 +235,7 @@ jobs:
           tests/test_legal_temporal_postgres.py
           tests/test_legal_temporal_backfill_postgres.py
           tests/test_legal_temporal_review_admission_postgres.py
+          tests/test_billing_provider_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
       - name: Audit temporal foundation after backfill integration
