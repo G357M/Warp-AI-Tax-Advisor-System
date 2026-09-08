@@ -22,6 +22,9 @@ DDL = (
     "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS provider_status VARCHAR(40)",
     "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS provider_redirect_url VARCHAR(1000)",
     "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS provider_checked_at TIMESTAMP WITHOUT TIME ZONE",
+    "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS terms_version VARCHAR(32)",
+    "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMP WITHOUT TIME ZONE",
+    "ALTER TABLE billing_checkouts ADD COLUMN IF NOT EXISTS immediate_service_requested_at TIMESTAMP WITHOUT TIME ZONE",
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_payments_provider_tx ON payments (provider, provider_tx_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_billing_checkouts_provider_order ON billing_checkouts (provider, provider_order_id)",
     """CREATE TABLE IF NOT EXISTS billing_provider_events (
@@ -47,6 +50,9 @@ EXPECTED_COLUMNS = {
         "provider_status",
         "provider_redirect_url",
         "provider_checked_at",
+        "terms_version",
+        "terms_accepted_at",
+        "immediate_service_requested_at",
     },
     "billing_provider_events": {
         "id",

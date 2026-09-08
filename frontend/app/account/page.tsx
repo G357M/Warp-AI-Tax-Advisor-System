@@ -180,6 +180,8 @@ export default function AccountPage() {
   const [historyState, setHistoryState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [upgradingPlan, setUpgradingPlan] = useState<'pro' | 'business' | null>(null);
   const [upgradeState, setUpgradeState] = useState<'idle' | 'error'>('idle');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [immediateServiceRequested, setImmediateServiceRequested] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
   const [bugText, setBugText] = useState('');
   const [bugState, setBugState] = useState<'idle' | 'sending' | 'sent' | 'error' | 'short'>('idle');
@@ -309,7 +311,14 @@ export default function AccountPage() {
       const res = await authFetch('/api/v1/billing/checkout', {
         method: 'POST',
         headers: { 'Idempotency-Key': checkoutKeys.current[key] },
-        body: JSON.stringify({ plan, provider: selectedProvider, language: lang }),
+        body: JSON.stringify({
+          plan,
+          provider: selectedProvider,
+          language: lang,
+          terms_version: catalog?.terms_version ?? '2026-09-08',
+          terms_accepted: termsAccepted,
+          immediate_service_requested: immediateServiceRequested,
+        }),
       });
       if (!res.ok) {
         if (res.status === 409 && selectedProvider === 'manual') delete checkoutKeys.current[key];
@@ -382,6 +391,8 @@ export default function AccountPage() {
   const currentCheckoutNeedsReview = currentCheckout
     ? ['provider_unknown', 'provider_review'].includes(currentCheckout.status)
     : false;
+  const hasPreliminaryPrice = plans.some((plan) => plan.pricing_preliminary);
+  const checkoutConfirmed = termsAccepted && immediateServiceRequested;
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-page px-6 py-12 sm:py-16">
@@ -463,10 +474,47 @@ export default function AccountPage() {
               {t('acc.manage_plan_hint')}
             </p>
           </div>
-          <span className="text-xs text-muted-foreground">{t('acc.pricing_preliminary')}</span>
+          <span className="text-xs text-muted-foreground">
+            {hasPreliminaryPrice ? t('acc.pricing_preliminary') : t('acc.pricing_final')}
+          </span>
         </div>
 
-        <Card className="mt-6 p-0">
+        <div className="liquid-glass mt-6 rounded-2xl p-6 sm:p-7">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-[15px] font-semibold text-white">{t('acc.legal_title')}</h3>
+              <Link href="/legal/terms" target="_blank" className="text-xs text-primary transition-colors hover:text-white">
+                {t('acc.legal_read')} ↗
+              </Link>
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 text-[13px] font-light leading-6 text-white/70">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(event) => setTermsAccepted(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-red-600"
+              />
+              <span>
+                {t('acc.legal_terms_accept')}{' '}
+                <Link href="/legal/refunds" target="_blank" className="text-primary underline-offset-4 hover:underline">{t('legal.refunds')}</Link>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-[13px] font-light leading-6 text-white/70">
+              <input
+                type="checkbox"
+                checked={immediateServiceRequested}
+                onChange={(event) => setImmediateServiceRequested(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-red-600"
+              />
+              <span>{t('acc.legal_immediate')}</span>
+            </label>
+            <a href="#payment-methods" className="w-fit text-xs text-white/50 transition-colors hover:text-white">
+              {t('acc.method_jump')} ↓
+            </a>
+          </div>
+        </div>
+
+        <Card className="mt-5 p-0">
           <div className="divide-y divide-white/10">
             {plans.map((plan) => {
               const isCurrent = activePlan === plan.id;
@@ -501,7 +549,7 @@ export default function AccountPage() {
                   </ul>
                   <Button
                     variant={plan.highlighted && !isCurrent ? 'primary' : 'glass'}
-                    disabled={!canChoose || upgradingPlan !== null}
+                    disabled={!canChoose || upgradingPlan !== null || !checkoutConfirmed}
                     onClick={() => !isFree && upgrade(plan.id as 'pro' | 'business')}
                     className="w-full sm:w-auto"
                   >
@@ -513,7 +561,10 @@ export default function AccountPage() {
                             ? t('acc.current_plan')
                             : isLower
                               ? t('acc.included')
-                              : t('acc.choose_plan', { plan: plan.name })}
+                              : t('acc.buy_plan', {
+                                  plan: plan.name,
+                                  amount: formatMinorMoney(plan.price_minor, plan.currency, locale),
+                                })}
                   </Button>
                 </div>
               );
@@ -528,7 +579,7 @@ export default function AccountPage() {
         )}
       </section>
 
-      <section className="mt-14">
+      <section id="payment-methods" className="mt-14 scroll-mt-32">
         <h2 className="font-heading text-3xl italic tracking-display">{t('acc.payment_methods')}</h2>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
           {t('acc.payment_methods_hint')}

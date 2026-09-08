@@ -13,7 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from billing.catalog import PLAN_CATALOG, get_plan, public_catalog
+from billing.catalog import (
+    LEGAL_TERMS_VERSION,
+    PLAN_CATALOG,
+    get_plan,
+    public_catalog,
+)
 from billing.gateway import (
     GatewayUnavailable,
     ProviderPayment,
@@ -37,6 +42,9 @@ class CheckoutRequest(BaseModel):
     plan: str = Field(pattern="^(pro|business)$")
     provider: Literal["manual", "tbc"] = "manual"
     language: Literal["ka", "ru", "en"] = "en"
+    terms_version: Literal[LEGAL_TERMS_VERSION]
+    terms_accepted: Literal[True]
+    immediate_service_requested: Literal[True]
 
 
 class ProviderCallback(BaseModel):
@@ -71,6 +79,15 @@ def _checkout_payload(row: BillingCheckout) -> dict:
         "provider_redirect_url": row.provider_redirect_url,
         "provider_checked_at": (
             row.provider_checked_at.isoformat() if row.provider_checked_at else None
+        ),
+        "terms_version": row.terms_version,
+        "terms_accepted_at": (
+            row.terms_accepted_at.isoformat() if row.terms_accepted_at else None
+        ),
+        "immediate_service_requested_at": (
+            row.immediate_service_requested_at.isoformat()
+            if row.immediate_service_requested_at
+            else None
         ),
         "expires_at": row.expires_at.isoformat(),
         "created_at": row.created_at.isoformat(),
@@ -221,7 +238,13 @@ def create_checkout(
         .first()
     )
     if existing:
-        if existing.plan != body.plan or existing.provider != body.provider:
+        if (
+            existing.plan != body.plan
+            or existing.provider != body.provider
+            or existing.terms_version != body.terms_version
+            or existing.terms_accepted_at is None
+            or existing.immediate_service_requested_at is None
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="Idempotency-Key already belongs to another checkout",
@@ -256,6 +279,9 @@ def create_checkout(
         status="pending",
         idempotency_key=idempotency_key,
         expires_at=now + ttl,
+        terms_version=body.terms_version,
+        terms_accepted_at=now,
+        immediate_service_requested_at=now,
     )
     db.add(checkout)
     try:
@@ -270,7 +296,13 @@ def create_checkout(
             .filter_by(user_id=current_user.id, idempotency_key=idempotency_key)
             .one()
         )
-        if checkout.plan != body.plan or checkout.provider != body.provider:
+        if (
+            checkout.plan != body.plan
+            or checkout.provider != body.provider
+            or checkout.terms_version != body.terms_version
+            or checkout.terms_accepted_at is None
+            or checkout.immediate_service_requested_at is None
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="Idempotency-Key already belongs to another checkout",

@@ -103,6 +103,11 @@ class BillingCheckout(Base):
     provider_status = Column(String(40), nullable=True)
     provider_redirect_url = Column(String(1000), nullable=True)
     provider_checked_at = Column(DateTime, nullable=True)
+    # Durable evidence of the exact public terms accepted before checkout.
+    # These are nullable only so existing historical checkout rows remain valid.
+    terms_version = Column(String(32), nullable=True)
+    terms_accepted_at = Column(DateTime, nullable=True)
+    immediate_service_requested_at = Column(DateTime, nullable=True)
     settled_payment_id = Column(
         UUID(as_uuid=True),
         ForeignKey("payments.id", ondelete="SET NULL"),

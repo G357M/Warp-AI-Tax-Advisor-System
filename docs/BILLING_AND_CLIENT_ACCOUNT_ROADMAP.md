@@ -1,6 +1,6 @@
 # Client account and billing roadmap
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
 ## Implemented foundation
 
@@ -8,7 +8,8 @@ Updated: 2026-09-07
   checkout intents are integer minor units (tetri), never a client-supplied
   floating-point value.
 - Every checkout is persisted with user, plan, amount, currency, provider,
-  status, expiry and a per-user idempotency key.
+  status, expiry, a per-user idempotency key, the accepted terms version and
+  separate timestamps for terms acceptance and immediate-service request.
 - Repeating the same request cannot create a second order. Reusing its key for
   a different plan is rejected.
 - The manual invoice workflow remains executable. Admin settlement can use the
@@ -29,10 +30,19 @@ Updated: 2026-09-07
   `requires_merchant_activation` until merchant onboarding and credentials are
   completed. TBC can become `available` only when its feature flag and all
   three required credentials are present. Bank of Georgia has no adapter yet.
+- Public RU/KA/EN Terms, Refund, Privacy, Access Activation and Contact pages
+  identify Modern LLC (431177120), publish final GEL 49/149 prices, explain its
+  non-VAT-registered status, preserve statutory consumer rights and state that
+  both paid plans are fixed 30-day periods with no automatic renewal.
+- Paid checkout is disabled until the user accepts the current terms and
+  separately requests immediate digital-service commencement. The backend
+  rejects missing, false or stale consent instead of trusting the browser.
 
 The application never collects card details. The code can create and reconcile
-TBC bank orders, but production activation, refunds, recurring charges and
-Business organizations/seats remain incomplete stages.
+TBC bank orders, but production activation, operator-side refund execution and
+reconciliation, recurring charges and Business organizations/seats remain
+incomplete stages. The published refund policy does not claim that a manual
+refund has completed until the provider transaction is confirmed.
 
 ## Provider options
 

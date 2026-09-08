@@ -93,7 +93,7 @@ docker compose run --rm --no-deps backend \
 # Add integer payment amounts, verified provider state and the idempotent event
 # ledger before a provider-capable backend can start. The schema remains safe
 # while TBC is disabled and never creates or settles a remote payment itself.
-BILLING_PROVIDER_SCHEMA_CONTRACT_SHA256="e452a92829e9e3d8aaf5e7c8227d1fd5e477c095ade99856135ca338ffe1baad"
+BILLING_PROVIDER_SCHEMA_CONTRACT_SHA256="9ea51e942ab67aaf8d215b26df554d40c088b0f4a50d41026ea3622c33559bee"
 docker compose run --rm --no-deps backend \
     python scripts/add_billing_provider_foundation.py \
         --apply \

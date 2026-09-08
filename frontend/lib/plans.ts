@@ -6,7 +6,7 @@ export interface BillingPlan {
   name: string;
   price_minor: number;
   currency: string;
-  billing_period: 'month' | null;
+  billing_period: '30_days' | null;
   daily_questions: number | null;
   history_enabled: boolean;
   feature_codes: string[];
@@ -24,6 +24,8 @@ export interface PaymentMethod {
 
 export interface BillingCatalog {
   version: string;
+  terms_version: string;
+  legal_urls: Record<'terms' | 'refunds' | 'privacy' | 'delivery' | 'contact', string>;
   currency_minor_unit: number;
   plans: BillingPlan[];
   payment_methods: PaymentMethod[];
@@ -44,14 +46,14 @@ export const PLANS: BillingPlan[] = [
     history_enabled: false,
     feature_codes: ['daily_questions_5', 'precise_sources', 'no_chat_history'],
     highlighted: false,
-    pricing_preliminary: true,
+    pricing_preliminary: false,
   },
   {
     id: 'pro',
     name: 'Pro',
     price_minor: 4900,
     currency: 'GEL',
-    billing_period: 'month',
+    billing_period: '30_days',
     daily_questions: null,
     history_enabled: true,
     feature_codes: [
@@ -61,19 +63,19 @@ export const PLANS: BillingPlan[] = [
       'law_change_timeline',
     ],
     highlighted: true,
-    pricing_preliminary: true,
+    pricing_preliminary: false,
   },
   {
     id: 'business',
     name: 'Business',
     price_minor: 14900,
     currency: 'GEL',
-    billing_period: 'month',
+    billing_period: '30_days',
     daily_questions: null,
     history_enabled: true,
     feature_codes: ['everything_in_pro', 'company_invoice', 'priority_support'],
     highlighted: false,
-    pricing_preliminary: true,
+    pricing_preliminary: false,
   },
 ];
 
