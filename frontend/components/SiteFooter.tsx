@@ -25,11 +25,18 @@ export function SiteFooter() {
     { name: t('nav.stats'), href: '/disputes' },
     { name: t('nav.pricing'), href: '/#pricing' },
   ];
+  const legal = [
+    { name: t('legal.terms'), href: '/legal/terms' },
+    { name: t('legal.refunds'), href: '/legal/refunds' },
+    { name: t('legal.privacy'), href: '/legal/privacy' },
+    { name: t('legal.delivery'), href: '/legal/delivery' },
+    { name: t('legal.contact'), href: '/legal/contact' },
+  ];
 
   return (
     <footer className="mt-32 border-t border-white/10">
       <div className="mx-auto max-w-page px-6 py-12">
-        <div className="grid gap-10 sm:grid-cols-[1fr_auto_auto] sm:gap-16">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto] lg:gap-14">
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="font-heading text-xl italic text-white">Tax</span>
@@ -59,6 +66,22 @@ export function SiteFooter() {
             </ul>
           </nav>
 
+          <nav aria-label={t('footer.legal')}>
+            <div className="flex items-center gap-2 text-[13px] font-semibold text-white">
+              <span aria-hidden className="h-3 w-[3px] rounded-full bg-primary" />
+              {t('footer.legal')}
+            </div>
+            <ul className="mt-3 space-y-2">
+              {legal.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="text-[13px] font-light text-white/50 transition-colors hover:text-white">
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
           <div>
             <div className="flex items-center gap-2 text-[13px] font-semibold text-white">
               <span aria-hidden className="h-3 w-[3px] rounded-full bg-primary" />
@@ -70,6 +93,13 @@ export function SiteFooter() {
                   info@tax-advisor.ge
                 </a>
               </li>
+              <li>
+                <a href="tel:+995550052050" className="transition-colors hover:text-white">
+                  +995 550 052 050
+                </a>
+              </li>
+              <li>Modern LLC · 431177120</li>
+              <li>Telavi, Kurdgelauri vil.</li>
               <li>
                 <a
                   href="https://infohub.rs.ge"

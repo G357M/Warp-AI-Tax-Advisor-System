@@ -59,6 +59,12 @@ from models import (
     User,
 )
 
+CHECKOUT_CONSENT = {
+    "terms_version": "2026-09-08",
+    "terms_accepted": True,
+    "immediate_service_requested": True,
+}
+
 # The imported API modules retain the lightweight boundaries above. Restore the
 # process module registry so later-collected tests load the real RAG v2 package.
 for _name, _module in _original_rag_modules.items():
@@ -169,13 +175,22 @@ def test_billing_catalog_is_public_and_marks_unwired_banks_unavailable(client):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["version"] == "2026-09-07"
+    assert payload["version"] == "2026-09-08"
+    assert payload["terms_version"] == "2026-09-08"
+    assert payload["legal_urls"] == {
+        "terms": "/legal/terms",
+        "refunds": "/legal/refunds",
+        "privacy": "/legal/privacy",
+        "delivery": "/legal/delivery",
+        "contact": "/legal/contact",
+    }
     assert payload["currency_minor_unit"] == 2
     assert {plan["id"]: plan["price_minor"] for plan in payload["plans"]} == {
         "free": 0,
         "pro": 4900,
         "business": 14900,
     }
+    assert all(plan["pricing_preliminary"] is False for plan in payload["plans"])
     methods = {method["provider"]: method for method in payload["payment_methods"]}
     assert methods["manual"]["status"] == "available"
     assert methods["manual"]["contact_email"] is None
@@ -190,7 +205,7 @@ def test_checkout_is_server_priced_persisted_and_idempotent(client):
     created = client.post(
         "/api/v1/billing/checkout",
         headers=headers,
-        json={"plan": "pro", "provider": "manual"},
+        json={"plan": "pro", "provider": "manual", **CHECKOUT_CONSENT},
     )
 
     assert created.status_code == 200
@@ -199,12 +214,15 @@ def test_checkout_is_server_priced_persisted_and_idempotent(client):
     assert payload["checkout"]["amount_minor"] == 4900
     assert payload["checkout"]["currency"] == "GEL"
     assert payload["checkout"]["status"] == "pending"
+    assert payload["checkout"]["terms_version"] == "2026-09-08"
+    assert payload["checkout"]["terms_accepted_at"] is not None
+    assert payload["checkout"]["immediate_service_requested_at"] is not None
     assert payload["payment_method"]["instruction_code"] == "contact_for_invoice"
 
     replay = client.post(
         "/api/v1/billing/checkout",
         headers=headers,
-        json={"plan": "pro", "provider": "manual"},
+        json={"plan": "pro", "provider": "manual", **CHECKOUT_CONSENT},
     )
     assert replay.status_code == 200
     assert replay.json()["replayed"] is True
@@ -213,7 +231,7 @@ def test_checkout_is_server_priced_persisted_and_idempotent(client):
     conflict = client.post(
         "/api/v1/billing/checkout",
         headers=headers,
-        json={"plan": "business", "provider": "manual"},
+        json={"plan": "business", "provider": "manual", **CHECKOUT_CONSENT},
     )
     assert conflict.status_code == 409
 
@@ -228,13 +246,53 @@ def test_checkout_is_server_priced_persisted_and_idempotent(client):
         db.close()
 
 
+def test_checkout_requires_current_terms_and_explicit_immediate_service_request(client):
+    register_and_login(client, "checkout-consent-user")
+
+    missing = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "checkout-consent-missing-001"},
+        json={"plan": "pro", "provider": "manual"},
+    )
+    stale = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "checkout-consent-stale-001"},
+        json={
+            "plan": "pro",
+            "provider": "manual",
+            **CHECKOUT_CONSENT,
+            "terms_version": "2026-09-07",
+        },
+    )
+    no_immediate_start = client.post(
+        "/api/v1/billing/checkout",
+        headers={"Idempotency-Key": "checkout-consent-false-001"},
+        json={
+            "plan": "pro",
+            "provider": "manual",
+            **CHECKOUT_CONSENT,
+            "immediate_service_requested": False,
+        },
+    )
+
+    assert missing.status_code == 422
+    assert stale.status_code == 422
+    assert no_immediate_start.status_code == 422
+    db = TestingSessionLocal()
+    try:
+        user = db.query(User).filter_by(username="checkout-consent-user").one()
+        assert db.query(BillingCheckout).filter_by(user_id=user.id).count() == 0
+    finally:
+        db.close()
+
+
 def test_admin_checkout_settlement_is_idempotent(client):
     customer_username = "settlement-customer"
     register_and_login(client, customer_username)
     checkout_response = client.post(
         "/api/v1/billing/checkout",
         headers={"Idempotency-Key": "settlement-customer-pro-001"},
-        json={"plan": "pro"},
+        json={"plan": "pro", **CHECKOUT_CONSENT},
     )
     checkout_id = checkout_response.json()["checkout"]["id"]
 
@@ -283,7 +341,7 @@ def test_tbc_checkout_is_unavailable_without_explicit_merchant_activation(client
     response = client.post(
         "/api/v1/billing/checkout",
         headers={"Idempotency-Key": "tbc-disabled-checkout-001"},
-        json={"plan": "pro", "provider": "tbc", "language": "ka"},
+        json={"plan": "pro", "provider": "tbc", "language": "ka", **CHECKOUT_CONSENT},
     )
 
     assert response.status_code == 503
@@ -340,7 +398,7 @@ def test_verified_tbc_status_settles_once_and_records_only_a_digest(
     created = client.post(
         "/api/v1/billing/checkout",
         headers={"Idempotency-Key": "tbc-success-checkout-001"},
-        json={"plan": "pro", "provider": "tbc", "language": "ka"},
+        json={"plan": "pro", "provider": "tbc", "language": "ka", **CHECKOUT_CONSENT},
     )
     assert created.status_code == 200
     checkout_id = created.json()["checkout"]["id"]

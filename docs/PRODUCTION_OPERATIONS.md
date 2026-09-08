@@ -1177,14 +1177,17 @@ The additive schema migration is dry-run-first and pinned to the reviewed DDL:
 python3 backend/scripts/add_billing_provider_foundation.py
 python3 backend/scripts/add_billing_provider_foundation.py \
   --apply \
-  --expected-contract-sha256 e452a92829e9e3d8aaf5e7c8227d1fd5e477c095ade99856135ca338ffe1baad
+  --expected-contract-sha256 9ea51e942ab67aaf8d215b26df554d40c088b0f4a50d41026ea3622c33559bee
 ```
 
 The production deploy script runs the second command automatically before
 replacing application containers. It backfills legacy GEL amounts into integer
 tetri, creates uniqueness guards for provider transactions/orders and installs
-the normalized provider-event ledger. It is idempotent and audits the expected
-columns and duplicate constraints after applying.
+the normalized provider-event ledger. It also adds nullable, legacy-safe
+`terms_version`, `terms_accepted_at` and `immediate_service_requested_at`
+columns; every newly created checkout requires and populates all three. It is
+idempotent and audits the expected columns and duplicate constraints after
+applying.
 
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 
@@ -1202,7 +1205,10 @@ TBC_CHECKOUT_EXPIRATION_MINUTES=12
 
 Activation is allowed only after all of the following evidence exists:
 
-1. TBC confirms the production merchant, API credentials and callback URL.
+1. TBC confirms the production merchant, API credentials, return URL and
+   callback URL. The public `/legal/terms`, `/legal/refunds`, `/legal/privacy`,
+   `/legal/delivery` and `/legal/contact` pages must return `200` before the
+   merchant requests website approval.
 2. A current database/off-site backup and rollback point are verified.
 3. The direct Hetzner ingress receives a real TBC sandbox/test callback through
    the exact Nginx allowlist. The allowlist contains only TBC's four documented

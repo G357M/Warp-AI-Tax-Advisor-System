@@ -57,26 +57,31 @@ const laws = {
 };
 
 const billingCatalog = {
-  version: '2026-09-07',
+  version: '2026-09-08',
+  terms_version: '2026-09-08',
+  legal_urls: {
+    terms: '/legal/terms', refunds: '/legal/refunds', privacy: '/legal/privacy',
+    delivery: '/legal/delivery', contact: '/legal/contact',
+  },
   currency_minor_unit: 2,
   plans: [
     {
       id: 'free', name: 'Free', price_minor: 0, currency: 'GEL', billing_period: null,
       daily_questions: 5, history_enabled: false,
       feature_codes: ['daily_questions_5', 'precise_sources', 'no_chat_history'],
-      highlighted: false, pricing_preliminary: true,
+      highlighted: false, pricing_preliminary: false,
     },
     {
-      id: 'pro', name: 'Pro', price_minor: 4900, currency: 'GEL', billing_period: 'month',
+      id: 'pro', name: 'Pro', price_minor: 4900, currency: 'GEL', billing_period: '30_days',
       daily_questions: null, history_enabled: true,
       feature_codes: ['unlimited_questions', 'chat_history', 'dispute_statistics', 'law_change_timeline'],
-      highlighted: true, pricing_preliminary: true,
+      highlighted: true, pricing_preliminary: false,
     },
     {
-      id: 'business', name: 'Business', price_minor: 14900, currency: 'GEL', billing_period: 'month',
+      id: 'business', name: 'Business', price_minor: 14900, currency: 'GEL', billing_period: '30_days',
       daily_questions: null, history_enabled: true,
       feature_codes: ['everything_in_pro', 'company_invoice', 'priority_support'],
-      highlighted: false, pricing_preliminary: true,
+      highlighted: false, pricing_preliminary: false,
     },
   ],
   payment_methods: [
@@ -350,6 +355,69 @@ test('Georgian client billing center on mobile', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'გადახდის მეთოდები' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expect(page.locator('main')).toHaveScreenshot('account-billing-ka-mobile.png');
+});
+
+test('paid checkout requires both confirmations and sends the current terms version', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  let requestBody: Record<string, unknown> | null = null;
+  await page.route('**/api/v1/billing/checkout', async (route) => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        checkout: {
+          id: '18d09f2b-5a5e-4a34-939a-c75f3652cbfa', plan: 'business', months: 1,
+          amount_minor: 14900, currency: 'GEL', provider: 'manual', status: 'pending',
+          provider_status: null, provider_redirect_url: null, provider_checked_at: null,
+          terms_version: '2026-09-08', terms_accepted_at: '2026-09-08T00:00:00',
+          immediate_service_requested_at: '2026-09-08T00:00:00',
+          expires_at: '2026-09-15T00:00:00', created_at: '2026-09-08T00:00:00',
+        },
+        payment_method: {
+          id: 'manual_invoice', provider: 'manual', status: 'available', recurring: false,
+          contact_email: 'billing@tax-advisor.ge', instruction_code: 'contact_for_invoice',
+        },
+        replayed: false,
+      }),
+    });
+  });
+  await openAccountStable(page, 'en');
+
+  const payButton = page.getByRole('button', { name: 'Pay for Business — 149 ₾' });
+  await expect(payButton).toBeDisabled();
+  await page.getByRole('checkbox', { name: /I accept the Terms of use/ }).check();
+  await expect(payButton).toBeDisabled();
+  await page.getByRole('checkbox', { name: /I request the digital service/ }).check();
+  await expect(payButton).toBeEnabled();
+  await payButton.click();
+
+  expect(requestBody).toMatchObject({
+    plan: 'business',
+    provider: 'manual',
+    language: 'en',
+    terms_version: '2026-09-08',
+    terms_accepted: true,
+    immediate_service_requested: true,
+  });
+});
+
+test('Russian refund policy on desktop', async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await openStable(page, '/legal/refunds', 'ru');
+  await expect(page.getByRole('heading', { name: 'Возврат и отмена', level: 1 })).toBeVisible();
+  await expect(page.getByText('14-дневное право на отказ', { exact: false })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expect(page.locator('main')).toHaveScreenshot('legal-refunds-ru-desktop.png');
+});
+
+test('Georgian terms on mobile', async ({ page }) => {
+  await page.setViewportSize(MOBILE);
+  await openStable(page, '/legal/terms', 'ka');
+  await expect(page.getByRole('heading', { name: 'გამოყენების პირობები', level: 1 })).toBeVisible();
+  await expect(page.locator('main').getByText('Modern LLC · 431177120')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expect(page.locator('main')).toHaveScreenshot('legal-terms-ka-mobile.png');
 });
 
 test('TBC return verifies the bank once and activates the subscription', async ({ page }) => {

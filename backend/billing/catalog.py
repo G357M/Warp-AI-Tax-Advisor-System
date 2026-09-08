@@ -26,7 +26,15 @@ class PlanDefinition:
         return payload
 
 
-PLAN_CATALOG_VERSION = "2026-09-07"
+PLAN_CATALOG_VERSION = "2026-09-08"
+LEGAL_TERMS_VERSION = "2026-09-08"
+LEGAL_URLS = {
+    "terms": "/legal/terms",
+    "refunds": "/legal/refunds",
+    "privacy": "/legal/privacy",
+    "delivery": "/legal/delivery",
+    "contact": "/legal/contact",
+}
 
 PLAN_CATALOG: dict[str, PlanDefinition] = {
     "free": PlanDefinition(
@@ -42,13 +50,14 @@ PLAN_CATALOG: dict[str, PlanDefinition] = {
             "precise_sources",
             "no_chat_history",
         ),
+        pricing_preliminary=False,
     ),
     "pro": PlanDefinition(
         id="pro",
         name="Pro",
         price_minor=4_900,
         currency="GEL",
-        billing_period="month",
+        billing_period="30_days",
         daily_questions=None,
         history_enabled=True,
         feature_codes=(
@@ -58,13 +67,14 @@ PLAN_CATALOG: dict[str, PlanDefinition] = {
             "law_change_timeline",
         ),
         highlighted=True,
+        pricing_preliminary=False,
     ),
     "business": PlanDefinition(
         id="business",
         name="Business",
         price_minor=14_900,
         currency="GEL",
-        billing_period="month",
+        billing_period="30_days",
         daily_questions=None,
         history_enabled=True,
         feature_codes=(
@@ -72,6 +82,7 @@ PLAN_CATALOG: dict[str, PlanDefinition] = {
             "company_invoice",
             "priority_support",
         ),
+        pricing_preliminary=False,
     ),
 }
 
@@ -89,6 +100,8 @@ def get_plan(plan_id: str) -> PlanDefinition:
 def public_catalog() -> dict:
     return {
         "version": PLAN_CATALOG_VERSION,
+        "terms_version": LEGAL_TERMS_VERSION,
+        "legal_urls": LEGAL_URLS,
         "currency_minor_unit": 2,
         "plans": [plan.public_dict() for plan in PLAN_CATALOG.values()],
     }

@@ -19,7 +19,7 @@ LEGACY_CHECKOUT_ID = UUID("20000000-0000-0000-0000-000000000001")
 
 
 def test_additive_billing_provider_schema_is_idempotent_and_backfills_money():
-    assert contract_sha256() == "e452a92829e9e3d8aaf5e7c8227d1fd5e477c095ade99856135ca338ffe1baad"
+    assert contract_sha256() == "9ea51e942ab67aaf8d215b26df554d40c088b0f4a50d41026ea3622c33559bee"
     with engine.begin() as connection:
         connection.execute(text("DROP TABLE IF EXISTS billing_provider_events CASCADE"))
         connection.execute(text("DROP TABLE IF EXISTS billing_checkouts CASCADE"))
