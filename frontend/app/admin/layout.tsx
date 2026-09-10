@@ -4,250 +4,80 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { authFetch } from '@/lib/auth';
-import { motion } from 'framer-motion';
+import { useT } from '@/lib/i18n';
+import { reconciliationCopy } from '@/lib/billing-reconciliation';
 import {
-  DashboardIcon,
-  FileTextIcon,
-  PersonIcon,
-  ActivityLogIcon,
-  BarChartIcon,
-  ChatBubbleIcon,
-  GearIcon,
-  ExitIcon,
+  DashboardIcon, FileTextIcon, PersonIcon, ActivityLogIcon,
+  BarChartIcon, ChatBubbleIcon, GearIcon, ExitIcon, HamburgerMenuIcon,
 } from '@radix-ui/react-icons';
+import styles from './admin.module.css';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: DashboardIcon },
   { name: 'Documents', href: '/admin/documents', icon: FileTextIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChartIcon },
   { name: 'Users', href: '/admin/users', icon: PersonIcon },
+  { name: 'Payments', href: '/admin/billing', icon: FileTextIcon },
   { name: 'Feedback', href: '/admin/feedback', icon: ChatBubbleIcon },
   { name: 'Scraper', href: '/admin/scraper', icon: ActivityLogIcon },
   { name: 'Settings', href: '/admin/settings', icon: GearIcon },
 ];
 
+const copy = {
+  ru: { menu: 'Меню администратора', checking: 'Проверяем доступ…', admin: 'Администрирование', back: 'На сайт' },
+  ka: { menu: 'ადმინისტრატორის მენიუ', checking: 'წვდომა მოწმდება…', admin: 'ადმინისტრირება', back: 'საიტზე დაბრუნება' },
+  en: { menu: 'Administrator menu', checking: 'Checking access…', admin: 'Administration', back: 'Back to site' },
+};
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  const { lang } = useT();
+  const c = copy[lang];
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const [admin, setAdmin] = useState<{ username: string } | null>(null);
+  const menuOpen = openPath === pathname;
 
   useEffect(() => {
-    authFetch('/api/v1/auth/me')
+    const controller = new AbortController();
+    authFetch('/api/v1/auth/me', { signal: controller.signal, cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((me) => {
-        if (me.role === 'admin') setAllowed(true);
+        if (controller.signal.aborted) return;
+        if (me.role === 'admin') setAdmin({ username: me.username });
         else router.replace('/login');
       })
-      .catch(() => router.replace('/login'));
+      .catch(() => { if (!controller.signal.aborted) router.replace('/login'); });
+    return () => controller.abort();
   }, [router]);
 
-  if (!allowed) {
-    return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'rgba(255,255,255,0.6)' }}>
-        Проверяю доступ…
-      </div>
-    );
-  }
+  if (!admin) return <div className={styles.checking} role="status">{c.checking}</div>;
 
-  return (
-    <div style={{ display: 'flex', height: '100vh', background: '#0f172a', color: 'white' }}>
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -280 }}
-        animate={{ x: sidebarOpen ? 0 : -280 }}
-        style={{
-          width: '280px',
-          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-          borderRight: '1px solid rgba(255,255,255,0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'fixed',
-          height: '100vh',
-          zIndex: 100,
-        }}
-      >
-        {/* Logo */}
-        <div
-          style={{
-            padding: '1.5rem',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-          }}
-        >
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
-            Tax Advisor
-          </h1>
-          <p style={{ fontSize: '0.875rem', opacity: 0.7, margin: '0.25rem 0 0 0' }}>
-            Админпанель
-          </p>
-        </div>
-
-        {/* Navigation */}
-        <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
+  return <div className={styles.frame}>
+    <header className={styles.header}>
+      <div><strong>Tax Advisor</strong><span>{c.admin}</span></div>
+      <span className={styles.username}>{admin.username}</span>
+      <button type="button" className={styles.menuButton} aria-expanded={menuOpen} aria-controls="admin-navigation"
+        onClick={() => setOpenPath(menuOpen ? null : pathname)}>
+        <HamburgerMenuIcon aria-hidden="true" />{c.menu}
+      </button>
+    </header>
+    <div className={styles.workspace}>
+      <aside id="admin-navigation" className={styles.sidebar} data-open={menuOpen}>
+        <nav aria-label={c.menu}>
           {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+            const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(`${item.href}/`));
             const Icon = item.icon;
-
-            return (
-              <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
-                <motion.div
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0.5rem',
-                    marginBottom: '0.5rem',
-                    background: isActive
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : 'transparent',
-                    color: 'white',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'transparent';
-                    }
-                  }}
-                >
-                  <Icon style={{ width: '20px', height: '20px' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: isActive ? '600' : '400' }}>
-                    {item.name}
-                  </span>
-                </motion.div>
-              </Link>
-            );
+            return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined}
+              onClick={() => setOpenPath(null)}>
+              <Icon aria-hidden="true" />
+              {item.href === '/admin/billing' ? reconciliationCopy[lang].title : item.name}
+            </Link>;
           })}
         </nav>
-
-        {/* Footer */}
-        <div
-          style={{
-            padding: '1rem',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-          }}
-        >
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                borderRadius: '0.5rem',
-                background: 'transparent',
-                color: 'white',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              <ExitIcon style={{ width: '20px', height: '20px' }} />
-              <span style={{ fontSize: '0.875rem' }}>Back to App</span>
-            </motion.div>
-          </Link>
-        </div>
-      </motion.aside>
-
-      {/* Main Content */}
-      <main
-        style={{
-          marginLeft: sidebarOpen ? '280px' : '0',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'margin-left 0.3s',
-        }}
-      >
-        {/* Top Bar */}
-        <header
-          style={{
-            height: '64px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-            background: 'rgba(30,41,59,0.5)',
-            backdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 2rem',
-            justifyContent: 'space-between',
-          }}
-        >
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              padding: '0.5rem 1rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-            }}
-          >
-            {sidebarOpen ? '←' : '→'} {sidebarOpen ? 'Hide' : 'Show'} Sidebar
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                background: 'rgba(74,222,128,0.1)',
-                borderRadius: '2rem',
-                fontSize: '0.875rem',
-              }}
-            >
-              <div
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#4ade80',
-                }}
-              />
-              <span style={{ color: '#4ade80' }}>System Online</span>
-            </div>
-
-            <div
-              style={{
-                padding: '0.5rem 1rem',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-              }}
-            >
-              Admin User
-            </div>
-          </div>
-        </header>
-
-        {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '2rem',
-          }}
-        >
-          {children}
-        </div>
-      </main>
+        <Link href="/" className={styles.back}><ExitIcon aria-hidden="true" />{c.back}</Link>
+      </aside>
+      <main className={styles.content}>{children}</main>
     </div>
-  );
+  </div>;
 }

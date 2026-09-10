@@ -52,6 +52,7 @@ jobs:
           scripts/admit_legal_temporal_review.py
           scripts/add_auth_recovery.py
           scripts/add_billing_provider_foundation.py
+          scripts/add_billing_review_journal.py
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
           scripts/audit_legal_answer_coverage.py
@@ -162,6 +163,9 @@ jobs:
       - name: Validate billing provider schema plan
         run: python scripts/add_billing_provider_foundation.py
 
+      - name: Validate billing review journal schema plan
+        run: python scripts/add_billing_review_journal.py
+
       - name: Validate read-only decision-facts quality plan
         run: python scripts/evaluate_decision_facts_quality.py
 
@@ -236,6 +240,7 @@ jobs:
           tests/test_legal_temporal_backfill_postgres.py
           tests/test_legal_temporal_review_admission_postgres.py
           tests/test_billing_provider_postgres.py
+          tests/test_billing_review_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
       - name: Audit temporal foundation after backfill integration
