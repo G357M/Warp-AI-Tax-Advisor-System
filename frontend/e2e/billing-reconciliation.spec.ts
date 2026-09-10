@@ -140,7 +140,7 @@ test('billing: Georgian mobile review note and journal are usable without bank',
   await expect(page.getByRole('combobox').locator('option')).toHaveCount(1);
   await page.getByLabel('დასაბუთება და შემოწმებული ინფორმაცია', { exact: true }).fill('ბანკის მონაცემები დამატებით შემოწმებას საჭიროებს.');
   await page.getByRole('button', { name: 'ჟურნალის ჩატვირთვა', exact: true }).click();
-  await page.locator('details').last().locator('summary').click();
+  await page.getByRole('list', { name: 'გადაწყვეტილებების ჟურნალი', exact: true }).locator('summary').click();
   await expect(page.getByText('ოპერატორის ID', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   await capture(page, 'decision-mobile.png');
