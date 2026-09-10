@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -147,3 +148,27 @@ class BillingProviderEvent(Base):
     processed_at = Column(DateTime, nullable=True)
 
     checkout = relationship("BillingCheckout")
+
+
+class BillingReviewDecision(Base):
+    """Operator attribution and immutable before/after evidence, never bank secrets."""
+
+    __tablename__ = "billing_review_decisions"
+    __table_args__ = (
+        UniqueConstraint("checkout_id", "idempotency_key", name="uq_billing_review_key"),
+        Index("ix_billing_review_checkout_created", "checkout_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    checkout_id = Column(UUID(as_uuid=True), ForeignKey("billing_checkouts.id", ondelete="RESTRICT"), nullable=False)
+    # Snapshot identity survives account renaming/removal; no email/name retained.
+    actor_id = Column(UUID(as_uuid=True), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_sha256 = Column(String(64), nullable=False)
+    action = Column(String(32), nullable=False)
+    reason = Column(Text, nullable=False)
+    access_effect = Column(String(32), nullable=False)
+    before = Column(JSON, nullable=False)
+    after = Column(JSON, nullable=False)
+    provider_evidence = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

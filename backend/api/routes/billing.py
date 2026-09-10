@@ -8,8 +8,9 @@ from datetime import timedelta
 from typing import Literal, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -26,12 +27,13 @@ from billing.gateway import (
     get_gateway,
     payment_methods,
 )
+from billing.review import allowed_actions, assert_reviewable, decision_payload, digest, snapshot
 from core.config import settings
 from core.database import get_db
 from core.plans import get_active_plan
 from core.security import get_current_user, require_admin
 from core.time_utils import utc_now
-from models import BillingCheckout, BillingProviderEvent, Payment, Subscription, User
+from models import BillingCheckout, BillingProviderEvent, BillingReviewDecision, Payment, Subscription, User
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
@@ -64,6 +66,16 @@ class ActivateRequest(BaseModel):
         if self.checkout_id is None and (not self.email or not self.plan):
             raise ValueError("checkout_id or both email and plan are required")
         return self
+
+
+class ReviewDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    action: Literal["keep_review", "confirm_payment", "confirm_no_charge"]
+    reason: str = Field(min_length=10, max_length=2000)
+    expected_state_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    expected_provider_sha256: Optional[str] = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    expected_access_effect: Literal["unchanged", "grant_period"]
 
 
 def _checkout_payload(row: BillingCheckout) -> dict:
@@ -165,6 +177,225 @@ def _stored_payment_method(checkout: BillingCheckout) -> dict:
 def billing_catalog():
     """Public, non-secret catalog used by pricing and the client cabinet."""
     return {**public_catalog(), "payment_methods": payment_methods()}
+
+
+def _reconciliation_payload(row: BillingCheckout) -> dict:
+    """Minimal operator evidence; no email, bank redirect or raw payload."""
+    reason = None
+    if row.status in {"provider_unknown", "provider_review"}:
+        reason = row.status
+    elif (
+        row.provider == "tbc" and row.status in {"pending", "expired"}
+        and not row.settled_payment_id and row.expires_at < utc_now()
+        and row.provider_status not in {"Failed", "Expired"}
+    ):
+        reason = "payment_verification_overdue"
+    return {
+        "id": str(row.id),
+        "user_id": str(row.user_id),
+        "plan": row.plan,
+        "amount_minor": row.amount_minor,
+        "currency": row.currency,
+        "provider": row.provider,
+        "provider_order_id": row.provider_order_id,
+        "status": row.status,
+        "provider_status": row.provider_status,
+        "reason": reason,
+        "settled_payment_id": str(row.settled_payment_id) if row.settled_payment_id else None,
+        "created_at": row.created_at.isoformat(),
+        "updated_at": row.updated_at.isoformat(),
+        "expires_at": row.expires_at.isoformat(),
+        "provider_checked_at": (
+            row.provider_checked_at.isoformat() if row.provider_checked_at else None
+        ),
+    }
+
+
+@router.get("/admin/reconciliation")
+def reconciliation_queue(
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=100_000),
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Read-only worklist, including orders whose final callback never arrived."""
+    del admin
+    rows = (
+        db.query(BillingCheckout)
+        .filter(or_(
+            BillingCheckout.status.in_(("provider_unknown", "provider_review")),
+            and_(
+                BillingCheckout.provider == "tbc",
+                BillingCheckout.status.in_(("pending", "expired")),
+                BillingCheckout.settled_payment_id.is_(None),
+                BillingCheckout.expires_at < utc_now(),
+                or_(
+                    BillingCheckout.provider_status.is_(None),
+                    BillingCheckout.provider_status.notin_(("Failed", "Expired")),
+                ),
+            ),
+        ))
+        .order_by(BillingCheckout.created_at.asc(), BillingCheckout.id.asc())
+        .offset(offset)
+        .limit(limit + 1)
+        .all()
+    )
+    return {
+        "items": [_reconciliation_payload(row) for row in rows[:limit]],
+        "next_offset": offset + limit if len(rows) > limit else None,
+    }
+
+
+@router.get("/admin/reconciliation/{checkout_id}")
+def reconciliation_detail(
+    checkout_id: UUID,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Bounded verified-event history; reading it never calls a bank or settles."""
+    del admin
+    checkout = db.get(BillingCheckout, checkout_id)
+    if not checkout:
+        raise HTTPException(status_code=404, detail="Checkout not found")
+    events = (
+        db.query(BillingProviderEvent)
+        .filter_by(checkout_id=checkout_id)
+        .order_by(BillingProviderEvent.created_at.desc(), BillingProviderEvent.id.desc())
+        .limit(51)
+        .all()
+    )
+    return {
+        "checkout": _reconciliation_payload(checkout),
+        "events": [
+            {
+                "id": str(event.id),
+                "provider_status": event.provider_status,
+                "payload_sha256": event.payload_sha256,
+                "processing_status": event.processing_status,
+                "error_code": event.error_code,
+                "created_at": event.created_at.isoformat(),
+                "processed_at": (
+                    event.processed_at.isoformat() if event.processed_at else None
+                ),
+            }
+            for event in events[:50]
+        ],
+        "events_truncated": len(events) > 50,
+    }
+
+
+def _review_checkout(db: Session, checkout_id: UUID) -> BillingCheckout:
+    checkout = db.query(BillingCheckout).filter_by(id=checkout_id).populate_existing().with_for_update().first()
+    if not checkout:
+        raise HTTPException(404, "Checkout not found")
+    # Same lock order as callback settlement, including first subscription creation.
+    db.query(User).filter_by(id=checkout.user_id).with_for_update().one()
+    return checkout
+
+
+def _review_bank_evidence(checkout: BillingCheckout) -> dict:
+    if checkout.provider != "tbc" or not checkout.provider_order_id:
+        raise HTTPException(409, "No verifiable bank order is recorded.")
+    try:
+        payment = _available_gateway("tbc").get_payment(checkout.provider_order_id)
+    except (GatewayUnavailable, ProviderRequestError) as exc:
+        raise HTTPException(503, "Bank verification is unavailable. No decision was recorded.") from exc
+    return {
+        "provider_order_id": payment.provider_order_id, "status": payment.status,
+        "amount_minor": payment.amount_minor, "currency": payment.currency,
+    }
+
+
+@router.get("/admin/reconciliation/{checkout_id}/decisions")
+def review_history(
+    checkout_id: UUID, limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=100_000),
+    admin: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    del admin
+    if not db.get(BillingCheckout, checkout_id):
+        raise HTTPException(404, "Checkout not found")
+    rows = db.query(BillingReviewDecision).filter_by(checkout_id=checkout_id).order_by(
+        BillingReviewDecision.created_at.desc(), BillingReviewDecision.id.desc(),
+    ).offset(offset).limit(limit + 1).all()
+    return {"items": [decision_payload(row) for row in rows[:limit]],
+            "next_offset": offset + limit if len(rows) > limit else None}
+
+
+@router.post("/admin/reconciliation/{checkout_id}/preview")
+def review_preview(
+    checkout_id: UUID, verify_provider: bool = Query(default=False),
+    admin: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    del admin
+    checkout = _review_checkout(db, checkout_id)
+    assert_reviewable(checkout)
+    evidence = _review_bank_evidence(checkout) if verify_provider else None
+    state = snapshot(db, checkout)
+    return {
+        "state_sha256": digest(state), "provider_sha256": digest(evidence) if evidence else None,
+        "provider_evidence": evidence, "before": state,
+        "actions": allowed_actions(db, checkout, evidence),
+    }
+
+
+@router.post("/admin/reconciliation/{checkout_id}/decisions")
+def record_review_decision(
+    checkout_id: UUID, body: ReviewDecisionRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key"),
+    admin: User = Depends(require_admin), db: Session = Depends(get_db),
+):
+    if not IDEMPOTENCY_KEY_RE.fullmatch(idempotency_key):
+        raise HTTPException(422, "Invalid Idempotency-Key")
+    checkout = _review_checkout(db, checkout_id)
+    request_hash = digest(body.model_dump())
+    existing = db.query(BillingReviewDecision).filter_by(
+        checkout_id=checkout_id, idempotency_key=idempotency_key,
+    ).first()
+    if existing:
+        if existing.actor_id != admin.id or existing.request_sha256 != request_hash:
+            raise HTTPException(409, "Idempotency key is already bound to another decision.")
+        return {"decision": decision_payload(existing), "replayed": True}
+    assert_reviewable(checkout)
+    before = snapshot(db, checkout)
+    if digest(before) != body.expected_state_sha256:
+        raise HTTPException(409, "Recorded evidence changed. Prepare a new preview.")
+    evidence = None
+    if body.action != "keep_review":
+        evidence = _review_bank_evidence(checkout)
+        if digest(evidence) != body.expected_provider_sha256:
+            raise HTTPException(409, "Bank evidence changed. Prepare a new preview.")
+    effect = allowed_actions(db, checkout, evidence).get(body.action)
+    if effect is None or effect != body.expected_access_effect:
+        raise HTTPException(409, "This decision or access effect is not supported by the evidence.")
+    now = utc_now()
+    if body.action == "keep_review":
+        checkout.status = "provider_review"
+    else:
+        checkout.provider_status = evidence["status"]
+        checkout.provider_checked_at = now
+        if body.action == "confirm_payment":
+            if effect == "grant_period":
+                _settle_checkout(db, db.get(User, checkout.user_id), checkout, "tbc", checkout.provider_order_id)
+            else:
+                checkout.status = "paid"
+        else:
+            checkout.status = "failed" if evidence["status"] == "Failed" else "expired"
+    checkout.updated_at = now
+    try:
+        db.flush()
+        decision = BillingReviewDecision(
+            checkout_id=checkout.id, actor_id=admin.id, idempotency_key=idempotency_key,
+            request_sha256=request_hash, action=body.action, reason=body.reason,
+            access_effect=effect, before=before, after=snapshot(db, checkout),
+            provider_evidence=evidence,
+        )
+        db.add(decision)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Concurrent settlement conflict. Reload the evidence.") from exc
+    return {"decision": decision_payload(decision), "replayed": False}
 
 
 @router.get("/subscription")
@@ -465,6 +696,16 @@ def _reconcile_tbc_payment(
                 "replayed": False,
                 "checkout": _checkout_payload(checkout),
             }
+        if checkout.settled_payment_id and payment.status != "Succeeded":
+            checkout.status = "provider_review"
+            existing_event.processing_status = "review"
+            existing_event.error_code = "settled_payment_state_conflict"
+            existing_event.processed_at = now
+        elif checkout.status == "paid" and not checkout.settled_payment_id:
+            checkout.status = "provider_review"
+            existing_event.processing_status = "error"
+            existing_event.error_code = "settlement_record_missing"
+            existing_event.processed_at = now
         db.commit()
         return {
             "accepted": True,
@@ -494,21 +735,34 @@ def _reconcile_tbc_payment(
         checkout.status = "provider_review"
         event.processing_status = "error"
         event.error_code = "currency_mismatch"
-    elif payment.status == "Succeeded":
-        if checkout.status == "paid" and checkout.settled_payment_id:
+    elif checkout.status == "provider_review":
+        # A later observation must not erase an unresolved conflict or refund.
+        # Only a separately audited operator decision can release this hold.
+        event.processing_status = "review"
+        event.error_code = "checkout_requires_review"
+    elif checkout.settled_payment_id:
+        # Settlement identity is durable even if a prior observation changed
+        # the display status. Never create another entitlement for this order.
+        if payment.status == "Succeeded":
+            checkout.status = "paid"
             event.processing_status = "ignored"
-        elif checkout.status == "provider_review":
-            event.processing_status = "review"
-            event.error_code = "checkout_requires_review"
         else:
-            user = db.get(User, checkout.user_id)
-            if not user:
-                checkout.status = "provider_review"
-                event.processing_status = "error"
-                event.error_code = "checkout_user_missing"
-            else:
-                _settle_checkout(db, user, checkout, "tbc", payment.provider_order_id)
-                event.processing_status = "applied"
+            checkout.status = "provider_review"
+            event.processing_status = "review"
+            event.error_code = "settled_payment_state_conflict"
+    elif checkout.status == "paid":
+        checkout.status = "provider_review"
+        event.processing_status = "error"
+        event.error_code = "settlement_record_missing"
+    elif payment.status == "Succeeded":
+        user = db.get(User, checkout.user_id)
+        if not user:
+            checkout.status = "provider_review"
+            event.processing_status = "error"
+            event.error_code = "checkout_user_missing"
+        else:
+            _settle_checkout(db, user, checkout, "tbc", payment.provider_order_id)
+            event.processing_status = "applied"
     elif payment.status == "Failed":
         checkout.status = "failed"
         event.processing_status = "applied"

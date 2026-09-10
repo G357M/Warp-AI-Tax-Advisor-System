@@ -3,7 +3,7 @@
 from datetime import timedelta
 from types import ModuleType, SimpleNamespace
 import sys
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -52,6 +52,7 @@ from models import (
     AuthActionToken,
     BillingCheckout,
     BillingProviderEvent,
+    BillingReviewDecision,
     Conversation,
     Message,
     Payment,
@@ -106,6 +107,7 @@ TEST_TABLES = [
     Payment.__table__,
     BillingCheckout.__table__,
     BillingProviderEvent.__table__,
+    BillingReviewDecision.__table__,
 ]
 
 
@@ -625,3 +627,491 @@ def test_recovery_reports_unavailable_when_email_delivery_is_disabled(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Account email delivery is not configured."
+
+
+@pytest.fixture()
+def online_checkout(client, monkeypatch):
+    """Real checkout/DB flow with only the authenticated bank boundary replaced."""
+    from billing.gateway import ProviderPayment, ProviderRequestError
+
+    class Bank:
+        status = "Created"
+        unavailable = False
+        calls = 0
+
+        def create_checkout(self, checkout, _user, _plan, _language):
+            self.order_id = f"test-{checkout.id}"
+            return {
+                "provider": "tbc", "method_id": "tbc_checkout", "status": "available",
+                "instruction_code": "redirect_to_bank", "contact_email": None,
+                "redirect_url": f"https://tpay.tbcbank.ge/checkout/{self.order_id}",
+                "provider_order_id": self.order_id, "provider_status": "Created",
+                "expires_in_minutes": 12,
+            }
+
+        def get_payment(self, order_id):
+            self.calls += 1
+            assert order_id == self.order_id
+            if self.unavailable:
+                raise ProviderRequestError("test_provider_unavailable")
+            return ProviderPayment(order_id, self.status, 4900, "GEL")
+
+    bank = Bank()
+    real_gateway = billing.get_gateway
+    monkeypatch.setattr(
+        billing, "get_gateway",
+        lambda provider="manual": bank if provider == "tbc" else real_gateway(provider),
+    )
+    username = f"bank-{uuid4().hex[:12]}"
+    register_and_login(client, username)
+    response = client.post(
+        "/api/v1/billing/checkout", headers={"Idempotency-Key": uuid4().hex},
+        json={"plan": "pro", "provider": "tbc", **CHECKOUT_CONSENT},
+    )
+    assert response.status_code == 200
+    checkout_id = response.json()["checkout"]["id"]
+    return SimpleNamespace(bank=bank, id=checkout_id, username=username)
+
+
+def _bank_callback(client, checkout, status):
+    checkout.bank.status = status
+    response = client.post(
+        "/api/v1/billing/providers/tbc/callback",
+        json={"PaymentId": checkout.bank.order_id},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def _make_current_user_admin(username):
+    with TestingSessionLocal() as db:
+        db.query(User).filter_by(username=username).one().role = "admin"
+        db.commit()
+
+
+@pytest.mark.parametrize("held_status", ["Returned", "PartialReturned", "WaitingConfirm"])
+@pytest.mark.parametrize("later_status", ["Created", "Processing", "Failed", "Expired", "Succeeded"])
+def test_payment_review_survives_later_bank_states(client, online_checkout, held_status, later_status):
+    checkout = online_checkout
+    assert _bank_callback(client, checkout, held_status)["checkout"]["status"] == "provider_review"
+    assert _bank_callback(client, checkout, later_status)["checkout"]["status"] == "provider_review"
+    # A success following an intermediate callback must not bypass the hold.
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "provider_review"
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        assert row.settled_payment_id is None
+        assert db.query(Subscription).filter_by(user_id=row.user_id).count() == 0
+        assert db.query(Payment).filter_by(provider_tx_id=checkout.bank.order_id).count() == 0
+
+
+@pytest.mark.parametrize("later_status", ["Processing", "Failed", "Expired", "Returned", "PartialReturned"])
+def test_settled_order_conflicts_preserve_payment_and_access(client, online_checkout, later_status):
+    checkout = online_checkout
+    # Observe a state before settlement too: replay protection must not hide a
+    # conflicting reappearance of that state after the payment is settled.
+    if later_status == "Processing":
+        _bank_callback(client, checkout, "Processing")
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "paid"
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        payment_id = row.settled_payment_id
+        period_end = db.query(Subscription).filter_by(user_id=row.user_id).one().period_end
+    assert _bank_callback(client, checkout, later_status)["checkout"]["status"] == "provider_review"
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "provider_review"
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        assert row.settled_payment_id == payment_id
+        sub = db.query(Subscription).filter_by(user_id=row.user_id).one()
+        assert sub.period_end == period_end
+        assert sub.status == "active"
+        assert db.query(Payment).filter_by(provider_tx_id=checkout.bank.order_id).count() == 1
+
+
+def test_delayed_success_after_local_expiry_still_settles_once(client, online_checkout):
+    checkout = online_checkout
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        row.expires_at = utc_now() - timedelta(minutes=5)
+        row.status = "expired"
+        db.commit()
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "paid"
+    assert _bank_callback(client, checkout, "Succeeded")["replayed"] is True
+    with TestingSessionLocal() as db:
+        assert db.query(Payment).filter_by(provider_tx_id=checkout.bank.order_id).count() == 1
+
+
+def test_bank_outage_and_foreign_refresh_do_not_change_checkout(client, online_checkout):
+    checkout = online_checkout
+    checkout.bank.unavailable = True
+    with TestingSessionLocal() as db:
+        original_check = db.get(BillingCheckout, UUID(checkout.id)).provider_checked_at
+    response = client.post(f"/api/v1/billing/checkout/{checkout.id}/refresh")
+    assert response.status_code == 503
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        assert row.status == "pending"
+        assert row.provider_checked_at == original_check
+        assert db.query(BillingProviderEvent).filter_by(checkout_id=row.id).count() == 0
+    register_and_login(client, f"other-{uuid4().hex[:12]}")
+    calls = checkout.bank.calls
+    assert client.post(f"/api/v1/billing/checkout/{checkout.id}/refresh").status_code == 404
+    assert checkout.bank.calls == calls
+    assert client.post(
+        "/api/v1/billing/providers/tbc/callback", json={"PaymentId": "unknown-order"},
+    ).status_code == 200
+    assert checkout.bank.calls == calls
+
+
+def test_reconciliation_requires_admin_and_does_not_contact_bank(client, online_checkout):
+    checkout = online_checkout
+    detail_url = f"/api/v1/billing/admin/reconciliation/{checkout.id}"
+    for url in ("/api/v1/billing/admin/reconciliation", detail_url):
+        assert client.get(url).status_code == 403
+    _make_current_user_admin(checkout.username)
+    checkout.bank.unavailable = True
+    assert client.get("/api/v1/billing/admin/reconciliation").status_code == 200
+    detail = client.get(detail_url)
+    assert detail.status_code == 200
+    assert detail.json()["checkout"]["reason"] is None
+    assert detail.json()["events"] == []
+    assert checkout.bank.calls == 0
+    assert client.get(f"/api/v1/billing/admin/reconciliation/{uuid4()}").status_code == 404
+    for query in ("limit=0", "limit=101", "offset=-1", "offset=100001"):
+        assert client.get(f"/api/v1/billing/admin/reconciliation?{query}").status_code == 422
+    client.cookies.clear()
+    for url in ("/api/v1/billing/admin/reconciliation", detail_url):
+        assert client.get(url).status_code == 401
+
+
+def test_reconciliation_queue_is_bounded_and_read_only(client, online_checkout):
+    checkout = online_checkout
+    _make_current_user_admin(checkout.username)
+    created_ids = []
+    with TestingSessionLocal() as db:
+        owner = db.get(BillingCheckout, UUID(checkout.id)).user_id
+        for index, (status, provider, provider_status) in enumerate([
+            ("provider_unknown", "tbc", None),
+            ("provider_review", "tbc", "PartialReturned"),
+            ("pending", "tbc", "Created"),
+            ("expired", "tbc", None),
+            ("expired", "tbc", "Expired"),
+            ("pending", "manual", None),
+            ("failed", "tbc", "Failed"),
+        ]):
+            old = utc_now() - timedelta(days=4000, minutes=10-index)
+            row = BillingCheckout(
+                user_id=owner, plan="pro", amount_minor=4900, currency="GEL",
+                provider=provider, status=status, provider_status=provider_status,
+                idempotency_key=uuid4().hex, expires_at=old + timedelta(minutes=1),
+                created_at=old, updated_at=old,
+            )
+            db.add(row)
+            db.flush()
+            created_ids.append(str(row.id))
+        db.commit()
+        before = [(row.id, row.status, row.updated_at) for row in db.query(BillingCheckout).all()]
+        event_count = db.query(BillingProviderEvent).count()
+        payment_count = db.query(Payment).count()
+    first = client.get("/api/v1/billing/admin/reconciliation?limit=2").json()
+    second = client.get(f"/api/v1/billing/admin/reconciliation?limit=2&offset={first['next_offset']}").json()
+    items = first["items"] + second["items"]
+    assert [item["id"] for item in items] == created_ids[:4]
+    assert [item["reason"] for item in items] == [
+        "provider_unknown", "provider_review", "payment_verification_overdue", "payment_verification_overdue",
+    ]
+    for item in items:
+        assert "provider_redirect_url" not in item
+        assert "email" not in item
+        assert "terms_accepted_at" not in item
+    assert client.get("/api/v1/billing/admin/reconciliation?offset=100000").json() == {
+        "items": [], "next_offset": None,
+    }
+    with TestingSessionLocal() as db:
+        assert [(row.id, row.status, row.updated_at) for row in db.query(BillingCheckout).all()] == before
+        assert db.query(BillingProviderEvent).count() == event_count
+        assert db.query(Payment).count() == payment_count
+    assert checkout.bank.calls == 0
+
+
+def test_reconciliation_detail_exposes_bounded_conflict_evidence(client, online_checkout):
+    checkout = online_checkout
+    _bank_callback(client, checkout, "PartialReturned")
+    _bank_callback(client, checkout, "Processing")
+    _make_current_user_admin(checkout.username)
+    with TestingSessionLocal() as db:
+        for index in range(51):
+            db.add(BillingProviderEvent(
+                checkout_id=UUID(checkout.id), provider="tbc",
+                event_id=f"{checkout.id}:evidence-{index}", provider_status="PartialReturned",
+                payload_sha256="a" * 64, processing_status="review",
+                error_code="provider_state_requires_review",
+                created_at=utc_now() - timedelta(days=1, minutes=index),
+            ))
+        db.commit()
+    calls = checkout.bank.calls
+    response = client.get(f"/api/v1/billing/admin/reconciliation/{checkout.id}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["checkout"]["reason"] == "provider_review"
+    assert payload["events_truncated"] is True
+    assert len(payload["events"]) == 50
+    assert payload["events"][0]["error_code"] == "checkout_requires_review"
+    assert all(len(event["payload_sha256"]) == 64 for event in payload["events"])
+    assert all("raw_webhook" not in event for event in payload["events"])
+    assert checkout.bank.calls == calls
+
+
+def test_paid_pro_access_and_sources_survive_password_recovery(client, online_checkout, monkeypatch):
+    checkout = online_checkout
+    assert client.get("/api/v1/query/conversations").status_code == 402
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "paid"
+    assert client.get("/api/v1/billing/subscription").json()["plan"] == "pro"
+    monkeypatch.setattr(
+        query_routes.rag_pipeline, "process_query",
+        lambda **_kwargs: {
+            "response": "Test answer with Article 166 source.",
+            "sources": [{
+                "document_id": None, "title": "Tax Code of Georgia",
+                "document_type": "law", "url": "https://matsne.gov.ge/",
+                "relevance": 0.99, "article_ref": "166",
+            }],
+            "retrieved_count": 1,
+        },
+    )
+    answer = client.post("/api/v1/query", json={"query": "VAT rate", "language": "en"})
+    assert answer.status_code == 200
+    conversation_id = answer.json()["conversation_id"]
+    before_recovery = client.get(f"/api/v1/query/conversations/{conversation_id}")
+    assert before_recovery.status_code == 200
+    sources = before_recovery.json()["messages"][1]["sources"]
+    assert sources[0]["url"] == answer.json()["sources"][0]["url"]
+    assert sources[0]["article_ref"] == answer.json()["sources"][0]["article_ref"]
+    sent = []
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    monkeypatch.setattr(auth, "send_auth_email", lambda *args: sent.append(args))
+    recovery = client.post(
+        "/api/v1/auth/forgot-password", json={"email": f"{checkout.username}@example.com"},
+    )
+    assert recovery.status_code == 200
+    assert len(sent) == 1
+    assert client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": sent[0][2], "new_password": "recovered-safe-password-456"},
+    ).status_code == 200
+    assert client.get("/api/v1/billing/subscription").status_code == 401
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": checkout.username, "password": "recovered-safe-password-456"},
+    ).status_code == 200
+    assert client.get("/api/v1/billing/subscription").json()["plan"] == "pro"
+    history = client.get(f"/api/v1/query/conversations/{conversation_id}")
+    assert history.status_code == 200
+    assert history.json()["messages"][1]["sources"] == sources
+    assert _bank_callback(client, checkout, "Succeeded")["replayed"] is True
+
+
+def _review_preview(client, checkout, verify=True):
+    response = client.post(f"/api/v1/billing/admin/reconciliation/{checkout.id}/preview", params={"verify_provider": verify})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _review_body(preview, action="keep_review"):
+    return {"action": action, "reason": "Compared the order with verified evidence.",
+            "expected_state_sha256": preview["state_sha256"],
+            "expected_provider_sha256": preview["provider_sha256"],
+            "expected_access_effect": preview["actions"].get(action, "unchanged")}
+
+
+def _review_apply(client, checkout, body, key=None):
+    return client.post(f"/api/v1/billing/admin/reconciliation/{checkout.id}/decisions",
+                       json=body, headers={"Idempotency-Key": key or uuid4().hex})
+
+
+@pytest.fixture
+def review_checkout(client, online_checkout):
+    _bank_callback(client, online_checkout, "WaitingConfirm")
+    _make_current_user_admin(online_checkout.username)
+    return online_checkout
+
+
+def test_operator_hold_works_offline_and_records_attribution(client, review_checkout):
+    checkout = review_checkout
+    checkout.bank.unavailable = True
+    calls = checkout.bank.calls
+    preview = _review_preview(client, checkout, False)
+    assert preview["actions"] == {"keep_review": "unchanged"}
+    response = _review_apply(client, checkout, _review_body(preview))
+    assert response.status_code == 200
+    decision = response.json()["decision"]
+    assert decision["provider_evidence"] is None
+    assert decision["before"]["subscription"] == decision["after"]["subscription"] is None
+    with TestingSessionLocal() as db:
+        assert decision["actor_id"] == str(db.query(User).filter_by(username=checkout.username).one().id)
+    history = client.get(f"/api/v1/billing/admin/reconciliation/{checkout.id}/decisions").json()
+    assert history["items"] == [decision]
+    assert history["next_offset"] is None
+    assert checkout.bank.calls == calls
+
+
+def test_operator_success_grants_once_and_replays_without_bank(client, review_checkout):
+    checkout = review_checkout
+    checkout.bank.status = "Succeeded"
+    preview = _review_preview(client, checkout)
+    assert preview["actions"]["confirm_payment"] == "grant_period"
+    body, key = _review_body(preview, "confirm_payment"), uuid4().hex
+    first = _review_apply(client, checkout, body, key)
+    assert first.status_code == 200, first.text
+    decision = first.json()["decision"]
+    assert decision["after"]["checkout"]["status"] == "paid"
+    assert decision["after"]["subscription"]["plan"] == "pro"
+    checkout.bank.unavailable = True
+    second = _review_apply(client, checkout, body, key)
+    assert second.json() == {"decision": decision, "replayed": True}
+    assert _review_apply(client, checkout, {**body, "reason": "A different operator explanation."}, key).status_code == 409
+    checkout.bank.unavailable = False
+    assert _bank_callback(client, checkout, "Succeeded")["checkout"]["status"] == "paid"
+    with TestingSessionLocal() as db:
+        assert db.query(Payment).filter_by(provider_tx_id=checkout.bank.order_id).count() == 1
+        assert db.query(BillingReviewDecision).filter_by(checkout_id=UUID(checkout.id)).count() == 1
+        assert str(db.query(Subscription).filter_by(user_id=UUID(decision["after"]["checkout"]["user_id"])).one().period_end) == decision["after"]["subscription"]["period_end"]
+
+
+def test_operator_releasing_settled_hold_does_not_extend_access(client, online_checkout):
+    checkout = online_checkout
+    _bank_callback(client, checkout, "Succeeded")
+    _bank_callback(client, checkout, "Returned")
+    _make_current_user_admin(checkout.username)
+    checkout.bank.status = "Succeeded"
+    preview = _review_preview(client, checkout)
+    assert preview["actions"]["confirm_payment"] == "unchanged"
+    response = _review_apply(client, checkout, _review_body(preview, "confirm_payment"))
+    assert response.status_code == 200
+    decision = response.json()["decision"]
+    assert decision["before"]["subscription"] == decision["after"]["subscription"]
+    assert decision["before"]["payment"] == decision["after"]["payment"]
+
+
+@pytest.mark.parametrize("status", ["Failed", "Expired"])
+def test_operator_confirms_no_charge_only_without_settlement(client, review_checkout, status):
+    checkout = review_checkout
+    checkout.bank.status = status
+    preview = _review_preview(client, checkout)
+    response = _review_apply(client, checkout, _review_body(preview, "confirm_no_charge"))
+    assert response.status_code == 200
+    assert response.json()["decision"]["after"]["checkout"]["status"] == status.lower()
+    assert response.json()["decision"]["after"]["subscription"] is None
+
+
+@pytest.mark.parametrize("status", ["Returned", "PartialReturned", "WaitingConfirm", "Processing"])
+def test_operator_cannot_resolve_unsettled_or_refunded_bank_states(client, review_checkout, status):
+    checkout = review_checkout
+    checkout.bank.status = status
+    preview = _review_preview(client, checkout)
+    assert preview["actions"] == {"keep_review": "unchanged"}
+    assert _review_apply(client, checkout, _review_body(preview, "confirm_payment")).status_code == 409
+
+
+@pytest.mark.parametrize("changed", ["checkout", "events", "bank", "access_effect"])
+def test_operator_stale_or_changed_evidence_is_atomic(client, review_checkout, changed):
+    checkout = review_checkout
+    checkout.bank.status = "Succeeded"
+    preview = _review_preview(client, checkout)
+    body = _review_body(preview, "confirm_payment")
+    if changed == "bank":
+        checkout.bank.status = "Failed"
+    elif changed == "access_effect":
+        body["expected_access_effect"] = "unchanged"
+    else:
+        with TestingSessionLocal() as db:
+            if changed == "checkout":
+                db.get(BillingCheckout, UUID(checkout.id)).updated_at = utc_now()
+            else:
+                db.query(BillingProviderEvent).filter_by(checkout_id=UUID(checkout.id)).one().error_code = "new_conflict"
+            db.commit()
+    response = _review_apply(client, checkout, body)
+    assert response.status_code == 409, response.text
+    with TestingSessionLocal() as db:
+        assert db.query(BillingReviewDecision).filter_by(checkout_id=UUID(checkout.id)).count() == 0
+        assert db.query(Payment).filter_by(provider_tx_id=checkout.bank.order_id).count() == 0
+        assert db.get(BillingCheckout, UUID(checkout.id)).status == "provider_review"
+
+
+def test_operator_bank_failure_does_not_write_decision(client, review_checkout):
+    checkout = review_checkout
+    checkout.bank.status = "Succeeded"
+    body = _review_body(_review_preview(client, checkout), "confirm_payment")
+    checkout.bank.unavailable = True
+    assert _review_apply(client, checkout, body).status_code == 503
+    with TestingSessionLocal() as db:
+        assert db.query(BillingReviewDecision).filter_by(checkout_id=UUID(checkout.id)).count() == 0
+
+
+@pytest.mark.parametrize("field,value", [("amount_minor", 4901), ("currency", "USD"), ("provider_order_id", "wrong-order")])
+def test_operator_rejects_mismatched_bank_evidence(client, review_checkout, monkeypatch, field, value):
+    from billing.gateway import ProviderPayment
+    checkout = review_checkout
+    values = {"provider_order_id": checkout.bank.order_id, "status": "Succeeded", "amount_minor": 4900, "currency": "GEL"}
+    values[field] = value
+    monkeypatch.setattr(checkout.bank, "get_payment", lambda _: ProviderPayment(**values))
+    preview = _review_preview(client, checkout)
+    assert preview["actions"] == {"keep_review": "unchanged"}
+    assert _review_apply(client, checkout, _review_body(preview, "confirm_payment")).status_code == 409
+
+
+def test_operator_missing_settlement_reference_cannot_grant_again(client, online_checkout):
+    checkout = online_checkout
+    _bank_callback(client, checkout, "Succeeded")
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        row.status, row.settled_payment_id = "provider_review", None
+        db.commit()
+    _make_current_user_admin(checkout.username)
+    assert _review_preview(client, checkout)["actions"] == {"keep_review": "unchanged"}
+
+
+def test_operator_decisions_require_admin_and_reason(client, online_checkout):
+    checkout = online_checkout
+    root = f"/api/v1/billing/admin/reconciliation/{checkout.id}"
+    assert client.post(root + "/preview").status_code == 403
+    assert client.get(root + "/decisions").status_code == 403
+    _bank_callback(client, checkout, "WaitingConfirm")
+    _make_current_user_admin(checkout.username)
+    body = _review_body(_review_preview(client, checkout, False))
+    assert _review_apply(client, checkout, {**body, "reason": "   "}).status_code == 422
+    with TestingSessionLocal() as db:
+        db.query(User).filter_by(username=checkout.username).one().role = "user"
+        db.commit()
+    assert _review_apply(client, checkout, body).status_code == 403
+
+
+@pytest.mark.parametrize("broken", ["consent", "other_plan", "settled_failed"])
+def test_operator_unsafe_access_changes_stay_held(client, review_checkout, broken):
+    checkout = review_checkout
+    checkout.bank.status = "Succeeded"
+    with TestingSessionLocal() as db:
+        row = db.get(BillingCheckout, UUID(checkout.id))
+        if broken == "consent":
+            row.terms_accepted_at = None
+        elif broken == "other_plan":
+            db.add(Subscription(user_id=row.user_id, plan="business", status="active", period_end=utc_now() + timedelta(days=10)))
+        else:
+            row.status = "pending"
+        db.commit()
+    if broken == "settled_failed":
+        _bank_callback(client, checkout, "Succeeded")
+        _bank_callback(client, checkout, "Returned")
+        checkout.bank.status = "Failed"
+    preview = _review_preview(client, checkout)
+    assert preview["actions"] == {"keep_review": "unchanged"}
+
+
+def test_operator_preview_does_not_mutate_evidence(client, review_checkout):
+    checkout = review_checkout
+    with TestingSessionLocal() as db:
+        before = billing.snapshot(db, db.get(BillingCheckout, UUID(checkout.id)))
+    checkout.bank.status = "Succeeded"
+    _review_preview(client, checkout)
+    with TestingSessionLocal() as db:
+        assert billing.snapshot(db, db.get(BillingCheckout, UUID(checkout.id))) == before
+        assert db.query(BillingReviewDecision).filter_by(checkout_id=UUID(checkout.id)).count() == 0

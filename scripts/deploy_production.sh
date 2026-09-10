@@ -99,6 +99,13 @@ docker compose run --rm --no-deps backend \
         --apply \
         --expected-contract-sha256 "$BILLING_PROVIDER_SCHEMA_CONTRACT_SHA256"
 
+# Preserve operator decisions and install append-only enforcement before runtime.
+BILLING_REVIEW_SCHEMA_CONTRACT_SHA256="51ea189e55a2127a0d13bb0a60233714f6adeba4d8458371ae286d12a3bef610"
+docker compose run --rm --no-deps backend \
+    python scripts/add_billing_review_journal.py \
+        --apply \
+        --expected-contract-sha256 "$BILLING_REVIEW_SCHEMA_CONTRACT_SHA256"
+
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.
 docker compose run --rm --no-deps backend python scripts/add_auth_recovery.py
