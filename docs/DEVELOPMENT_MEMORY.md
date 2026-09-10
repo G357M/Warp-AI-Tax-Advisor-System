@@ -246,6 +246,29 @@ Production approval даётся отдельно после проверки т
 при ошибке public health. При откате приложения нельзя удалять journal или
 затирать новые платежи/решения старой копией БД.
 
+## CI кандидата после разрешения публикации
+
+Пользователь явно разрешил push ветки и создание draft PR. Создан
+[PR #2](https://github.com/G357M/Warp-AI-Tax-Advisor-System/pull/2).
+Первый [CI run 34461548189](https://github.com/G357M/Warp-AI-Tax-Advisor-System/actions/runs/34461548189)
+для `a50509c8a7d2330f777736a4d66dd94c1f3bf7ac` подтвердил backend, PostgreSQL
+и Linux visual regression. Frontend lint/types/build прошли, но dependency
+audit нашёл Next.js 16.3.1 и sharp ниже 0.35.4 с high/critical advisories;
+container job был пропущен из-за этого gate.
+
+Исправление кандидата: точечный переход Next.js и eslint-config-next на
+16.3.4; Next.js требует sharp ^0.35.4. Security gate не ослабляется. Источники:
+[Next.js advisory](https://github.com/advisories/GHSA-2xp9-vwfh-vxw4),
+[sharp advisory](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c).
+Локальный lockfile разрешает sharp 0.35.4; повторный production npm audit
+(`--omit=dev`) показал 0 уязвимостей. Это результат для production-зависимостей,
+не утверждение об отсутствии advisories у всех инструментов разработки.
+На обновлённых зависимостях локально прошли ESLint, TypeScript/production build
+и все 17 критических Chromium-сценариев; backend-код исправлением не изменялся.
+Результаты следующего полного CI и актуальный SHA фиксируются в
+`.state/billing-release/evidence.json`. Разрешение публикации не разрешает
+merge или production deployment.
+
 ## Внешние условия завершения Pro-запуска
 
 - Рабочие GitHub production SSH secrets с pinned host key.
