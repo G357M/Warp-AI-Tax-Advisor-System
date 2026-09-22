@@ -1,0 +1,27 @@
+{
+  "http_status": 200,
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "route": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 1.0,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "dispute_practice": 1.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 708,
+      "output_tokens": 93
+    }
+  },
+  "client_elapsed_seconds": 2.0379366999841295
+}

@@ -1,0 +1,14 @@
+{
+  "prepared_at_utc": "2026-09-21T22:46:32.831725+00:00",
+  "commit": "111ddf0c63699e639fd8f465b549f74f2369bbc9",
+  "case_count": 41,
+  "external_request_cap": 41,
+  "automatic_retries": 0,
+  "cases_sha256": "c70745030adb724eefab2b80acdc6ae13466841872de71b22798b1c3ebd04eaf",
+  "golden_sha256": "482ec3f878fb8ff0e4908b1b4334f3b4c941fa0390d5d5a7539aea6f7e40a41e",
+  "classifier_sha256": "eeee858fbebe6abae5e5dc666dede2667e57a6aac8896337e9495d8a3d9d8e2c",
+  "parser_sha256": "0c96507a85b4e09b48138b4fc6d627c923e9fa8f1554e03a5918a0af0f1148c0",
+  "helper_sha256": "a600369aca09e77f918a2beddc812883ad6200543c5575e088e605699c3d0e04",
+  "baseline_parse_classify_ms_median": 0.1598,
+  "protocol": "Frozen one-pass labels; one query per request; same prompt for all; no prompt tuning after results. New labels are author judgments, not independent expert labels."
+}

@@ -1,0 +1,8 @@
+{
+  "validated_cases": 41,
+  "jev_correct_independent_recount": 41,
+  "frozen_labels_unchanged": true,
+  "project_classifier_and_parser_unchanged": true,
+  "source_golden_set_unchanged": true,
+  "requests_contain_only_synthetic_query_and_language_as_state": true
+}

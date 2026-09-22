@@ -10,7 +10,7 @@ from .legal_reranker import rerank_candidates
 from .context_builder import build_context_plan
 from .source_audit import audit_sources
 from .answer_policy import build_answer_policy
-from .models import ExplainabilityTrace
+from .models import ExplainabilityTrace, QuestionClassification
 
 
 class PipelineV2:
@@ -19,9 +19,10 @@ class PipelineV2:
         query: str,
         language: str = "ru",
         disabled_channels: Iterable[str] | None = None,
+        classification_override: QuestionClassification | None = None,
     ) -> ExplainabilityTrace:
         parsed = parse_query(query, language=language)
-        classification = classify_query(parsed)
+        classification = classification_override or classify_query(parsed)
         routing_profile = self._routing_profile(parsed, classification.question_class)
         requested_disabled = set(disabled_channels or ())
         known_channels = set(routing_profile["enabled_channels"]) | set(

@@ -90,6 +90,8 @@ jobs:
         run: >-
           python -m pytest
           tests/test_config_contract.py
+          tests/test_jev_router.py
+          tests/test_jev_live_integration.py
           tests/test_billing_gateway.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py

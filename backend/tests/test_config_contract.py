@@ -77,6 +77,27 @@ def test_embedding_download_policy_can_be_disabled(monkeypatch):
     assert settings.EMBEDDING_ALLOW_DOWNLOAD is False
 
 
+def test_jev_defaults_are_disabled_with_pinned_model(monkeypatch):
+    _set_required_env(monkeypatch)
+    for name in ("JEV_MODE", "JEV_MODEL", "TYPESAFE_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.JEV_MODE == "off"
+    assert settings.JEV_MODEL == "jev-1.13.0"
+    assert settings.TYPESAFE_API_KEY is None
+
+
+@pytest.mark.parametrize("name,value", [
+    ("JEV_MODE", "on"), ("JEV_MODEL", "jev-latest"),
+    ("JEV_TIMEOUT_SECONDS", "60"), ("JEV_MIN_CONFIDENCE", "0.5"),
+])
+def test_jev_rejects_unbounded_or_unverified_settings(monkeypatch, name, value):
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
 def test_billing_checkout_ttl_has_a_bounded_configuration(monkeypatch):
     _set_required_env(monkeypatch)
     monkeypatch.setenv("BILLING_MANUAL_CHECKOUT_TTL_HOURS", "72")
