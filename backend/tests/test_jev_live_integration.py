@@ -6,6 +6,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
+from core.config import settings as app_settings
 from rag_v2.jev_router import RoutingDecision
 from rag_v2.models import QuestionClassification
 from rag_v2.pipeline_v2 import PipelineV2
@@ -28,8 +29,7 @@ def live(monkeypatch):
         spec = importlib.util.spec_from_file_location("rag_v2._jev_integration_test", path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-    module.settings = SimpleNamespace(JEV_MODE="off", TYPESAFE_API_KEY=None, JEV_MODEL="jev-1.13.0",
-                                      JEV_TIMEOUT_SECONDS=2, JEV_MIN_CONFIDENCE=.9)
+    module.settings = app_settings.model_copy(update={"JEV_MODE": "off", "TYPESAFE_API_KEY": None})
     monkeypatch.setattr(module, "_mode", lambda: "rollout")
     monkeypatch.setattr(module, "out_of_scope_response", lambda _: None)
     monkeypatch.setattr(module, "direct_tax_faq_response", lambda _: None)

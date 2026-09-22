@@ -99,74 +99,84 @@ class JevRouter:
         self._lock = threading.Lock()
         self._unavailable_until = 0.0
 
-    def decide(self, parsed: ParsedQuery, baseline: QuestionClassification, options: JevOptions) -> RoutingDecision:
-        def finish(status, classification=baseline, clarify=False, answer=None):
-            if options.mode != "off":
-                # Categories only: no query, user identity, key, body or exception text.
-                logger.info("jev_routing mode=%s status=%s baseline=%s candidate=%s model=%s confidence=%s",
-                            options.mode, status, baseline.question_class,
-                            answer["choice"] if answer else "none", options.model,
-                            answer["confidence"] if answer else "none")
-            return RoutingDecision(classification, status, clarify)
-
+    def _skip_reason(self, parsed: ParsedQuery, options: JevOptions) -> str | None:
         if options.mode == "off":
-            return finish("off")
+            return "off"
         if options.mode not in {"shadow", "assist"} or options.model != MODEL:
-            return finish("invalid_configuration")
+            return "invalid_configuration"
         if not options.api_key.strip():
-            return finish("missing_key")
+            return "missing_key"
         # Exact references and established appeal semantics keep their existing path.
         if parsed.article_ref or parsed.point_ref or parsed.document_ref or parsed.decision_ref or parsed.goal == "appeal_procedure":
-            return finish("protected_reference")
+            return "protected_reference"
         if not parsed.raw_query.strip() or len(parsed.raw_query) > MAX_QUERY_CHARS:
-            return finish("query_size")
+            return "query_size"
         with self._lock:
             unavailable = self._clock() < self._unavailable_until
-        if unavailable:
-            return finish("cooldown")
-        if not self._slots.acquire(blocking=False):
-            return finish("busy")
-        try:
-            # The endpoint is fixed; redirects and transport retries are disabled.
-            with self._client_factory(timeout=options.timeout, follow_redirects=False) as client:
-                with client.stream("POST", ENDPOINT,
-                                   headers={"Authorization": "Bearer " + options.api_key},
-                                   json=request_body(parsed, options.model)) as response:
-                    if response.status_code != 200:
-                        raise ValueError("provider failure")
-                    body = bytearray()
-                    for chunk in response.iter_bytes(chunk_size=MAX_RESPONSE_BYTES + 1):
-                        body.extend(chunk)
-                        if len(body) > MAX_RESPONSE_BYTES:
-                            raise ValueError("response too large")
-                    answer = validate_answer(json.loads(body), options.model)
-        except (httpx.HTTPError, ValueError, TypeError, UnicodeError):
-            with self._lock:
-                self._unavailable_until = self._clock() + 30
-            return finish("provider_error")
-        finally:
-            self._slots.release()
+        return "cooldown" if unavailable else None
 
+    def _fetch_answer(self, parsed: ParsedQuery, options: JevOptions) -> dict:
+        # The endpoint is fixed; redirects and transport retries are disabled.
+        with self._client_factory(timeout=options.timeout, follow_redirects=False) as client:
+            with client.stream("POST", ENDPOINT,
+                               headers={"Authorization": "Bearer " + options.api_key},
+                               json=request_body(parsed, options.model)) as response:
+                if response.status_code != 200:
+                    raise ValueError("provider failure")
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=MAX_RESPONSE_BYTES + 1):
+                    body.extend(chunk)
+                    if len(body) > MAX_RESPONSE_BYTES:
+                        raise ValueError("response too large")
+                return validate_answer(json.loads(body), options.model)
+
+    @staticmethod
+    def _admit(parsed, baseline, options, answer) -> RoutingDecision:
         if options.mode == "shadow":
-            return finish("observed", answer=answer)
+            return RoutingDecision(baseline, "observed")
         choice, probs = answer["choice"], answer["probabilities"]
         runner_up = max(value for key, value in probs.items() if key != choice)
         if (answer["confidence"] < options.min_confidence or probs[choice] < options.min_confidence
                 or probs[choice] - runner_up < .15):
-            return finish("low_confidence", answer=answer)
+            return RoutingDecision(baseline, "low_confidence")
         if choice == "unclear":
-            return finish("clarification", clarify=True, answer=answer)
+            return RoutingDecision(baseline, "clarification", True)
         # A route cannot invent a missing document identifier or municipality.
         if choice == "named_document_lookup" or (choice == "local_regulation_lookup" and not parsed.locality):
-            return finish("missing_locator", answer=answer)
+            return RoutingDecision(baseline, "missing_locator")
         if choice == baseline.question_class:
-            return finish("agreed", answer=answer)
+            return RoutingDecision(baseline, "agreed")
         classification = QuestionClassification(
             question_class=choice, confidence=answer["confidence"],
             alternatives=[{"class": baseline.question_class, "score": baseline.confidence}],
             why=["TypeSafe Jev semantic route; legal evidence still verified downstream"],
         )
-        return finish("applied", classification, answer=answer)
+        return RoutingDecision(classification, "applied")
+
+    def decide(self, parsed: ParsedQuery, baseline: QuestionClassification, options: JevOptions) -> RoutingDecision:
+        def finish(decision, answer=None):
+            if options.mode != "off":
+                # Categories only: no query, user identity, key, body or exception text.
+                logger.info("jev_routing mode=%s status=%s baseline=%s candidate=%s model=%s confidence=%s",
+                            options.mode, decision.status, baseline.question_class,
+                            answer["choice"] if answer else "none", options.model,
+                            answer["confidence"] if answer else "none")
+            return decision
+
+        reason = self._skip_reason(parsed, options)
+        if reason:
+            return finish(RoutingDecision(baseline, reason))
+        if not self._slots.acquire(blocking=False):
+            return finish(RoutingDecision(baseline, "busy"))
+        try:
+            answer = self._fetch_answer(parsed, options)
+        except (httpx.HTTPError, ValueError, TypeError):
+            with self._lock:
+                self._unavailable_until = self._clock() + 30
+            return finish(RoutingDecision(baseline, "provider_error"))
+        finally:
+            self._slots.release()
+        return finish(self._admit(parsed, baseline, options, answer), answer)
 
 
 jev_router = JevRouter()
