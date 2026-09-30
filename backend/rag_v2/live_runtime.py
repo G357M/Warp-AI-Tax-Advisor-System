@@ -14,6 +14,7 @@ from rag.pipeline import rag_pipeline
 from .pipeline_v2 import pipeline_v2
 from .query_classifier import classify_query
 from .query_parser import parse_query
+from .jev_router import JevOptions, jev_router
 from .faq_tax_matrix import get_tax_faq_entry, match_tax_faq_entry
 from .public_response import (
     authoritative_tax_fact_response,
@@ -578,7 +579,7 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
         elif trace.classification.get("question_class") == "named_document_lookup":
             limit = 1
         else:
-            limit = 2 if doc.get("channel") in {"article_resolver", "point_resolver"} else 2
+            limit = 2
         semantic_content = metadata.get("chunk_content")
         if (
             (trace.parsed_query or {}).get("goal") == "appeal_procedure"
@@ -1026,7 +1027,22 @@ def maybe_run_live_rollout(
             },
         }
 
-    trace = pipeline_v2.build_trace(query, language=language)
+    # Curated answers and scope checks above never depend on the external router.
+    decision = jev_router.decide(parsed, classification, JevOptions.from_settings(settings))
+    if decision.needs_clarification:
+        prompts = {
+            "ru": "Уточните, пожалуйста, какой налог или правовой вопрос в Грузии вас интересует и что нужно выяснить.",
+            "ka": "გთხოვთ, დააზუსტოთ, საქართველოში რომელი გადასახადი ან სამართლებრივი საკითხი გაინტერესებთ და რისი გარკვევა გსურთ.",
+            "en": "Please specify the Georgian tax or legal issue you are asking about and what you need to find out.",
+        }
+        return {
+            "response": prompts.get(language, prompts["en"]), "sources": [], "retrieved_count": 0,
+            "_rag_v2": {"mode": "rollout_clarification", "question_class": classification.question_class},
+        }
+    if decision.classification is classification:
+        trace = pipeline_v2.build_trace(query, language=language)
+    else:
+        trace = pipeline_v2.build_trace(query, language=language, classification_override=decision.classification)
     question_class = trace.classification.get("question_class")
 
     # Authoritative guards win regardless of retrieval, so a correct canonical

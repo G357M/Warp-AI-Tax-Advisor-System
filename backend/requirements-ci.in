@@ -1,0 +1,4 @@
+# Regenerate for the CI runner with:
+# uv pip compile backend/requirements-ci.in --python-version 3.11 --python-platform linux --only-binary :all: --generate-hashes -o backend/requirements-ci.lock
+-r requirements-test.txt
+pip-audit==2.10.1

@@ -1,7 +1,7 @@
 """Application configuration settings."""
 
 import json
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     RAG_CHUNK_SIZE: int = 1024
     RAG_CHUNK_OVERLAP: int = 128
     RAG_MIN_SIMILARITY: float = 0.5
+
+    # Optional semantic routing; deterministic contracts remain authoritative.
+    JEV_MODE: Literal["off", "shadow", "assist"] = "off"
+    TYPESAFE_API_KEY: Optional[SecretStr] = None
+    JEV_MODEL: Literal["jev-1.13.0"] = "jev-1.13.0"
+    JEV_TIMEOUT_SECONDS: float = Field(default=2.0, ge=0.2, le=5.0)
+    JEV_MIN_CONFIDENCE: float = Field(default=0.90, ge=0.90, le=1.0)
 
     # Web Scraper
     SCRAPER_USER_AGENT: str = "InfoHubAI-Bot/1.0"
