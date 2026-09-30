@@ -64,7 +64,9 @@ def _merge_search_results(primary: Dict, extra: Dict) -> Dict:
     return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [dists]}
 
 
-def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDocument]:
+def semantic_candidates(
+    parsed: ParsedQuery, limit: int = 5, *, question_class: str | None = None
+) -> List[CandidateDocument]:
     """Real cross-lingual chunk-level retrieval.
 
     Translates the query to Georgian (the cross-lingual gap) and runs a vector
@@ -81,9 +83,14 @@ def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDo
         # The corpus is 75% court decisions, which drown the actual statute for a
         # "what does the law say" question. Restrict the semantic channel to primary
         # legislation; for dispute-intent questions keep case law instead.
-        lane = rag_pipeline._intent_lane(
-            rag_pipeline._extract_query_hints(query, language=parsed.language)
-        )
+        # The admitted v2 route must also control the vector filter. Reclassifying
+        # with legacy hints here would silently discard a Jev route correction.
+        if question_class is None:
+            lane = rag_pipeline._intent_lane(
+                rag_pipeline._extract_query_hints(query, language=parsed.language)
+            )
+        else:
+            lane = "dispute" if question_class == "dispute_practice" else "law"
         if lane == "dispute":
             where = {"document_types": ["court_decision"]}
             res = rag_pipeline.vector_store.search(
@@ -155,7 +162,7 @@ def semantic_candidates(parsed: ParsedQuery, limit: int = 5) -> List[CandidateDo
     return results
 
 
-CHANNEL_BUILDERS: Dict[str, Callable[[ParsedQuery], List[CandidateDocument]]] = {
+CHANNEL_BUILDERS: Dict[str, Callable[..., List[CandidateDocument]]] = {
     "exact_doc_resolver": resolve_exact_from_backend,
     "citation_resolver": resolve_citation_from_backend,
     "article_resolver": resolve_article_from_backend,
@@ -193,7 +200,7 @@ def _apply_channel_metadata(channel: str, items: List[CandidateDocument]) -> Lis
     return items
 
 
-def _ordered_channels(routing_profile: Dict[str, object] | None = None) -> List[Tuple[str, Callable[[ParsedQuery], List[CandidateDocument]]]]:
+def _ordered_channels(routing_profile: Dict[str, object] | None = None) -> List[Tuple[str, Callable[..., List[CandidateDocument]]]]:
     channel_priority = dict((routing_profile or {}).get("channel_priority", {}))
     disabled = set((routing_profile or {}).get("disabled_channels", []))
     enabled = set((routing_profile or {}).get("enabled_channels", CHANNEL_BUILDERS.keys()))
@@ -212,7 +219,12 @@ def generate_candidates(parsed: ParsedQuery, routing_profile: Dict[str, object] 
     results: Dict[str, List[CandidateDocument]] = {name: [] for name in CHANNEL_BUILDERS}
 
     for channel_name, builder in _ordered_channels(routing_profile):
-        channel_items = _apply_channel_metadata(channel_name, builder(parsed))
+        question_class = (routing_profile or {}).get("question_class")
+        if channel_name == "semantic_search" and question_class:
+            candidates = builder(parsed, question_class=question_class)
+        else:
+            candidates = builder(parsed)
+        channel_items = _apply_channel_metadata(channel_name, candidates)
         results[channel_name] = channel_items
 
         if (

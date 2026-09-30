@@ -96,3 +96,46 @@ def test_pipeline_uses_override_for_candidate_channels(monkeypatch):
     assert admitted.routing["retrieval_mode"] == "dispute_first"
     assert admitted.routing["primary_source_classes"] == ["court_decision"]
     assert len(captured) == 2
+
+
+@pytest.mark.parametrize("question_class", ["dispute_practice", "canonical_law_lookup"])
+def test_admitted_route_controls_actual_vector_filter(monkeypatch, question_class):
+    from rag_v2 import candidate_generators as generators
+
+    filters = []
+
+    def search(*, query_embedding, n_results, where):
+        filters.append(where)
+        kind = where["document_types"][0]
+        return {"ids": [[kind]], "documents": [["Synthetic source evidence"]],
+                "metadatas": [[{"document_id": kind, "document_type": kind,
+                                "title": "Synthetic source", "source_url": "https://example.org/source"}]],
+                "distances": [[0.1]]}
+
+    def legacy_hints(*args, **kwargs):
+        pytest.fail("The admitted route must not be reclassified by legacy hints")
+
+    rag = ModuleType("rag")
+    rag.__path__ = []
+    pipeline = ModuleType("rag.pipeline")
+    pipeline.rag_pipeline = SimpleNamespace(
+        _retrieval_query=lambda query, language: query,
+        embeddings=SimpleNamespace(encode_query=lambda query: [0.1]),
+        vector_store=SimpleNamespace(search=search),
+        _extract_query_hints=legacy_hints,
+    )
+    monkeypatch.setitem(sys.modules, "rag", rag)
+    monkeypatch.setitem(sys.modules, "rag.pipeline", pipeline)
+    monkeypatch.setattr(generators, "CHANNEL_BUILDERS", {"semantic_search": generators.semantic_candidates})
+    trace = PipelineV2().build_trace(
+        "Find court precedents where judges overturned an additional VAT assessment.",
+        language="en", classification_override=QuestionClassification(question_class, .99),
+    )
+    assert trace.source_audit["passed"]
+    assert filters
+    if question_class == "dispute_practice":
+        assert filters == [{"document_types": ["court_decision"]}]
+        assert trace.reranking["top_ranked_documents"][0]["document_type"] == "court_decision"
+    else:
+        assert all("court_decision" not in item["document_types"] for item in filters)
+        assert trace.reranking["top_ranked_documents"][0]["document_type"] == "law"
