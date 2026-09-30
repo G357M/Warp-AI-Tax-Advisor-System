@@ -22,6 +22,7 @@ from .public_response import (
     compress_rollout_context_text,
     direct_tax_faq_response,
     out_of_scope_response,
+    is_pure_refusal,
     dividend_tax_rate_response,
     finalize_rollout_response,
     import_vat_response,
@@ -1131,7 +1132,7 @@ def maybe_run_live_rollout(
         # Retained minimal guard: import VAT (retrieval does not ground the 18% rate).
         response = import_vat_response(trace) or response
     response = finalize_rollout_response(response, trace)
-    if question_class == "dispute_practice":
+    if question_class == "dispute_practice" and not is_pure_refusal(response):
         stats_line = _dispute_stats_line(trace)
         if stats_line:
             response = f"{response}\n\n{stats_line}"

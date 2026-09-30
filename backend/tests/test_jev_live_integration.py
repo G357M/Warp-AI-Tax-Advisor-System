@@ -98,6 +98,37 @@ def test_pipeline_uses_override_for_candidate_channels(monkeypatch):
     assert len(captured) == 2
 
 
+@pytest.mark.parametrize("language,refusal", [
+    ("ru", "В предоставленных официальных источниках ответ на этот вопрос не найден."),
+    ("en", "In the provided official sources, the answer to this question was not found."),
+    ("ka", "მოწოდებულ ოფიციალურ წყაროებში ამ კითხვაზე პასუხი ვერ მოიძებნა."),
+])
+def test_dispute_refusal_cannot_become_grounded_by_appended_statistics(live, monkeypatch, language, refusal):
+    from api.evidence import attach_evidence
+
+    trace = SimpleNamespace(
+        parsed_query={"language": language}, classification={"question_class": "dispute_practice"},
+        source_audit={"passed": True}, candidate_generation={}, reranking={},
+    )
+    live.pipeline_v2.build_trace = lambda *args, **kwargs: trace
+    monkeypatch.setattr(live, "small_business_legal_form_response", lambda _: None)
+    monkeypatch.setattr(live, "tax_appeal_procedure_response", lambda _: None)
+    monkeypatch.setenv("INFOHUB_RAG_V2_AUTHORITATIVE", "0")
+    monkeypatch.setattr(live, "_build_rollout_chunks", lambda _: [{"content": "Related but insufficient source"}])
+    monkeypatch.setattr(live, "_generation_query", lambda query, *args: query)
+    monkeypatch.setattr(live, "import_vat_response", lambda _: None)
+    monkeypatch.setattr(live, "finalize_rollout_response", lambda response, _: response)
+    monkeypatch.setattr(live, "_dispute_stats_line", lambda _: pytest.fail("Refusal must not receive unrelated statistics"))
+    live.rag_pipeline._assemble_context = lambda _: "Related but insufficient source"
+    live.rag_pipeline.llm = SimpleNamespace(generate_response=lambda **kwargs: refusal)
+    live.rag_pipeline._prepare_sources = lambda _: [{"url": "https://infohub.rs.ge/example"}]
+
+    result = attach_evidence(live.maybe_run_live_rollout(query="Find court precedents", language=language))
+    assert result["response"] == refusal
+    assert result["sources"] == []
+    assert result["evidence"]["status"] == "insufficient"
+
+
 @pytest.mark.parametrize("question_class", ["dispute_practice", "canonical_law_lookup"])
 def test_admitted_route_controls_actual_vector_filter(monkeypatch, question_class):
     from rag_v2 import candidate_generators as generators
