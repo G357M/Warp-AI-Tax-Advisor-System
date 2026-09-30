@@ -16,14 +16,11 @@ from rag_v2.query_parser import parse_query
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
+    parser.parse_args()
     key = os.environ.get("TYPESAFE_API_KEY", "")
     if not key.strip():
         print(json.dumps({"status": "missing_key"}))
         return 2
-    if args.output and args.output.exists():
-        parser.error("Refusing to overwrite existing evidence; choose a new output path.")
     samples = {
         "ru": "Найди судебную практику: по каким причинам суды отменяли доначисление НДС?",
         "en": "Find court precedents where judges overturned an additional VAT assessment and explain their reasoning.",
@@ -46,9 +43,6 @@ def main() -> int:
             break
     evidence = {"model": MODEL, "synthetic_only": True, "live_rag_answer_tested": False,
                 "passed": len(rows) == 3 and all(row["passed"] for row in rows), "results": rows}
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence, ensure_ascii=False, indent=2))
     return 0 if evidence["passed"] else 1
 

@@ -10,7 +10,7 @@ email-validator==2.3.0
 sqlalchemy==2.0.52
 psycopg2-binary==2.9.9
 redis==5.0.1
-PyJWT[crypto]==2.13.0
+PyJWT[crypto]==2.15.1
 bcrypt==4.1.2
 httpx==0.28.1
 # Last green CI resolution: AnyIO 4.15 deprecates the alias used by Starlette
