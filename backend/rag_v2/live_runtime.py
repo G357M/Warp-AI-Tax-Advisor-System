@@ -579,7 +579,7 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
         elif trace.classification.get("question_class") == "named_document_lookup":
             limit = 1
         else:
-            limit = 2 if doc.get("channel") in {"article_resolver", "point_resolver"} else 2
+            limit = 2
         semantic_content = metadata.get("chunk_content")
         if (
             (trace.parsed_query or {}).get("goal") == "appeal_procedure"
