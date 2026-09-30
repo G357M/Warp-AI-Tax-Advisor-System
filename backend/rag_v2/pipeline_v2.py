@@ -24,6 +24,7 @@ class PipelineV2:
         parsed = parse_query(query, language=language)
         classification = classification_override or classify_query(parsed)
         routing_profile = self._routing_profile(parsed, classification.question_class)
+        routing_profile["question_class"] = classification.question_class
         requested_disabled = set(disabled_channels or ())
         known_channels = set(routing_profile["enabled_channels"]) | set(
             routing_profile["disabled_channels"]
