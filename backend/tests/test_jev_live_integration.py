@@ -82,6 +82,25 @@ def test_live_entry_passes_admitted_route_to_retrieval(live, changed):
     assert (calls[0].get("classification_override") is selected) is changed
 
 
+@pytest.mark.parametrize("reference", [None, "decision_ref", "document_ref"])
+def test_dispute_prompt_requires_number_match_only_for_requested_reference(live, reference):
+    parsed = {"language": "ru"}
+    if reference:
+        parsed[reference] = "123/2025"
+    trace = SimpleNamespace(parsed_query=parsed, reranking={},
+                            classification={"question_class": "dispute_practice"})
+    prompt = live._generation_query("Summarize the retrieved decision", trace, "Excerpt")
+    assert "Answer in Russian" in prompt
+    if reference:
+        assert "confirmed match for the dispute number" in prompt
+        assert "No specific dispute number was requested" not in prompt
+    else:
+        assert "confirmed match for the dispute number" not in prompt
+        assert "No specific dispute number was requested" in prompt
+        assert "do not infer an outcome" in prompt
+        assert "explicitly present in the retrieved excerpts" in prompt
+
+
 def test_pipeline_uses_override_for_candidate_channels(monkeypatch):
     import rag_v2.pipeline_v2 as module
     captured = []

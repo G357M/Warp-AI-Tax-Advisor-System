@@ -881,6 +881,16 @@ def _no_evidence_dispute_response(trace) -> Optional[Dict[str, Any]]:
     }
 
 
+def _dispute_generation_guard(parsed: Dict[str, Any]) -> str:
+    if parsed.get("decision_ref") or parsed.get("document_ref"):
+        return "If the context does not contain a confirmed match for the dispute number, do not invent details. "
+    return (
+        "No specific dispute number was requested. Summarize only the relevant facts or reasoning "
+        "explicitly present in the retrieved excerpts. State when an excerpt does not show the final outcome; "
+        "do not infer an outcome or treat one decision as a general rule. "
+    )
+
+
 def _generation_query(query: str, trace, context: str) -> str:
     ranked = trace.reranking.get("top_ranked_documents", [])
     metadata = (ranked[0].get("metadata") or {}) if ranked else {}
@@ -969,7 +979,7 @@ def _generation_query(query: str, trace, context: str) -> str:
         return (
             f"{query}\n\n"
             f"Answer in {answer_lang} as plain text, briefly and strictly based on the found dispute. "
-            "If the context does not contain a confirmed match for the dispute number, do not invent details. "
+            f"{_dispute_generation_guard(parsed)}"
             "Do not use markdown emphasis or markdown links."
             f" {language_guard}"
         )
