@@ -10,14 +10,17 @@ from core.database import SessionLocal
 from models import DocumentChunk
 
 logger = logging.getLogger(__name__)
-MIN_CONTEXT_CHARACTERS = 300
+# A single embedded chunk is commonly 500-1000 characters and can end before
+# the reasoning it introduces. Give these fragments the same bounded context
+# as headings; do not infer completeness from the heading threshold alone.
+MIN_CONTEXT_CHARACTERS = 1500
 MAX_CONTEXT_CHARACTERS = 6000
 
 
 def expand_dispute_context(doc: dict, content: str, question_class: str) -> str:
     """Keep the matched text, adding at most three adjacent chunks from its decision.
 
-    Only short semantic court-decision matches qualify. Statutory provision
+    Only brief semantic court-decision matches qualify. Statutory provision
     retrieval and existing substantive chunks retain their original boundaries.
     No text is generated, and missing/failed lookups retain the original match.
     """
