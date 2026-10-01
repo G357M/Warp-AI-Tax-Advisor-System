@@ -175,14 +175,15 @@ def test_admitted_route_controls_actual_vector_filter(monkeypatch, question_clas
         assert trace.reranking["top_ranked_documents"][0]["document_type"] == "law"
 
 
-def test_short_dispute_match_fetches_only_bounded_same_document_neighbors(monkeypatch):
+@pytest.mark.parametrize("anchor", ["Matched heading", "x" * 467, "x" * 786, "x" * 1499])
+def test_short_dispute_match_fetches_only_bounded_same_document_neighbors(monkeypatch, anchor):
     document_id = UUID("00000000-0000-0000-0000-000000000001")
     query = MagicMock()
     for method in ("filter", "order_by", "limit"):
         getattr(query, method).return_value = query
     query.all.return_value = [
         SimpleNamespace(chunk_index=1, content="Facts of this decision"),
-        SimpleNamespace(chunk_index=2, content="Matched heading"),
+        SimpleNamespace(chunk_index=2, content=anchor),
         SimpleNamespace(chunk_index=3, content="Reasoning of this decision"),
     ]
     session_factory = MagicMock()
@@ -190,8 +191,8 @@ def test_short_dispute_match_fetches_only_bounded_same_document_neighbors(monkey
     monkeypatch.setattr(dispute_context, "SessionLocal", session_factory)
     doc = {"document_id": str(document_id), "document_type": "court_decision",
            "metadata": {"chunk_index": 2}}
-    result = dispute_context.expand_dispute_context(doc, "Matched heading", "dispute_practice")
-    assert result == "Facts of this decision\n\nMatched heading\n\nReasoning of this decision"
+    result = dispute_context.expand_dispute_context(doc, anchor, "dispute_practice")
+    assert result == f"Facts of this decision\n\n{anchor}\n\nReasoning of this decision"
     assert query.filter.call_args_list[0].args[0].right.value == document_id
     bounds = query.filter.call_args_list[1].args
     assert [condition.right.value for condition in bounds] == [1, 4]
@@ -204,7 +205,7 @@ def test_short_dispute_match_fetches_only_bounded_same_document_neighbors(monkey
     ("court_decision", "dispute_practice", None, "Short"),
     ("court_decision", "dispute_practice", -1, "Short"),
     ("court_decision", "dispute_practice", True, "Short"),
-    ("court_decision", "dispute_practice", 2, "x" * 300),
+    ("court_decision", "dispute_practice", 2, "x" * 1500),
 ])
 def test_context_expansion_preserves_ineligible_matches(monkeypatch, kind, route, index, content):
     monkeypatch.setattr(dispute_context, "SessionLocal", lambda: pytest.fail("Unexpected DB lookup"))
