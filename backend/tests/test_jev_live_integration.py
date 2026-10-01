@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
+from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 
@@ -10,6 +12,7 @@ from core.config import settings as app_settings
 from rag_v2.jev_router import RoutingDecision
 from rag_v2.models import QuestionClassification
 from rag_v2.pipeline_v2 import PipelineV2
+from rag_v2 import dispute_context
 
 
 @pytest.fixture
@@ -170,3 +173,61 @@ def test_admitted_route_controls_actual_vector_filter(monkeypatch, question_clas
     else:
         assert all("court_decision" not in item["document_types"] for item in filters)
         assert trace.reranking["top_ranked_documents"][0]["document_type"] == "law"
+
+
+def test_short_dispute_match_fetches_only_bounded_same_document_neighbors(monkeypatch):
+    document_id = UUID("00000000-0000-0000-0000-000000000001")
+    query = MagicMock()
+    for method in ("filter", "order_by", "limit"):
+        getattr(query, method).return_value = query
+    query.all.return_value = [
+        SimpleNamespace(chunk_index=1, content="Facts of this decision"),
+        SimpleNamespace(chunk_index=2, content="Matched heading"),
+        SimpleNamespace(chunk_index=3, content="Reasoning of this decision"),
+    ]
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value.query.return_value = query
+    monkeypatch.setattr(dispute_context, "SessionLocal", session_factory)
+    doc = {"document_id": str(document_id), "document_type": "court_decision",
+           "metadata": {"chunk_index": 2}}
+    result = dispute_context.expand_dispute_context(doc, "Matched heading", "dispute_practice")
+    assert result == "Facts of this decision\n\nMatched heading\n\nReasoning of this decision"
+    assert query.filter.call_args_list[0].args[0].right.value == document_id
+    bounds = query.filter.call_args_list[1].args
+    assert [condition.right.value for condition in bounds] == [1, 4]
+    query.limit.assert_called_once_with(4)
+
+
+@pytest.mark.parametrize("kind,route,index,content", [
+    ("law", "dispute_practice", 2, "Short"),
+    ("court_decision", "canonical_law_lookup", 2, "Short"),
+    ("court_decision", "dispute_practice", None, "Short"),
+    ("court_decision", "dispute_practice", -1, "Short"),
+    ("court_decision", "dispute_practice", True, "Short"),
+    ("court_decision", "dispute_practice", 2, "x" * 300),
+])
+def test_context_expansion_preserves_ineligible_matches(monkeypatch, kind, route, index, content):
+    monkeypatch.setattr(dispute_context, "SessionLocal", lambda: pytest.fail("Unexpected DB lookup"))
+    doc = {"document_id": "00000000-0000-0000-0000-000000000001",
+           "document_type": kind, "metadata": {"chunk_index": index}}
+    assert dispute_context.expand_dispute_context(doc, content, route) == content
+
+
+def test_context_budget_preserves_anchor_and_never_uses_an_unmatched_document():
+    anchor = "Matched heading"
+    rows = [SimpleNamespace(chunk_index=1, content="x" * 6000),
+            SimpleNamespace(chunk_index=2, content=anchor),
+            SimpleNamespace(chunk_index=3, content="Bounded facts")]
+    result = dispute_context._join_context(rows, anchor, 2)
+    assert result == anchor + "\n\nBounded facts"
+    assert len(result) <= 6000
+    assert dispute_context._join_context(rows, anchor, 9) == anchor
+
+
+def test_context_database_failure_preserves_original_match(monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    factory = MagicMock(side_effect=OperationalError("lookup", {}, Exception("unavailable")))
+    monkeypatch.setattr(dispute_context, "SessionLocal", factory)
+    doc = {"document_id": "00000000-0000-0000-0000-000000000001",
+           "document_type": "court_decision", "metadata": {"chunk_index": 2}}
+    assert dispute_context.expand_dispute_context(doc, "Original heading", "dispute_practice") == "Original heading"
