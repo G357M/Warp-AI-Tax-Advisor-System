@@ -60,7 +60,9 @@ def test_clarification_returns_without_retrieval_or_generation(live, language):
     live.jev_router.decide = lambda p, c, o: RoutingDecision(c, "clarification", True)
     result = live.maybe_run_live_rollout(query="Help with this", language=language)
     assert result["_rag_v2"]["mode"] == "rollout_clarification"
-    assert result["sources"] == [] and result["retrieved_count"] == 0 and result["response"]
+    assert result["sources"] == []
+    assert result["retrieved_count"] == 0
+    assert result["response"]
 
 
 @pytest.mark.parametrize("changed", [False, True])

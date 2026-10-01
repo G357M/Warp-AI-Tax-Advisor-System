@@ -916,6 +916,10 @@ def _generation_query(query: str, trace, context: str) -> str:
             "Do not retell the full article text, do not use markdown emphasis, and do not include markdown links."
             f" {language_guard}"
         )
+    return _general_generation_query(query, question_class, parsed, answer_lang, language_guard)
+
+
+def _general_generation_query(query, question_class, parsed, answer_lang, language_guard) -> str:
     if question_class == "amendment_tracking":
         return (
             f"{query}\n\n"
