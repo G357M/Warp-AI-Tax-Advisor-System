@@ -15,6 +15,7 @@ from .pipeline_v2 import pipeline_v2
 from .query_classifier import classify_query
 from .query_parser import parse_query
 from .jev_router import JevOptions, jev_router
+from .dispute_context import expand_dispute_context
 from .faq_tax_matrix import get_tax_faq_entry, match_tax_faq_entry
 from .public_response import (
     authoritative_tax_fact_response,
@@ -602,6 +603,9 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
                 )
         elif semantic_content:
             # The semantic channel already retrieved the exact grounding chunk.
+            semantic_content = expand_dispute_context(
+                doc, semantic_content, trace.classification.get("question_class")
+            )
             fetched = [{
                 "id": f"semantic:{doc.get('document_id')}:{metadata.get('chunk_index')}",
                 "content": semantic_content,
