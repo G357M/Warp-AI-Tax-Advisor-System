@@ -22,6 +22,7 @@ from .public_response import (
     compress_rollout_context_text,
     direct_tax_faq_response,
     out_of_scope_response,
+    is_pure_refusal,
     dividend_tax_rate_response,
     finalize_rollout_response,
     import_vat_response,
@@ -971,20 +972,8 @@ def _generation_query(query: str, trace, context: str) -> str:
     return query
 
 
-def maybe_run_live_rollout(
-    *,
-    query: str,
-    language: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None,
-) -> Optional[Dict[str, Any]]:
-    if _mode() != "rollout":
-        return None
-
-    # Scope checks use only the deterministic parser/classifier. Running them
-    # before candidate generation prevents obvious foreign/off-topic questions
-    # from spending a translation or answer-generation LLM call.
-    parsed = parse_query(query, language=language)
-    classification = classify_query(parsed)
+def _protected_live_response(parsed, classification) -> Optional[Dict[str, Any]]:
+    """Resolve scope and approved contracts before any external routing."""
     scope_trace = SimpleNamespace(
         parsed_query=parsed.model_dump(),
         classification=classification.model_dump(),
@@ -1027,24 +1016,11 @@ def maybe_run_live_rollout(
             },
         }
 
-    # Curated answers and scope checks above never depend on the external router.
-    decision = jev_router.decide(parsed, classification, JevOptions.from_settings(settings))
-    if decision.needs_clarification:
-        prompts = {
-            "ru": "Уточните, пожалуйста, какой налог или правовой вопрос в Грузии вас интересует и что нужно выяснить.",
-            "ka": "გთხოვთ, დააზუსტოთ, საქართველოში რომელი გადასახადი ან სამართლებრივი საკითხი გაინტერესებთ და რისი გარკვევა გსურთ.",
-            "en": "Please specify the Georgian tax or legal issue you are asking about and what you need to find out.",
-        }
-        return {
-            "response": prompts.get(language, prompts["en"]), "sources": [], "retrieved_count": 0,
-            "_rag_v2": {"mode": "rollout_clarification", "question_class": classification.question_class},
-        }
-    if decision.classification is classification:
-        trace = pipeline_v2.build_trace(query, language=language)
-    else:
-        trace = pipeline_v2.build_trace(query, language=language, classification_override=decision.classification)
-    question_class = trace.classification.get("question_class")
+    return None
 
+
+def _authoritative_live_response(trace) -> Optional[Dict[str, Any]]:
+    question_class = trace.classification.get("question_class")
     # Authoritative guards win regardless of retrieval, so a correct canonical
     # answer is never lost when the vector search returns nothing relevant.
     # Authoritative answers for facts retrieval can't yet ground cross-lingually.
@@ -1069,35 +1045,24 @@ def maybe_run_live_rollout(
             "_rag_v2": {"mode": "rollout_authoritative", "question_class": question_class},
         }
 
-    if question_class not in _rollout_classes():
-        return None
-    if not trace.source_audit.get("passed"):
-        local_no_evidence = _no_evidence_local_regulation_response(trace)
-        if local_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=local_regulation_lookup grounded_no_evidence=1")
-            return local_no_evidence
-        dispute_no_evidence = _no_evidence_dispute_response(trace)
-        if dispute_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=dispute_practice grounded_no_evidence=1")
-            return dispute_no_evidence
-        return None
+    return None
 
-    rollout_chunks = _build_rollout_chunks(trace)
-    if not rollout_chunks:
-        local_no_evidence = _no_evidence_local_regulation_response(trace)
-        if local_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=local_regulation_lookup grounded_no_evidence=1")
-            return local_no_evidence
-        dispute_no_evidence = _no_evidence_dispute_response(trace)
-        if dispute_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=dispute_practice grounded_no_evidence=1")
-            return dispute_no_evidence
-        no_evidence = _no_evidence_amendment_response(trace)
-        if no_evidence:
-            print("[RAG_V2_ROLLOUT] class=amendment_tracking grounded_no_evidence=1")
-            return no_evidence
-        return None
 
+def _missing_live_response(trace, *, include_amendment: bool) -> Optional[Dict[str, Any]]:
+    handlers = [_no_evidence_local_regulation_response, _no_evidence_dispute_response]
+    if include_amendment:
+        handlers.append(_no_evidence_amendment_response)
+    for handler in handlers:
+        result = handler(trace)
+        if result:
+            question_class = result["_rag_v2"]["question_class"]
+            print(f"[RAG_V2_ROLLOUT] class={question_class} grounded_no_evidence=1")
+            return result
+    return None
+
+
+def _generate_live_response(query, conversation_history, trace, rollout_chunks) -> Optional[Dict[str, Any]]:
+    question_class = trace.classification.get("question_class")
     context = rag_pipeline._assemble_context(rollout_chunks)
     generation_query = _generation_query(query, trace, context)
     response = rag_pipeline.llm.generate_response(
@@ -1131,7 +1096,7 @@ def maybe_run_live_rollout(
         # Retained minimal guard: import VAT (retrieval does not ground the 18% rate).
         response = import_vat_response(trace) or response
     response = finalize_rollout_response(response, trace)
-    if question_class == "dispute_practice":
+    if question_class == "dispute_practice" and not is_pure_refusal(response):
         stats_line = _dispute_stats_line(trace)
         if stats_line:
             response = f"{response}\n\n{stats_line}"
@@ -1153,3 +1118,54 @@ def maybe_run_live_rollout(
     }
     print(f"[RAG_V2_ROLLOUT] class={question_class} sources={len(sources)} chunks={len(rollout_chunks)}")
     return result
+
+
+def maybe_run_live_rollout(
+    *,
+    query: str,
+    language: str,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+) -> Optional[Dict[str, Any]]:
+    if _mode() != "rollout":
+        return None
+
+    # Scope checks use only the deterministic parser/classifier. Running them
+    # before candidate generation prevents obvious foreign/off-topic questions
+    # from spending a translation or answer-generation LLM call.
+    parsed = parse_query(query, language=language)
+    classification = classify_query(parsed)
+    protected = _protected_live_response(parsed, classification)
+    if protected:
+        return protected
+
+    # Curated answers and scope checks above never depend on the external router.
+    decision = jev_router.decide(parsed, classification, JevOptions.from_settings(settings))
+    if decision.needs_clarification:
+        prompts = {
+            "ru": "Уточните, пожалуйста, какой налог или правовой вопрос в Грузии вас интересует и что нужно выяснить.",
+            "ka": "გთხოვთ, დააზუსტოთ, საქართველოში რომელი გადასახადი ან სამართლებრივი საკითხი გაინტერესებთ და რისი გარკვევა გსურთ.",
+            "en": "Please specify the Georgian tax or legal issue you are asking about and what you need to find out.",
+        }
+        return {
+            "response": prompts.get(language, prompts["en"]), "sources": [], "retrieved_count": 0,
+            "_rag_v2": {"mode": "rollout_clarification", "question_class": classification.question_class},
+        }
+    if decision.classification is classification:
+        trace = pipeline_v2.build_trace(query, language=language)
+    else:
+        trace = pipeline_v2.build_trace(query, language=language, classification_override=decision.classification)
+    question_class = trace.classification.get("question_class")
+
+    authoritative = _authoritative_live_response(trace)
+    if authoritative:
+        return authoritative
+
+    if question_class not in _rollout_classes():
+        return None
+    if not trace.source_audit.get("passed"):
+        return _missing_live_response(trace, include_amendment=False)
+
+    rollout_chunks = _build_rollout_chunks(trace)
+    if not rollout_chunks:
+        return _missing_live_response(trace, include_amendment=True)
+    return _generate_live_response(query, conversation_history, trace, rollout_chunks)
