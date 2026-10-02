@@ -106,7 +106,6 @@ class LLMClient:
         query: str,
         context: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        response_policy: Optional[str] = None,
     ) -> str:
         """
         Generate response using LLM.
@@ -124,7 +123,7 @@ class LLMClient:
 
         try:
             # Prepare system prompt
-            system_prompt = self._build_system_prompt(context, response_policy=response_policy)
+            system_prompt = self._build_system_prompt(context)
             print(f"[LLM] Context length: {len(context)} chars")
             print(f"[LLM] Context preview: {context[:200]}..." if len(context) > 200 else f"[LLM] Context: {context}")
 
@@ -209,7 +208,7 @@ class LLMClient:
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
 
-    def _build_system_prompt(self, context: str, *, response_policy: Optional[str] = None) -> str:
+    def _build_system_prompt(self, context: str) -> str:
         """
         Build system prompt with context.
 
@@ -219,9 +218,6 @@ class LLMClient:
         Returns:
             System prompt text
         """
-        from rag_v2.generation_policy import system_context_policy
-
-        policy = system_context_policy(response_policy)
         return f"""Вы — ассистент по налоговому законодательству Грузии. Отвечаете СТРОГО по приведённому ниже контексту из официальных документов.
 
 ЖЁСТКИЕ ПРАВИЛА:
@@ -235,8 +231,6 @@ class LLMClient:
 4. Если ответ есть — дайте его кратко и по делу, затем укажите статью/документ из контекста в формате: "Источник: <название документа>, статья <номер>".
 5. Отвечайте на языке вопроса пользователя.
 6. Без markdown-разметки, без ссылок-URL и выдуманных ссылок в тексте.
-
-{policy}
 
 Контекст из базы законов:
 {context}
