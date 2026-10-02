@@ -1151,6 +1151,7 @@ def _generate_live_response(query, conversation_history, trace, rollout_chunks) 
         query=generation_query,
         context=context,
         conversation_history=conversation_history,
+        response_policy=question_class,
     )
     # Phase 4: the answer now comes from the retrieved law (response above), grounded
     # in rollout_chunks with real per-article sources — curated FAQ text no longer

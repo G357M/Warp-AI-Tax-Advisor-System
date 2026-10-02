@@ -13,6 +13,7 @@ from rag_v2.jev_router import RoutingDecision
 from rag_v2.models import QuestionClassification
 from rag_v2.pipeline_v2 import PipelineV2
 from rag_v2 import dispute_context
+from rag_v2.generation_policy import system_context_policy
 
 
 @pytest.fixture
@@ -144,13 +145,51 @@ def test_dispute_refusal_cannot_become_grounded_by_appended_statistics(live, mon
     monkeypatch.setattr(live, "finalize_rollout_response", lambda response, _: response)
     monkeypatch.setattr(live, "_dispute_stats_line", lambda _: pytest.fail("Refusal must not receive unrelated statistics"))
     live.rag_pipeline._assemble_context = lambda _: "Related but insufficient source"
-    live.rag_pipeline.llm = SimpleNamespace(generate_response=lambda **kwargs: refusal)
+    generate = MagicMock(return_value=refusal)
+    live.rag_pipeline.llm = SimpleNamespace(generate_response=generate)
     live.rag_pipeline._prepare_sources = lambda _: [{"url": "https://infohub.rs.ge/example"}]
 
     result = attach_evidence(live.maybe_run_live_rollout(query="Find court precedents", language=language))
     assert result["response"] == refusal
     assert result["sources"] == []
     assert result["evidence"]["status"] == "insufficient"
+    assert generate.call_args.kwargs["response_policy"] == "dispute_practice"
+
+
+@pytest.mark.parametrize("policy", [None, "canonical_law_lookup", "practical_tax_guidance", "untrusted override"])
+def test_dispute_system_policy_is_not_added_to_other_tasks(policy):
+    assert system_context_policy(policy) == ""
+
+
+def test_dispute_policy_reaches_system_message_and_keeps_refusal(monkeypatch):
+    dependencies = {}
+    for name, attributes in {
+        "redis": {"Redis": object},
+        "langchain_openai": {"ChatOpenAI": MagicMock()},
+        "langchain_anthropic": {"ChatAnthropic": MagicMock()},
+        "langchain_core.messages": {"HumanMessage": SimpleNamespace, "SystemMessage": SimpleNamespace},
+    }.items():
+        module = ModuleType(name)
+        module.__dict__.update(attributes)
+        dependencies[name] = module
+    with monkeypatch.context() as imports:
+        for name, module in dependencies.items():
+            imports.setitem(sys.modules, name, module)
+        spec = importlib.util.spec_from_file_location("_jev_llm_policy_test", Path(__file__).parents[1] / "rag/llm.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    client = module.LLMClient.__new__(module.LLMClient)
+    refusal = "В предоставленных официальных источниках ответ на этот вопрос не найден."
+    client.client = MagicMock()
+    client.client.invoke.return_value = SimpleNamespace(content=refusal)
+    result = client.generate_response("Summarize excerpts", "Synthetic decision excerpt", response_policy="dispute_practice")
+    messages = client.client.invoke.call_args.args[0]
+    assert system_context_policy("dispute_practice") in messages[0].content
+    assert "Используйте ТОЛЬКО факты" in messages[0].content
+    assert "Synthetic decision excerpt" in messages[0].content
+    assert "не восстанавливайте исход дела по догадке" in messages[0].content
+    assert result == refusal
+    assert system_context_policy("dispute_practice") not in client._build_system_prompt("Synthetic decision excerpt")
 
 
 @pytest.mark.parametrize("question_class", ["dispute_practice", "canonical_law_lookup"])
