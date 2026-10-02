@@ -1,0 +1,5 @@
+# Installed to /etc/cron.d/infohub-db-backup by scripts/deploy_production.sh.
+# 01:30 UTC keeps the dump clear of the 03:00 scraper and nightly quality gates.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 1 * * * root /root/infohub/ops/backup-infohub-db.sh >> /root/infohub/logs/db-backup.log 2>&1

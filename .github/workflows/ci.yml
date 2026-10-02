@@ -99,6 +99,7 @@ jobs:
           tests/test_production_storage_audit.py
           tests/test_buildkit_cache_policy.py
           tests/test_mcp_server.py
+          tests/test_db_backup_policy.py
           tests/test_legacy_buildkit_retirement.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
