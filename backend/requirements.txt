@@ -60,7 +60,7 @@ celery==5.3.6
 flower==2.0.1
 
 # Authentication & Security
-PyJWT[crypto]==2.13.0
+PyJWT[crypto]==2.15.1
 bcrypt==4.1.2
 
 # Data Validation & Serialization
