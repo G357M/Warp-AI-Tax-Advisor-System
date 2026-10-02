@@ -59,6 +59,10 @@ app.include_router(guides.router, prefix=settings.API_PREFIX)      # Situational
 app.include_router(feedback.router, prefix=settings.API_PREFIX)    # Bug reports from the cabinet
 app.include_router(news.router, prefix=settings.API_PREFIX)        # Public news feed by subcategory
 
+# Private MCP endpoint for Claude connectors (mounted only when MCP_ACCESS_TOKEN is set).
+from api.mcp_server import install_mcp  # noqa: E402
+install_mcp(app)
+
 
 @app.on_event("startup")
 async def startup_event():
