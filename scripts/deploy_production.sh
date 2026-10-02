@@ -47,6 +47,7 @@ fi
 chmod 600 .env
 install -d -m 0755 certbot/www
 install -m 0644 ops/logrotate-infohub /etc/logrotate.d/infohub
+install -m 0644 ops/cron-infohub-db-backup /etc/cron.d/infohub-db-backup
 install -d -m 0755 /etc/letsencrypt/renewal-hooks/deploy
 install -m 0755 ops/reload-nginx-after-certificate.sh \
     /etc/letsencrypt/renewal-hooks/deploy/reload-infohub-nginx
