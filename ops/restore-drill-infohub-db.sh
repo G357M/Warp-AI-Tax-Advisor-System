@@ -158,7 +158,7 @@ for core in "${CORE_TABLES[@]}"; do
     (( found )) || { log "core table '$core' missing from restore" >&2; problems=$(( problems + 1 )); }
 done
 
-objects_sql="SELECT c.relkind || ':' || count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','i','S','v','m') GROUP BY c.relkind ORDER BY 1"
+objects_sql="SELECT c.relkind::text || ':' || count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','i','S','v','m') GROUP BY c.relkind ORDER BY 1"
 restored_objects="$(drill_psql "$objects_sql" | tr '\n' ' ')"
 live_objects="$(live_psql "$objects_sql" | tr '\n' ' ')"
 log "schema objects (r=tables i=indexes S=sequences v=views m=matviews): restored [$restored_objects] live [$live_objects]"

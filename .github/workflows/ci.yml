@@ -208,6 +208,7 @@ jobs:
       LEGAL_TEMPORAL_POSTGRES_TESTS: "1"
       LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256: b69e7bcc73da12c5b80a69ec6fc436758842a11b838895d02241dcde0af07e98
       BILLING_PROVIDER_POSTGRES_TESTS: "1"
+      RESTORE_DRILL_POSTGRES_TESTS: "1"
 
     steps:
       - uses: actions/checkout@v7
@@ -242,6 +243,7 @@ jobs:
           tests/test_legal_temporal_backfill_postgres.py
           tests/test_legal_temporal_review_admission_postgres.py
           tests/test_billing_provider_postgres.py
+          tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
       - name: Audit temporal foundation after backfill integration
