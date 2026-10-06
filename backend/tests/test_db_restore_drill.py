@@ -114,7 +114,7 @@ def test_drill_restores_isolated_copy_and_records_success(tmp_path):
     run = next(c for c in calls if c.startswith("run "))
     assert "--network none" in run
     assert ":/backups:ro" in run
-    assert "--cpus 1 --memory 2g" in run
+    assert "--cpus 1 --memory 2g --shm-size 1g" in run
     assert run.endswith("pgvector/pgvector:pg15")
     _assert_cleaned_up(calls)
     assert "pgvector ok" in result.stdout

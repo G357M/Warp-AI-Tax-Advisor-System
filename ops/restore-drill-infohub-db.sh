@@ -25,6 +25,9 @@ DB_NAME="${INFOHUB_DB_NAME:-infohub_ai}"
 LOCK_FILE="${INFOHUB_DB_BACKUP_LOCK:-/run/lock/infohub-db-backup.lock}"
 CPUS="${INFOHUB_RESTORE_DRILL_CPUS:-1}"
 MEMORY="${INFOHUB_RESTORE_DRILL_MEMORY:-2g}"
+# Docker's default 64 MB /dev/shm is too small for the dynamic shared memory
+# that parallel index builds allocate during pg_restore.
+SHM_SIZE="${INFOHUB_RESTORE_DRILL_SHM_SIZE:-1g}"
 JOBS="${INFOHUB_RESTORE_DRILL_JOBS:-2}"
 # Production keeps changing after the dump, so core tables may only have
 # grown or shrunk by a bounded amount (percent of the live row count).
@@ -88,11 +91,11 @@ cleanup() {
 trap cleanup EXIT
 
 started=$SECONDS
-log "starting $drill from $image (cpus=$CPUS memory=$MEMORY, no network)"
+log "starting $drill from $image (cpus=$CPUS memory=$MEMORY shm=$SHM_SIZE, no network)"
 docker volume create "$drill" >/dev/null
 docker run -d --name "$drill" \
     --network none \
-    --cpus "$CPUS" --memory "$MEMORY" \
+    --cpus "$CPUS" --memory "$MEMORY" --shm-size "$SHM_SIZE" \
     -e POSTGRES_USER="$DB_USER" \
     -e POSTGRES_PASSWORD="drill-$stamp" \
     -e POSTGRES_DB="$DB_NAME" \
@@ -112,7 +115,7 @@ drill_psql() { docker exec "$drill" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME
 
 log "restoring with pg_restore -j $JOBS"
 if ! docker exec "$drill" pg_restore -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -j "$JOBS" "/backups/$dump_name" >"$restore_log" 2>&1; then
-    grep -m 20 -E "error|ERROR" "$restore_log" >&2 || tail -n 20 "$restore_log" >&2
+    grep -m 40 -E "error|ERROR|Command was" "$restore_log" >&2 || tail -n 20 "$restore_log" >&2
     fail "pg_restore reported errors"
 fi
 log "restore finished in $(( SECONDS - started ))s"
