@@ -69,7 +69,11 @@ log "dump $dump_dir/$dump_name ($(stat -c %s "$dump") bytes)"
 (cd "$dump_dir" && sha256sum --check --quiet "$dump_name.sha256") || fail "sha256 mismatch for $dump_name"
 log "checksum ok"
 
-live_psql() { docker exec "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -XAtq -v ON_ERROR_STOP=1 -c "$1"; }
+live_psql() {
+    local sql="$1"
+    docker exec "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -XAtq -v ON_ERROR_STOP=1 -c "$sql"
+    return $?
+}
 
 image="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER")" || fail "cannot inspect $CONTAINER"
 live_bytes="$(live_psql "SELECT pg_database_size(current_database())")"
@@ -111,7 +115,11 @@ until docker exec "$drill" pg_isready -q -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME
     sleep 2
 done
 
-drill_psql() { docker exec "$drill" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -XAtq -v ON_ERROR_STOP=1 -c "$1"; }
+drill_psql() {
+    local sql="$1"
+    docker exec "$drill" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -XAtq -v ON_ERROR_STOP=1 -c "$sql"
+    return $?
+}
 
 log "restoring with pg_restore -j $JOBS"
 if ! docker exec "$drill" pg_restore -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -j "$JOBS" "/backups/$dump_name" >"$restore_log" 2>&1; then
