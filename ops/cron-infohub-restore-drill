@@ -1,0 +1,8 @@
+# Installed to /etc/cron.d/infohub-restore-drill by scripts/deploy_production.sh.
+# Monthly restore drill: first Saturday at 22:15 UTC (Sunday 02:15 Tbilisi).
+# It takes about an hour on its 1-CPU limit, so it starts after the 21:17
+# ingest refresh and ends well before the 01:30 backup (it shares that lock).
+# cron ORs day-of-month and day-of-week, so the weekday is tested in the command.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+15 22 1-7 * * root [ "$(date -u +\%u)" = 6 ] || exit 0; /root/infohub/ops/restore-drill-infohub-db.sh >> /root/infohub/logs/restore-drill.log 2>&1

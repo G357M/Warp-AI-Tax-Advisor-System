@@ -8,6 +8,12 @@ services:
   postgres:
     image: pgvector/pgvector:pg15
     container_name: infohub-postgres
+    # Docker's default 64 MB /dev/shm is too small for the dynamic shared
+    # memory of parallel index builds: restoring a dump (HNSW indexes) or a
+    # REINDEX fails with "could not resize shared memory segment". Proven by
+    # the 2026-10-06 restore drill. Takes effect only when the container is
+    # recreated; scripts/deploy_production.sh never recreates postgres.
+    shm_size: 1g
     environment:
       POSTGRES_USER: infohub_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
