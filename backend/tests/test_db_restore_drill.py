@@ -13,6 +13,10 @@ import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPOSITORY_ROOT / "ops" / "restore-drill-infohub-db.sh"
+CRON = REPOSITORY_ROOT / "ops" / "cron-infohub-restore-drill"
+DEPLOY = REPOSITORY_ROOT / "scripts" / "deploy_production.sh"
+LOGROTATE = REPOSITORY_ROOT / "ops" / "logrotate-infohub"
+COMPOSE = REPOSITORY_ROOT / "docker-compose.yml"
 
 LIVE_COUNTS = {"documents": 100, "document_chunks": 900, "users": 10, "decision_facts": 50, "feedback": 3}
 
@@ -196,3 +200,49 @@ def test_invalid_numeric_setting_is_rejected(tmp_path):
 
 def test_script_has_unix_line_endings():
     assert b"\r" not in SCRIPT.read_bytes()
+
+
+def _cron_job() -> list[str]:
+    lines = [l for l in CRON.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")]
+    jobs = [l for l in lines if "=" not in l.split()[0]]
+    assert len(jobs) == 1
+    return jobs[0].split(None, 6)
+
+
+def test_deploy_installs_restore_drill_cron_and_log_rotation():
+    deploy = DEPLOY.read_text(encoding="utf-8")
+    assert "install -m 0644 ops/cron-infohub-restore-drill /etc/cron.d/infohub-restore-drill" in deploy
+    assert "/root/infohub/logs/restore-drill.log" in LOGROTATE.read_text(encoding="utf-8").splitlines()[0]
+
+
+def test_restore_drill_cron_runs_monthly_between_refresh_and_backup():
+    minute, hour, dom, month, dow, user, command = _cron_job()
+    # 22:15 UTC: after the 21:17 ingest refresh, ~3 h before the 01:30 backup.
+    assert (minute, hour, dom, month, dow, user) == ("15", "22", "1-7", "*", "*", "root")
+    assert "/root/infohub/ops/restore-drill-infohub-db.sh >> /root/infohub/logs/restore-drill.log 2>&1" in command
+    assert CRON.read_bytes().endswith(b"\n") and b"\r" not in CRON.read_bytes()
+
+
+@needs_posix
+@pytest.mark.parametrize(("weekday", "runs"), [("6", True), ("7", False), ("1", False)])
+def test_restore_drill_cron_runs_only_on_saturday(tmp_path, weekday, runs):
+    *_, command = _cron_job()
+    # cron turns "\%" into "%" before handing the line to SHELL.
+    command = command.replace(r"\%", "%").split(";", 1)[0] + "; echo DRILL"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_date = bin_dir / "date"
+    fake_date.write_text(f"#!/usr/bin/env bash\necho {weekday}\n", encoding="utf-8", newline="\n")
+    fake_date.chmod(0o755)
+    env = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+
+    result = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True)
+
+    assert result.returncode == 0
+    assert ("DRILL" in result.stdout) is runs
+
+
+def test_production_postgres_has_room_for_parallel_index_builds():
+    compose = COMPOSE.read_text(encoding="utf-8")
+    service = compose.split("\n  postgres:\n", 1)[1].split("\n  redis:\n", 1)[0]
+    assert "\n    shm_size: 1g\n" in service
