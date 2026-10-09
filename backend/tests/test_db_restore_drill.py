@@ -81,12 +81,19 @@ def _setup(tmp_path: Path, drill_counts: dict[str, int] | None = None, good_chec
     return bin_dir
 
 
+FAKE_ALERT = r'''printf "%s|%s\n" "$1" "$2" >> "$(dirname "$0")/alerts.log"
+'''
+
+
 def _run(tmp_path: Path, *args: str, **extra_env: str) -> subprocess.CompletedProcess:
+    alert = tmp_path / "bin" / "alert.sh"
+    alert.write_text(FAKE_ALERT, encoding="utf-8", newline="\n")
     env = {
         **os.environ,
         "PATH": f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}",
         "INFOHUB_DB_BACKUP_DIR": str(tmp_path / "backups"),
         "INFOHUB_DB_BACKUP_LOCK": str(tmp_path / "backup.lock"),
+        "INFOHUB_OPS_ALERT": str(alert),
         **extra_env,
     }
     return subprocess.run(["bash", str(SCRIPT), *args], env=env, capture_output=True, text=True)
@@ -95,6 +102,11 @@ def _run(tmp_path: Path, *args: str, **extra_env: str) -> subprocess.CompletedPr
 def _calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "bin" / "calls.log"
     return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+
+
+def _alerts(tmp_path: Path) -> str:
+    log = tmp_path / "bin" / "alerts.log"
+    return log.read_text(encoding="utf-8") if log.exists() else ""
 
 
 def _marker(tmp_path: Path) -> str:
@@ -122,6 +134,7 @@ def test_drill_restores_isolated_copy_and_records_success(tmp_path):
     assert run.endswith("pgvector/pgvector:pg15")
     _assert_cleaned_up(calls)
     assert "pgvector ok" in result.stdout
+    assert _alerts(tmp_path) == ""
 
 
 @needs_posix
@@ -134,6 +147,7 @@ def test_checksum_mismatch_stops_before_any_container(tmp_path):
     assert "sha256 mismatch" in result.stderr
     assert not any(c.startswith(("run ", "volume ")) for c in _calls(tmp_path))
     assert _marker(tmp_path).startswith("failed ")
+    assert _alerts(tmp_path).startswith("monthly restore drill|exit 1: sha256 mismatch")
 
 
 @needs_posix
@@ -146,6 +160,7 @@ def test_empty_core_table_fails_and_still_cleans_up(tmp_path):
     assert "EMPTY" in result.stdout
     assert _marker(tmp_path).startswith("failed ")
     _assert_cleaned_up(_calls(tmp_path))
+    assert "1 check(s) failed" in _alerts(tmp_path)
 
 
 @needs_posix
@@ -196,6 +211,24 @@ def test_invalid_numeric_setting_is_rejected(tmp_path):
     _setup(tmp_path)
 
     assert _run(tmp_path, INFOHUB_RESTORE_DRILL_JOBS="0").returncode == 2
+    assert "numeric settings must be positive integers" in _alerts(tmp_path)
+
+
+@needs_posix
+def test_drill_skipped_by_held_lock_alerts(tmp_path):
+    _setup(tmp_path)
+    lock = tmp_path / "backup.lock"
+    holder = subprocess.Popen(["flock", str(lock), "-c", "echo held; sleep 30"], stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == "held"
+        result = _run(tmp_path)
+    finally:
+        holder.kill()
+        holder.wait()
+
+    assert result.returncode == 75
+    assert "skipped: a backup or another drill holds the lock" in _alerts(tmp_path)
+    assert not any(c.startswith("run ") for c in _calls(tmp_path))
 
 
 def test_script_has_unix_line_endings():

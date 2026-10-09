@@ -341,6 +341,9 @@ jobs:
           scraper_alert.sh
           canary_alert.sh
           quality_gate_alert.sh
+          ops/ops_alert.sh
+          ops/backup-infohub-db.sh
+          ops/restore-drill-infohub-db.sh
 
       - name: Validate operational PowerShell scripts
         shell: pwsh
