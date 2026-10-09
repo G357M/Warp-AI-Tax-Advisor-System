@@ -4,7 +4,7 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'visual.spec.ts',
+  testMatch: ['visual.spec.ts', 'billing-reconciliation.spec.ts'],
   fullyParallel: false,
   workers: 1,
   forbidOnly: isCI,

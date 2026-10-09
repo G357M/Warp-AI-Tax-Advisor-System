@@ -1,6 +1,6 @@
 # Client account and billing roadmap
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 ## Implemented foundation
 
@@ -71,10 +71,16 @@ Official references:
 2. Provision the production secrets outside Git, register the exact return and
    callback URLs, confirm the four documented callback source IPs with TBC and
    run the additive provider-schema migration before enabling the feature flag.
-3. Add an operator reconciliation queue for `provider_unknown`, returns,
-   partial returns and disputed events. Refund execution must be a separate,
-   audited command; the current adapter only observes those states and does not
-   change an entitlement silently.
+3. The initial administrator-only, read-only reconciliation API is implemented
+   locally for `provider_unknown`, review holds and overdue bank verification;
+   see `BILLING_RECONCILIATION.md` and release status in `DEVELOPMENT_MEMORY.md`.
+   Review holds survive later callbacks, including replayed pre-settlement
+   states. The RU/KA/EN inspection screen at `/admin/billing` is now implemented
+   locally. The separate audited operator decision command and RU/KA/EN form
+   are also implemented locally: actor/reason, evidence pins, idempotent replay,
+   atomic settlement and append-only PostgreSQL journal. Inspection never clears
+   a hold or changes access. Refund execution/access revocation remain separate;
+   install the pinned review-journal schema before deploying this runtime.
 4. Run provider sandbox end-to-end tests for success, rejection, duplicate callback,
    delayed callback, browser return without callback, callback without browser
    return, refund and provider outage.
