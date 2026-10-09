@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
@@ -14,6 +14,21 @@ import ReviewControls from './ReviewControls';
 
 const PAGE_SIZE = 25;
 const QUEUE_URL = '/api/v1/billing/admin/reconciliation';
+
+function planLabel(plan: string) {
+  if (plan === 'pro') return 'Pro';
+  if (plan === 'business') return 'Business';
+  return plan;
+}
+
+// One evidence row: `wide` spans both grid columns, `mono` sets identifiers and digests.
+function Fact({ label, value, wide = false, mono = false }: Readonly<{
+  label: string; value: ReactNode; wide?: boolean; mono?: boolean;
+}>) {
+  return <div className={wide ? styles.wide : undefined}>
+    <dt>{label}</dt><dd className={mono ? styles.mono : undefined}>{value}</dd>
+  </div>;
+}
 
 // Keep responses tied to their request. A slow prior selection may never
 // appear under another order's heading, including after retry or pagination.
@@ -128,7 +143,7 @@ export default function BillingReconciliationPage() {
               <button type="button" className={styles.order} onClick={() => openOrder(item.id)}
                 aria-pressed={selectedId === item.id} aria-controls="billing-detail"
                 aria-label={`${c.order} ${item.id}`}>
-                <span className={styles.orderTop}><strong>{item.plan === 'pro' ? 'Pro' : item.plan === 'business' ? 'Business' : item.plan}</strong>
+                <span className={styles.orderTop}><strong>{planLabel(item.plan)}</strong>
                   <strong>{formatMinorMoney(item.amount_minor, item.currency, lang)}</strong></span>
                 <span className={styles.reason}>{reviewReason(item.reason, lang).title}</span>
                 <span className={styles.orderMeta}><span>{item.provider === 'tbc' ? 'TBC' : item.provider}</span><span>{date(item.created_at)}</span></span>
@@ -160,17 +175,17 @@ export default function BillingReconciliationPage() {
           <div className={styles.guidance}><h3>{reason.title}</h3><p>{reason.help}</p></div>
           <p className={styles.credit}>{order.settled_payment_id ? c.recorded : c.unrecorded}</p>
           <dl className={styles.facts}>
-            <div><dt>{c.amount}</dt><dd>{formatMinorMoney(order.amount_minor, order.currency, lang)}</dd></div>
-            <div><dt>{c.plan}</dt><dd>{order.plan === 'pro' ? 'Pro' : order.plan === 'business' ? 'Business' : order.plan}</dd></div>
-            <div><dt>{c.bankStatus}</dt><dd>{order.provider_status || c.noValue}</dd></div>
-            <div><dt>{c.checkoutStatus}</dt><dd>{order.status}</dd></div>
-            <div><dt>{c.checked}</dt><dd>{date(order.provider_checked_at)}</dd></div>
-            <div><dt>{c.expires}</dt><dd>{date(order.expires_at)}</dd></div>
-            <div><dt>{c.created}</dt><dd>{date(order.created_at)}</dd></div>
-            <div><dt>{c.updated}</dt><dd>{date(order.updated_at)}</dd></div>
-            <div className={styles.wide}><dt>{c.bankOrder}</dt><dd className={styles.mono}>{order.provider_order_id || c.noValue}</dd></div>
-            <div className={styles.wide}><dt>{c.user}</dt><dd className={styles.mono}>{order.user_id}</dd></div>
-            {order.settled_payment_id && <div className={styles.wide}><dt>{c.payment}</dt><dd className={styles.mono}>{order.settled_payment_id}</dd></div>}
+            <Fact label={c.amount} value={formatMinorMoney(order.amount_minor, order.currency, lang)} />
+            <Fact label={c.plan} value={planLabel(order.plan)} />
+            <Fact label={c.bankStatus} value={order.provider_status || c.noValue} />
+            <Fact label={c.checkoutStatus} value={order.status} />
+            <Fact label={c.checked} value={date(order.provider_checked_at)} />
+            <Fact label={c.expires} value={date(order.expires_at)} />
+            <Fact label={c.created} value={date(order.created_at)} />
+            <Fact label={c.updated} value={date(order.updated_at)} />
+            <Fact label={c.bankOrder} value={order.provider_order_id || c.noValue} wide mono />
+            <Fact label={c.user} value={order.user_id} wide mono />
+            {order.settled_payment_id && <Fact label={c.payment} value={order.settled_payment_id} wide mono />}
           </dl>
           <div className={styles.eventHeading}><h3>{c.events}</h3></div>
           {detail.data?.events_truncated && <p className={styles.notice} role="status">{c.truncated}</p>}
@@ -180,11 +195,11 @@ export default function BillingReconciliationPage() {
               <details>
                 <summary><span><strong>{event.provider_status}</strong><time>{date(event.created_at)}</time></span></summary>
                 <dl className={styles.facts}>
-                  <div><dt>{c.eventDetails}</dt><dd>{event.processing_status}</dd></div>
-                  <div><dt>{c.processed}</dt><dd>{date(event.processed_at)}</dd></div>
-                  {event.error_code && <div className={styles.wide}><dt>{c.errorCode}</dt><dd className={styles.mono}>{event.error_code}</dd></div>}
-                  <div className={styles.wide}><dt>{c.eventId}</dt><dd className={styles.mono}>{event.id}</dd></div>
-                  <div className={styles.wide}><dt>{c.digest}</dt><dd className={styles.mono}>{event.payload_sha256}</dd></div>
+                  <Fact label={c.eventDetails} value={event.processing_status} />
+                  <Fact label={c.processed} value={date(event.processed_at)} />
+                  {event.error_code && <Fact label={c.errorCode} value={event.error_code} wide mono />}
+                  <Fact label={c.eventId} value={event.id} wide mono />
+                  <Fact label={c.digest} value={event.payload_sha256} wide mono />
                 </dl>
               </details>
             </li>)}

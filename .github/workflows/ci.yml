@@ -54,6 +54,7 @@ jobs:
           scripts/add_auth_recovery.py
           scripts/add_billing_provider_foundation.py
           scripts/add_billing_review_journal.py
+          scripts/schema_contract_cli.py
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
           scripts/audit_legal_answer_coverage.py

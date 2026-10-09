@@ -2,16 +2,14 @@
 """Install an additive, append-only operator decision journal; dry plan by default."""
 from __future__ import annotations
 
-import argparse
-import hashlib
-import json
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import inspect, text
-from core.database import engine
+
+from scripts.schema_contract_cli import ddl_contract_sha256, run
 
 DDL = (
     '''CREATE TABLE IF NOT EXISTS billing_review_decisions (
@@ -42,7 +40,7 @@ DDL = (
 
 
 def contract_sha256() -> str:
-    return hashlib.sha256("\n".join(" ".join(sql.split()) for sql in DDL).encode()).hexdigest()
+    return ddl_contract_sha256(DDL)
 
 
 def apply_schema(connection) -> dict:
@@ -61,21 +59,12 @@ def apply_schema(connection) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--expected-contract-sha256")
-    args = parser.parse_args()
-    contract = contract_sha256()
-    if args.apply and args.expected_contract_sha256 != contract:
-        raise SystemExit("Review journal contract mismatch: explicit reviewed SHA-256 is required")
-    result = {"contract_sha256": contract, "execute": args.apply}
-    if args.apply:
-        if engine.dialect.name != "postgresql":
-            raise SystemExit("Review journal schema requires PostgreSQL")
-        with engine.begin() as connection:
-            result.update(apply_schema(connection))
-    print("BILLING_REVIEW_SCHEMA=" + json.dumps(result, sort_keys=True))
-    return 0
+    return run(
+        output_key="BILLING_REVIEW_SCHEMA",
+        label="Review journal",
+        contract=contract_sha256(),
+        apply_schema=apply_schema,
+    )
 
 
 if __name__ == "__main__":
