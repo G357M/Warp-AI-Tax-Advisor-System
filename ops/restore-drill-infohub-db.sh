@@ -34,9 +34,35 @@ JOBS="${INFOHUB_RESTORE_DRILL_JOBS:-2}"
 MIN_PERCENT="${INFOHUB_RESTORE_DRILL_MIN_PERCENT:-90}"
 READY_TIMEOUT="${INFOHUB_RESTORE_DRILL_READY_TIMEOUT:-120}"
 CORE_TABLES=(documents document_chunks users decision_facts)
+ALERT="${INFOHUB_OPS_ALERT:-$(dirname "${BASH_SOURCE[0]}")/ops_alert.sh}"
 
 log() { echo "[restore-drill $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
+
+# Any non-zero exit (a failed check, a skipped drill, set -e) sends one
+# Telegram alert; the marker file alone is only seen when someone looks.
+reason=""
+drill=""
+restore_log=""
+trap 'reason="${reason:-command failed: $BASH_COMMAND}"' ERR
+cleanup() {
+    if [[ -n "$drill" ]]; then
+        docker rm -f "$drill" >/dev/null 2>&1 || true
+        docker volume rm "$drill" >/dev/null 2>&1 || true
+    fi
+    rm -f ${restore_log:+"$restore_log"}
+}
+finish() {
+    local rc=$?
+    cleanup
+    if (( rc != 0 )); then
+        bash "$ALERT" "monthly restore drill" "exit $rc: ${reason:-unknown error}
+Log: /root/infohub/logs/restore-drill.log" || true
+    fi
+}
+trap finish EXIT
+
 fail() {
+    reason="$*"
     log "FAILED: $*" >&2
     printf 'failed %s %s\n' "${dump_name:-?}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" 2>/dev/null > "$BACKUP_DIR/restore-drill-last.txt" || true
     exit 1
@@ -44,7 +70,8 @@ fail() {
 
 for value in "$CPUS" "$JOBS" "$MIN_PERCENT" "$READY_TIMEOUT"; do
     if ! [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
-        log "numeric settings must be positive integers, got '$value'" >&2
+        reason="numeric settings must be positive integers, got '$value'"
+        log "$reason" >&2
         exit 2
     fi
 done
@@ -60,7 +87,8 @@ dump_name="$(basename "$dump")"
 
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
-    log "a backup or another drill is running; try again later" >&2
+    reason="skipped: a backup or another drill holds the lock"
+    log "$reason; try again later" >&2
     exit 75
 fi
 
@@ -87,12 +115,6 @@ fi
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 drill="infohub-restore-drill-$stamp"
 restore_log="$(mktemp)"
-cleanup() {
-    docker rm -f "$drill" >/dev/null 2>&1 || true
-    docker volume rm "$drill" >/dev/null 2>&1 || true
-    rm -f "$restore_log"
-}
-trap cleanup EXIT
 
 started=$SECONDS
 log "starting $drill from $image (cpus=$CPUS memory=$MEMORY shm=$SHM_SIZE, no network)"

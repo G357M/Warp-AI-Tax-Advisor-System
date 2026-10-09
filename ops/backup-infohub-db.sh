@@ -19,11 +19,34 @@ DB_NAME="${INFOHUB_DB_NAME:-infohub_ai}"
 LOCK_FILE="${INFOHUB_DB_BACKUP_LOCK:-/run/lock/infohub-db-backup.lock}"
 REQUIRED_TABLES=(documents document_chunks users)
 
+ALERT="${INFOHUB_OPS_ALERT:-$(dirname "${BASH_SOURCE[0]}")/ops_alert.sh}"
+
 log() { echo "[db-backup $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
+die() {
+    local code="$1"; shift
+    reason="$*"
+    log "$reason" >&2
+    exit "$code"
+}
+
+# Any non-zero exit, explicit or from set -e, sends one Telegram alert; the
+# temporary files are removed whatever the outcome.
+reason=""
+partial=""
+toc=""
+trap 'reason="${reason:-command failed: $BASH_COMMAND}"' ERR
+finish() {
+    local rc=$?
+    rm -f ${partial:+"$partial"} ${toc:+"$toc"}
+    if (( rc != 0 )); then
+        bash "$ALERT" "nightly DB backup" "exit $rc: ${reason:-unknown error}
+Log: /root/infohub/logs/db-backup.log" || true
+    fi
+}
+trap finish EXIT
 
 if ! [[ "$KEEP" =~ ^[1-9][0-9]*$ ]]; then
-    log "INFOHUB_DB_BACKUP_KEEP must be a positive integer, got '$KEEP'" >&2
-    exit 2
+    die 2 "INFOHUB_DB_BACKUP_KEEP must be a positive integer, got '$KEEP'"
 fi
 
 exec 9>"$LOCK_FILE"
@@ -43,8 +66,7 @@ if [[ -n "$latest" ]]; then
     need_kb=$(( $(stat -c %s "$latest") / 1024 * 12 / 10 ))
     free_kb="$(df --output=avail -k "$BACKUP_DIR" | tail -n 1 | tr -d ' ')"
     if (( free_kb < need_kb )); then
-        log "not enough free space: ${free_kb} KiB available, ${need_kb} KiB needed" >&2
-        exit 1
+        die 1 "not enough free space: ${free_kb} KiB available, ${need_kb} KiB needed"
     fi
 fi
 
@@ -52,7 +74,6 @@ stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 target="$BACKUP_DIR/infohub_ai-$stamp.dump"
 partial="$target.partial"
 toc="$(mktemp)"
-trap 'rm -f "$partial" "$toc"' EXIT
 
 log "dumping $DB_NAME from $CONTAINER"
 docker exec "$CONTAINER" pg_dump -U "$DB_USER" -Fc "$DB_NAME" > "$partial"
@@ -60,8 +81,7 @@ docker exec "$CONTAINER" pg_dump -U "$DB_USER" -Fc "$DB_NAME" > "$partial"
 docker exec -i "$CONTAINER" pg_restore --list < "$partial" > "$toc"
 for table in "${REQUIRED_TABLES[@]}"; do
     if ! grep -qE "TABLE DATA public $table " "$toc"; then
-        log "verification failed: no data entry for table '$table'" >&2
-        exit 1
+        die 1 "verification failed: no data entry for table '$table'"
     fi
 done
 

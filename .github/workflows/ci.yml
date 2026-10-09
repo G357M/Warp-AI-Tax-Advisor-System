@@ -101,6 +101,7 @@ jobs:
           tests/test_mcp_server.py
           tests/test_db_backup_policy.py
           tests/test_db_restore_drill.py
+          tests/test_drop_stale_chunks_backup.py
           tests/test_legacy_buildkit_retirement.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
@@ -341,6 +342,10 @@ jobs:
           scraper_alert.sh
           canary_alert.sh
           quality_gate_alert.sh
+          ops/ops_alert.sh
+          ops/backup-infohub-db.sh
+          ops/restore-drill-infohub-db.sh
+          ops/drop-stale-chunks-backup.sh
 
       - name: Validate operational PowerShell scripts
         shell: pwsh
