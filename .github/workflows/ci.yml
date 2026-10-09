@@ -39,10 +39,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: backend/requirements-test.txt
+          cache-dependency-path: backend/requirements-ci.lock
 
       - name: Install test dependencies
-        run: python -m pip install -r requirements-test.txt
+        run: >-
+          python -m pip install --only-binary :all: --require-hashes -r requirements-ci.lock
 
       - name: Compile runtime modules
         run: >-
@@ -91,11 +92,17 @@ jobs:
         run: >-
           python -m pytest
           tests/test_config_contract.py
+          tests/test_jev_router.py
+          tests/test_jev_live_integration.py
           tests/test_billing_gateway.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py
           tests/test_production_storage_audit.py
           tests/test_buildkit_cache_policy.py
+          tests/test_mcp_server.py
+          tests/test_db_backup_policy.py
+          tests/test_db_restore_drill.py
+          tests/test_drop_stale_chunks_backup.py
           tests/test_legacy_buildkit_retirement.py
           tests/test_time_contract.py
           tests/test_nightly_maintenance.py
@@ -171,7 +178,6 @@ jobs:
 
       - name: Audit production dependency resolution
         run: |
-          python -m pip install pip-audit
           pip-audit -r requirements-production.txt --progress-spinner off
 
   temporal-postgres:
@@ -207,6 +213,7 @@ jobs:
       LEGAL_TEMPORAL_POSTGRES_TESTS: "1"
       LEGAL_TEMPORAL_SCHEMA_CONTRACT_SHA256: b69e7bcc73da12c5b80a69ec6fc436758842a11b838895d02241dcde0af07e98
       BILLING_PROVIDER_POSTGRES_TESTS: "1"
+      RESTORE_DRILL_POSTGRES_TESTS: "1"
 
     steps:
       - uses: actions/checkout@v7
@@ -214,9 +221,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: backend/requirements-test.txt
+          cache-dependency-path: backend/requirements-ci.lock
       - name: Install test dependencies
-        run: python -m pip install -r requirements-test.txt
+        run: >-
+          python -m pip install --only-binary :all: --require-hashes -r requirements-ci.lock
       - name: Create legacy document FK fixture
         run: >-
           python -c "from sqlalchemy import text;
@@ -241,6 +249,7 @@ jobs:
           tests/test_legal_temporal_review_admission_postgres.py
           tests/test_billing_provider_postgres.py
           tests/test_billing_review_postgres.py
+          tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
       - name: Audit temporal foundation after backfill integration
@@ -266,7 +275,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run type-check
       - run: npm run build
@@ -297,7 +306,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run test:visual
 
@@ -320,7 +329,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Validate operational shell scripts
         run: >-
@@ -338,6 +347,10 @@ jobs:
           scraper_alert.sh
           canary_alert.sh
           quality_gate_alert.sh
+          ops/ops_alert.sh
+          ops/backup-infohub-db.sh
+          ops/restore-drill-infohub-db.sh
+          ops/drop-stale-chunks-backup.sh
 
       - name: Validate operational PowerShell scripts
         shell: pwsh
@@ -355,7 +368,7 @@ jobs:
           }
 
       - name: Build backend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ./backend
           push: false
@@ -364,7 +377,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
 
       - name: Build frontend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ./frontend
           push: false

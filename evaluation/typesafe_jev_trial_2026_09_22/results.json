@@ -1,0 +1,2847 @@
+{
+  "groups": {
+    "existing_contract": {
+      "total": 20,
+      "baseline_correct": 20,
+      "jev_correct": 20,
+      "corrected": 0,
+      "regressed": 0
+    },
+    "new_synthetic": {
+      "total": 21,
+      "baseline_correct": 10,
+      "jev_correct": 21,
+      "corrected": 11,
+      "regressed": 0
+    },
+    "new_six_existing_classes": {
+      "total": 18,
+      "baseline_correct": 10,
+      "jev_correct": 18,
+      "corrected": 8,
+      "regressed": 0
+    },
+    "unclear_extension": {
+      "total": 3,
+      "baseline_correct": 0,
+      "jev_correct": 3,
+      "corrected": 3,
+      "regressed": 0
+    },
+    "all": {
+      "total": 41,
+      "baseline_correct": 30,
+      "jev_correct": 41,
+      "corrected": 11,
+      "regressed": 0
+    }
+  },
+  "models": [
+    "jev-1.13.0"
+  ],
+  "languages": {
+    "ru": {
+      "total": 18,
+      "baseline_correct": 14,
+      "jev_correct": 18
+    },
+    "en": {
+      "total": 13,
+      "baseline_correct": 10,
+      "jev_correct": 13
+    },
+    "ka": {
+      "total": 10,
+      "baseline_correct": 6,
+      "jev_correct": 10
+    }
+  },
+  "client_latency_seconds": {
+    "median": 1.8753731999895535,
+    "min": 1.5500866000074893,
+    "max": 2.5301207999582402
+  },
+  "usage_total": {
+    "input_tokens": 27196,
+    "output_tokens": 3779
+  },
+  "high_confidence_errors_0_9": [],
+  "results": [
+    {
+      "id": "article_168_ru",
+      "language": "ru",
+      "query": "Что говорит статья 168 Налогового кодекса?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q001",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Что говорит статья 168 Налогового кодекса?",
+        "language": "ru",
+        "normalized_query": "что говорит статья 168 налогового кодекса?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "168",
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "168",
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "named_document_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.02,
+          "canonical_law_lookup": 0.98,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.151472500001546,
+      "usage": {
+        "input_tokens": 657,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "article_168_en",
+      "language": "en",
+      "query": "What does Article 168 of the Tax Code say?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q002",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What does Article 168 of the Tax Code say?",
+        "language": "en",
+        "normalized_query": "what does article 168 of the tax code say?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "168",
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "168",
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.96,
+        "probabilities": {
+          "named_document_lookup": 0.01,
+          "unclear": 0.02,
+          "canonical_law_lookup": 0.97,
+          "local_regulation_lookup": 0.0,
+          "amendment_tracking": 0.0,
+          "dispute_practice": 0.0,
+          "practical_tax_guidance": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.9633391999523155,
+      "usage": {
+        "input_tokens": 645,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "article_168_ka",
+      "language": "ka",
+      "query": "რა წერია საქართველოს საგადასახადო კოდექსის 168-ე მუხლში?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q003",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "რა წერია საქართველოს საგადასახადო კოდექსის 168-ე მუხლში?",
+        "language": "ka",
+        "normalized_query": "რა წერია საქართველოს საგადასახადო კოდექსის 168-ე მუხლში?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "168",
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "168",
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.99,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.01,
+          "canonical_law_lookup": 0.99,
+          "local_regulation_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "dispute_practice": 0.0,
+          "unclear": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.980670899967663,
+      "usage": {
+        "input_tokens": 682,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "article_202_ru_tax_code_abbreviation",
+      "language": "ru",
+      "query": "Что говорит ст. 202 НК Грузии?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q004",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Что говорит ст. 202 НК Грузии?",
+        "language": "ru",
+        "normalized_query": "что говорит ст. 202 нк грузии?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "202",
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "202",
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 1.0,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.0,
+          "local_regulation_lookup": 0.0,
+          "canonical_law_lookup": 1.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.5301207999582402,
+      "usage": {
+        "input_tokens": 649,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "article_202_en_art_abbreviation",
+      "language": "en",
+      "query": "What does Art. 202 of the Georgian Tax Code say?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q005",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What does Art. 202 of the Georgian Tax Code say?",
+        "language": "en",
+        "normalized_query": "what does art. 202 of the georgian tax code say?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "202",
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "202",
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.99,
+        "probabilities": {
+          "named_document_lookup": 0.0,
+          "unclear": 0.0,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "canonical_law_lookup": 1.0,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.9794206999940798,
+      "usage": {
+        "input_tokens": 647,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "point_169_1_ru",
+      "language": "ru",
+      "query": "Что говорит статья 169 пункт 1 Налогового кодекса?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q006",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Что говорит статья 169 пункт 1 Налогового кодекса?",
+        "language": "ru",
+        "normalized_query": "что говорит статья 169 пункт 1 налогового кодекса?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "169",
+        "point_ref": "169.1",
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref",
+          "point_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "169",
+          "point_ref": "169.1",
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.98,
+          "named_document_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "unclear": 0.02,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.002381600032095,
+      "usage": {
+        "input_tokens": 660,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "point_169_1_ru_parenthetical",
+      "language": "ru",
+      "query": "Что говорит ст. 169(1) Налогового кодекса?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q007",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Что говорит ст. 169(1) Налогового кодекса?",
+        "language": "ru",
+        "normalized_query": "что говорит ст. 169(1) налогового кодекса?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "169",
+        "point_ref": "169.1",
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref",
+          "point_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "169",
+          "point_ref": "169.1",
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "named_document_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.0,
+          "canonical_law_lookup": 0.99,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.01
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.3148729000240564,
+      "usage": {
+        "input_tokens": 661,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "point_169_1_en_parenthetical",
+      "language": "en",
+      "query": "What does Article 169(1) of the Tax Code say?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q008",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What does Article 169(1) of the Tax Code say?",
+        "language": "en",
+        "normalized_query": "what does article 169(1) of the tax code say?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "169",
+        "point_ref": "169.1",
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref",
+          "point_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "169",
+          "point_ref": "169.1",
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.0,
+          "canonical_law_lookup": 0.99,
+          "local_regulation_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "dispute_practice": 0.0,
+          "unclear": 0.01
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.9897964000119828,
+      "usage": {
+        "input_tokens": 648,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "point_169_1_ka_parenthetical",
+      "language": "ka",
+      "query": "რა წერია საგადასახადო კოდექსის 169-ე მუხლის (1) პუნქტში?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q009",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.95,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.35
+          }
+        ],
+        "why": [
+          "explicit article or point reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "რა წერია საგადასახადო კოდექსის 169-ე მუხლის (1) პუნქტში?",
+        "language": "ka",
+        "normalized_query": "რა წერია საგადასახადო კოდექსის 169-ე მუხლის (1) პუნქტში?",
+        "topic": "tax",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": "169",
+        "point_ref": "169.1",
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "article_ref",
+          "point_ref"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": "169",
+          "point_ref": "169.1",
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 1.0,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "canonical_law_lookup": 1.0,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.0,
+          "practical_tax_guidance": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.991342600027565,
+      "usage": {
+        "input_tokens": 681,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "vat_rate_ru",
+      "language": "ru",
+      "query": "Сколько процентов НДС в Грузии?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q010",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Сколько процентов НДС в Грузии?",
+        "language": "ru",
+        "normalized_query": "сколько процентов ндс в грузии?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "rate_lookup",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "canonical_law_lookup": 0.98,
+          "amendment_tracking": 0.0,
+          "dispute_practice": 0.0,
+          "named_document_lookup": 0.0,
+          "unclear": 0.01,
+          "practical_tax_guidance": 0.01,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.734675600018818,
+      "usage": {
+        "input_tokens": 651,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "company_property_tax_en",
+      "language": "en",
+      "query": "What is the property tax for a company in Georgia?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q011",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What is the property tax for a company in Georgia?",
+        "language": "en",
+        "normalized_query": "what is the property tax for a company in georgia?",
+        "topic": "property_tax_company",
+        "subject": "legal_entity",
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative"
+        ],
+        "entities": {
+          "topic": "property_tax_company",
+          "subject": "legal_entity",
+          "goal": "rate_lookup",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.43,
+        "probabilities": {
+          "unclear": 0.16,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.31,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.52,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.01
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8753731999895535,
+      "usage": {
+        "input_tokens": 643,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "small_business_llc_ru",
+      "language": "ru",
+      "query": "Может ли ООО применять налог 1%?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q012",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Может ли ООО применять налог 1%?",
+        "language": "ru",
+        "normalized_query": "может ли ооо применять налог 1%?",
+        "topic": "small_business",
+        "subject": "legal_entity",
+        "goal": "small_business_eligibility",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative",
+          "small_business_legal_form"
+        ],
+        "entities": {
+          "topic": "small_business",
+          "subject": "legal_entity",
+          "goal": "small_business_eligibility",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.9,
+        "probabilities": {
+          "canonical_law_lookup": 0.92,
+          "dispute_practice": 0.0,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.0,
+          "unclear": 0.08,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.7116053000208922,
+      "usage": {
+        "input_tokens": 645,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "small_business_llc_en",
+      "language": "en",
+      "query": "Can an LLC use the 1% tax regime?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q013",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Can an LLC use the 1% tax regime?",
+        "language": "en",
+        "normalized_query": "can an llc use the 1% tax regime?",
+        "topic": "small_business",
+        "subject": "legal_entity",
+        "goal": "small_business_eligibility",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative",
+          "small_business_legal_form"
+        ],
+        "entities": {
+          "topic": "small_business",
+          "subject": "legal_entity",
+          "goal": "small_business_eligibility",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.9,
+        "probabilities": {
+          "named_document_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.08,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.92
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.6816219000029378,
+      "usage": {
+        "input_tokens": 643,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "small_business_llc_ka",
+      "language": "ka",
+      "query": "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+      "expected_class": "canonical_law_lookup",
+      "group": "existing_contract",
+      "request_id": "q014",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+        "language": "ka",
+        "normalized_query": "შეუძლია თუ არა შპს-ს 1%-იანი გადასახადი?",
+        "topic": "small_business",
+        "subject": "legal_entity",
+        "goal": "small_business_eligibility",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative",
+          "small_business_legal_form"
+        ],
+        "entities": {
+          "topic": "small_business",
+          "subject": "legal_entity",
+          "goal": "small_business_eligibility",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.99,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "unclear": 0.01,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.99,
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.0,
+          "dispute_practice": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.9596408000215888,
+      "usage": {
+        "input_tokens": 667,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "named_document_1432_ru",
+      "language": "ru",
+      "query": "Что в документе N1432?",
+      "expected_class": "named_document_lookup",
+      "group": "existing_contract",
+      "request_id": "q015",
+      "baseline": {
+        "question_class": "named_document_lookup",
+        "confidence": 0.9,
+        "alternatives": [],
+        "why": [
+          "named document signal detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Что в документе N1432?",
+        "language": "ru",
+        "normalized_query": "что в документе n1432?",
+        "topic": null,
+        "subject": null,
+        "goal": "document_summary",
+        "document_ref": "1432",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "named_document",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "document_summary",
+          "locality": null,
+          "document_ref": "1432",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "named_document_lookup",
+        "confidence": 0.95,
+        "probabilities": {
+          "named_document_lookup": 0.96,
+          "local_regulation_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "dispute_practice": 0.0,
+          "unclear": 0.04,
+          "canonical_law_lookup": 0.0,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.705019999993965,
+      "usage": {
+        "input_tokens": 649,
+        "output_tokens": 91
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "named_document_1432_en_no",
+      "language": "en",
+      "query": "What does document No. 1432 say?",
+      "expected_class": "named_document_lookup",
+      "group": "existing_contract",
+      "request_id": "q016",
+      "baseline": {
+        "question_class": "named_document_lookup",
+        "confidence": 0.9,
+        "alternatives": [],
+        "why": [
+          "named document signal detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What does document No. 1432 say?",
+        "language": "en",
+        "normalized_query": "what does document no. 1432 say?",
+        "topic": null,
+        "subject": null,
+        "goal": "document_summary",
+        "document_ref": "1432",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "named_document",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "document_summary",
+          "locality": null,
+          "document_ref": "1432",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "named_document_lookup",
+        "confidence": 0.94,
+        "probabilities": {
+          "canonical_law_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.95,
+          "unclear": 0.05,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.5500866000074893,
+      "usage": {
+        "input_tokens": 644,
+        "output_tokens": 91
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "dispute_exact_ru",
+      "language": "ru",
+      "query": "Какое решение по спору №19068/2/2023?",
+      "expected_class": "dispute_practice",
+      "group": "existing_contract",
+      "request_id": "q017",
+      "baseline": {
+        "question_class": "dispute_practice",
+        "confidence": 0.94,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.7
+          }
+        ],
+        "why": [
+          "explicit dispute markers and dispute decision reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какое решение по спору №19068/2/2023?",
+        "language": "ru",
+        "normalized_query": "какое решение по спору №19068/2/2023?",
+        "topic": null,
+        "subject": null,
+        "goal": "dispute_outcome",
+        "document_ref": "19068/2/2023",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": "19068/2/2023",
+        "locality": null,
+        "signals": [
+          "dispute",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "dispute_outcome",
+          "locality": null,
+          "document_ref": "19068/2/2023",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": "19068/2/2023"
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 0.95,
+        "probabilities": {
+          "named_document_lookup": 0.03,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.96,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.01
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8758949000039138,
+      "usage": {
+        "input_tokens": 658,
+        "output_tokens": 93
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "dispute_neighbor_rejected_ru",
+      "language": "ru",
+      "query": "Какое решение по спору №19068/3/2023?",
+      "expected_class": "dispute_practice",
+      "group": "existing_contract",
+      "request_id": "q018",
+      "baseline": {
+        "question_class": "dispute_practice",
+        "confidence": 0.94,
+        "alternatives": [
+          {
+            "class": "named_document_lookup",
+            "score": 0.7
+          }
+        ],
+        "why": [
+          "explicit dispute markers and dispute decision reference detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какое решение по спору №19068/3/2023?",
+        "language": "ru",
+        "normalized_query": "какое решение по спору №19068/3/2023?",
+        "topic": null,
+        "subject": null,
+        "goal": "dispute_outcome",
+        "document_ref": "19068/3/2023",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": "19068/3/2023",
+        "locality": null,
+        "signals": [
+          "dispute",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "dispute_outcome",
+          "locality": null,
+          "document_ref": "19068/3/2023",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": "19068/3/2023"
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 0.95,
+        "probabilities": {
+          "canonical_law_lookup": 0.0,
+          "named_document_lookup": 0.03,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.96,
+          "unclear": 0.01,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.7290419000200927,
+      "usage": {
+        "input_tokens": 658,
+        "output_tokens": 93
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "local_regulation_dmanisi_ru",
+      "language": "ru",
+      "query": "Какая ставка налога на имущество в Дманиси?",
+      "expected_class": "local_regulation_lookup",
+      "group": "existing_contract",
+      "request_id": "q019",
+      "baseline": {
+        "question_class": "local_regulation_lookup",
+        "confidence": 0.8,
+        "alternatives": [],
+        "why": [
+          "locality markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какая ставка налога на имущество в Дманиси?",
+        "language": "ru",
+        "normalized_query": "какая ставка налога на имущество в дманиси?",
+        "topic": "property_tax",
+        "subject": null,
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": "dmanisi",
+        "signals": [
+          "normative",
+          "locality"
+        ],
+        "entities": {
+          "topic": "property_tax",
+          "subject": null,
+          "goal": "rate_lookup",
+          "locality": "dmanisi",
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "local_regulation_lookup",
+        "confidence": 0.62,
+        "probabilities": {
+          "local_regulation_lookup": 0.68,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.28,
+          "unclear": 0.01,
+          "dispute_practice": 0.0,
+          "practical_tax_guidance": 0.02,
+          "named_document_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8220013999962248,
+      "usage": {
+        "input_tokens": 655,
+        "output_tokens": 93
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "vat_amendment_2026_ru",
+      "language": "ru",
+      "query": "Какие изменения по НДС в 2026 году?",
+      "expected_class": "amendment_tracking",
+      "group": "existing_contract",
+      "request_id": "q020",
+      "baseline": {
+        "question_class": "amendment_tracking",
+        "confidence": 0.85,
+        "alternatives": [],
+        "why": [
+          "amendment markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какие изменения по НДС в 2026 году?",
+        "language": "ru",
+        "normalized_query": "какие изменения по ндс в 2026 году?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "amendment_tracking",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "amendment"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "amendment_tracking",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "amendment_tracking",
+        "confidence": 0.9,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "dispute_practice": 0.0,
+          "named_document_lookup": 0.0,
+          "canonical_law_lookup": 0.03,
+          "local_regulation_lookup": 0.0,
+          "amendment_tracking": 0.92,
+          "unclear": 0.05
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.893502000020817,
+      "usage": {
+        "input_tokens": 650,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_01",
+      "language": "ru",
+      "query": "В Тбилиси я открыл ООО. Какова общегосударственная ставка НДС в Грузии?",
+      "expected_class": "canonical_law_lookup",
+      "group": "new_synthetic",
+      "request_id": "q021",
+      "baseline": {
+        "question_class": "local_regulation_lookup",
+        "confidence": 0.8,
+        "alternatives": [],
+        "why": [
+          "locality markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "В Тбилиси я открыл ООО. Какова общегосударственная ставка НДС в Грузии?",
+        "language": "ru",
+        "normalized_query": "в тбилиси я открыл ооо. какова общегосударственная ставка ндс в грузии?",
+        "topic": "vat",
+        "subject": "legal_entity",
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": "tbilisi",
+        "signals": [
+          "normative",
+          "locality"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": "legal_entity",
+          "goal": "rate_lookup",
+          "locality": "tbilisi",
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.99,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 1.0,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.0,
+          "unclear": 0.0,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.664691900019534,
+      "usage": {
+        "input_tokens": 686,
+        "output_tokens": 92
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_02",
+      "language": "en",
+      "query": "My company is based in Batumi. What is the national VAT rate in Georgia?",
+      "expected_class": "canonical_law_lookup",
+      "group": "new_synthetic",
+      "request_id": "q022",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "My company is based in Batumi. What is the national VAT rate in Georgia?",
+        "language": "en",
+        "normalized_query": "my company is based in batumi. what is the national vat rate in georgia?",
+        "topic": "vat",
+        "subject": "legal_entity",
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": "legal_entity",
+          "goal": "rate_lookup",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 1.0,
+        "probabilities": {
+          "canonical_law_lookup": 1.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "local_regulation_lookup": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.0,
+          "dispute_practice": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.912594599998556,
+      "usage": {
+        "input_tokens": 649,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_03",
+      "language": "ka",
+      "query": "ჩემი კომპანია თბილისშია. რა არის დღგ-ის საერთო განაკვეთი საქართველოში?",
+      "expected_class": "canonical_law_lookup",
+      "group": "new_synthetic",
+      "request_id": "q023",
+      "baseline": {
+        "question_class": "local_regulation_lookup",
+        "confidence": 0.8,
+        "alternatives": [],
+        "why": [
+          "locality markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "ჩემი კომპანია თბილისშია. რა არის დღგ-ის საერთო განაკვეთი საქართველოში?",
+        "language": "ka",
+        "normalized_query": "ჩემი კომპანია თბილისშია. რა არის დღგ-ის საერთო განაკვეთი საქართველოში?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": "tbilisi",
+        "signals": [
+          "normative",
+          "locality"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "rate_lookup",
+          "locality": "tbilisi",
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "canonical_law_lookup",
+        "confidence": 0.97,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "unclear": 0.0,
+          "practical_tax_guidance": 0.02,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.0,
+          "canonical_law_lookup": 0.98,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8759373999782838,
+      "usage": {
+        "input_tokens": 694,
+        "output_tokens": 92
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_04",
+      "language": "ru",
+      "query": "Мне пришло налоговое уведомление. Как обжаловать его и куда подать жалобу?",
+      "expected_class": "practical_tax_guidance",
+      "group": "new_synthetic",
+      "request_id": "q024",
+      "baseline": {
+        "question_class": "practical_tax_guidance",
+        "confidence": 0.94,
+        "alternatives": [
+          {
+            "class": "canonical_law_lookup",
+            "score": 0.72
+          }
+        ],
+        "why": [
+          "generic appeal wording asks for statutory procedure, not a case outcome"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Мне пришло налоговое уведомление. Как обжаловать его и куда подать жалобу?",
+        "language": "ru",
+        "normalized_query": "мне пришло налоговое уведомление. как обжаловать его и куда подать жалобу?",
+        "topic": "tax",
+        "subject": null,
+        "goal": "appeal_procedure",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "practical",
+          "appeal_procedure"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": "appeal_procedure",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "practical_tax_guidance",
+        "confidence": 0.79,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "practical_tax_guidance": 0.83,
+          "canonical_law_lookup": 0.08,
+          "named_document_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.09,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.6763362999772653,
+      "usage": {
+        "input_tokens": 689,
+        "output_tokens": 95
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_05",
+      "language": "en",
+      "query": "I received a tax assessment. How do I appeal it and where do I submit the appeal?",
+      "expected_class": "practical_tax_guidance",
+      "group": "new_synthetic",
+      "request_id": "q025",
+      "baseline": {
+        "question_class": "practical_tax_guidance",
+        "confidence": 0.94,
+        "alternatives": [
+          {
+            "class": "canonical_law_lookup",
+            "score": 0.72
+          }
+        ],
+        "why": [
+          "generic appeal wording asks for statutory procedure, not a case outcome"
+        ]
+      },
+      "parsed": {
+        "raw_query": "I received a tax assessment. How do I appeal it and where do I submit the appeal?",
+        "language": "en",
+        "normalized_query": "i received a tax assessment. how do i appeal it and where do i submit the appeal?",
+        "topic": "tax",
+        "subject": null,
+        "goal": "appeal_procedure",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "practical",
+          "appeal_procedure"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": "appeal_procedure",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "practical_tax_guidance",
+        "confidence": 0.78,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "unclear": 0.18,
+          "practical_tax_guidance": 0.81,
+          "canonical_law_lookup": 0.01,
+          "named_document_lookup": 0.0,
+          "amendment_tracking": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8694765000254847,
+      "usage": {
+        "input_tokens": 651,
+        "output_tokens": 95
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_06",
+      "language": "ka",
+      "query": "მივიღე საგადასახადო მოთხოვნა. როგორ გავასაჩივრო და სად უნდა წარვადგინო საჩივარი?",
+      "expected_class": "practical_tax_guidance",
+      "group": "new_synthetic",
+      "request_id": "q026",
+      "baseline": {
+        "question_class": "practical_tax_guidance",
+        "confidence": 0.94,
+        "alternatives": [
+          {
+            "class": "canonical_law_lookup",
+            "score": 0.72
+          }
+        ],
+        "why": [
+          "generic appeal wording asks for statutory procedure, not a case outcome"
+        ]
+      },
+      "parsed": {
+        "raw_query": "მივიღე საგადასახადო მოთხოვნა. როგორ გავასაჩივრო და სად უნდა წარვადგინო საჩივარი?",
+        "language": "ka",
+        "normalized_query": "მივიღე საგადასახადო მოთხოვნა. როგორ გავასაჩივრო და სად უნდა წარვადგინო საჩივარი?",
+        "topic": "tax",
+        "subject": null,
+        "goal": "appeal_procedure",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "practical",
+          "appeal_procedure"
+        ],
+        "entities": {
+          "topic": "tax",
+          "subject": null,
+          "goal": "appeal_procedure",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "practical_tax_guidance",
+        "confidence": 0.87,
+        "probabilities": {
+          "unclear": 0.02,
+          "canonical_law_lookup": 0.09,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.89,
+          "amendment_tracking": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.6534955999813974,
+      "usage": {
+        "input_tokens": 702,
+        "output_tokens": 95
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_07",
+      "language": "ru",
+      "query": "Какую ставку налога на имущество для предприятий установил муниципалитет Батуми?",
+      "expected_class": "local_regulation_lookup",
+      "group": "new_synthetic",
+      "request_id": "q027",
+      "baseline": {
+        "question_class": "practical_tax_guidance",
+        "confidence": 0.86,
+        "alternatives": [
+          {
+            "class": "local_regulation_lookup",
+            "score": 0.74
+          }
+        ],
+        "why": [
+          "individual property-tax query with locality needs practical guidance, not company-only local rate"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какую ставку налога на имущество для предприятий установил муниципалитет Батуми?",
+        "language": "ru",
+        "normalized_query": "какую ставку налога на имущество для предприятий установил муниципалитет батуми?",
+        "topic": "property_tax",
+        "subject": "individual",
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": "municipality",
+        "signals": [
+          "locality"
+        ],
+        "entities": {
+          "topic": "property_tax",
+          "subject": "individual",
+          "goal": null,
+          "locality": "municipality",
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "local_regulation_lookup",
+        "confidence": 0.94,
+        "probabilities": {
+          "unclear": 0.01,
+          "amendment_tracking": 0.0,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.95,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.03,
+          "named_document_lookup": 0.01
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.932806700002402,
+      "usage": {
+        "input_tokens": 682,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_08",
+      "language": "en",
+      "query": "Which municipal property tax rate for companies has Batumi city council set?",
+      "expected_class": "local_regulation_lookup",
+      "group": "new_synthetic",
+      "request_id": "q028",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Which municipal property tax rate for companies has Batumi city council set?",
+        "language": "en",
+        "normalized_query": "which municipal property tax rate for companies has batumi city council set?",
+        "topic": "property_tax",
+        "subject": null,
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative"
+        ],
+        "entities": {
+          "topic": "property_tax",
+          "subject": null,
+          "goal": "rate_lookup",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "local_regulation_lookup",
+        "confidence": 0.96,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "unclear": 0.01,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.01,
+          "named_document_lookup": 0.02,
+          "amendment_tracking": 0.0,
+          "local_regulation_lookup": 0.96
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8156517999595962,
+      "usage": {
+        "input_tokens": 646,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_09",
+      "language": "ka",
+      "query": "ბათუმის მუნიციპალიტეტმა საწარმოებისთვის ქონების გადასახადის რა განაკვეთი დაადგინა?",
+      "expected_class": "local_regulation_lookup",
+      "group": "new_synthetic",
+      "request_id": "q029",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "ბათუმის მუნიციპალიტეტმა საწარმოებისთვის ქონების გადასახადის რა განაკვეთი დაადგინა?",
+        "language": "ka",
+        "normalized_query": "ბათუმის მუნიციპალიტეტმა საწარმოებისთვის ქონების გადასახადის რა განაკვეთი დაადგინა?",
+        "topic": "property_tax",
+        "subject": "legal_entity",
+        "goal": "rate_lookup",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "normative"
+        ],
+        "entities": {
+          "topic": "property_tax",
+          "subject": "legal_entity",
+          "goal": "rate_lookup",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "local_regulation_lookup",
+        "confidence": 0.88,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.03,
+          "local_regulation_lookup": 0.91,
+          "canonical_law_lookup": 0.06,
+          "dispute_practice": 0.0,
+          "unclear": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.048414699966088,
+      "usage": {
+        "input_tokens": 707,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_10",
+      "language": "ru",
+      "query": "Найди судебную практику: по каким причинам суды отменяли доначисление НДС?",
+      "expected_class": "dispute_practice",
+      "group": "new_synthetic",
+      "request_id": "q030",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Найди судебную практику: по каким причинам суды отменяли доначисление НДС?",
+        "language": "ru",
+        "normalized_query": "найди судебную практику: по каким причинам суды отменяли доначисление ндс?",
+        "topic": "vat",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 0.99,
+        "probabilities": {
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.0,
+          "unclear": 0.01,
+          "dispute_practice": 0.99
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8914410000434145,
+      "usage": {
+        "input_tokens": 685,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_11",
+      "language": "en",
+      "query": "Find court precedents where judges overturned an additional VAT assessment and explain their reasoning.",
+      "expected_class": "dispute_practice",
+      "group": "new_synthetic",
+      "request_id": "q031",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Find court precedents where judges overturned an additional VAT assessment and explain their reasoning.",
+        "language": "en",
+        "normalized_query": "find court precedents where judges overturned an additional vat assessment and explain their reasoning.",
+        "topic": "vat",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 0.99,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.99,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.0,
+          "unclear": 0.01,
+          "named_document_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.596285599982366,
+      "usage": {
+        "input_tokens": 649,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_12",
+      "language": "ka",
+      "query": "მომიძებნე სასამართლო პრაქტიკა, სადაც სასამართლომ დღგ-ის დამატებითი დარიცხვა გააუქმა.",
+      "expected_class": "dispute_practice",
+      "group": "new_synthetic",
+      "request_id": "q032",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "მომიძებნე სასამართლო პრაქტიკა, სადაც სასამართლომ დღგ-ის დამატებითი დარიცხვა გააუქმა.",
+        "language": "ka",
+        "normalized_query": "მომიძებნე სასამართლო პრაქტიკა, სადაც სასამართლომ დღგ-ის დამატებითი დარიცხვა გააუქმა.",
+        "topic": "vat",
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "dispute_practice",
+        "confidence": 1.0,
+        "probabilities": {
+          "amendment_tracking": 0.0,
+          "dispute_practice": 1.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.0379366999841295,
+      "usage": {
+        "input_tokens": 708,
+        "output_tokens": 93
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_13",
+      "language": "ru",
+      "query": "Найди документ №1432 и кратко изложи его содержание.",
+      "expected_class": "named_document_lookup",
+      "group": "new_synthetic",
+      "request_id": "q033",
+      "baseline": {
+        "question_class": "named_document_lookup",
+        "confidence": 0.9,
+        "alternatives": [],
+        "why": [
+          "named document signal detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Найди документ №1432 и кратко изложи его содержание.",
+        "language": "ru",
+        "normalized_query": "найди документ №1432 и кратко изложи его содержание.",
+        "topic": null,
+        "subject": null,
+        "goal": "document_summary",
+        "document_ref": "1432",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "named_document",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "document_summary",
+          "locality": null,
+          "document_ref": "1432",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "named_document_lookup",
+        "confidence": 0.96,
+        "probabilities": {
+          "unclear": 0.03,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.0,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.97,
+          "practical_tax_guidance": 0.0,
+          "canonical_law_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8793413999956101,
+      "usage": {
+        "input_tokens": 659,
+        "output_tokens": 91
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_14",
+      "language": "en",
+      "query": "Please locate document No. 1432 and summarize its contents.",
+      "expected_class": "named_document_lookup",
+      "group": "new_synthetic",
+      "request_id": "q034",
+      "baseline": {
+        "question_class": "named_document_lookup",
+        "confidence": 0.9,
+        "alternatives": [],
+        "why": [
+          "named document signal detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Please locate document No. 1432 and summarize its contents.",
+        "language": "en",
+        "normalized_query": "please locate document no. 1432 and summarize its contents.",
+        "topic": null,
+        "subject": null,
+        "goal": "document_summary",
+        "document_ref": "1432",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "named_document",
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": "document_summary",
+          "locality": null,
+          "document_ref": "1432",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "named_document_lookup",
+        "confidence": 0.96,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.97,
+          "dispute_practice": 0.0,
+          "unclear": 0.03
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.8382609999971464,
+      "usage": {
+        "input_tokens": 647,
+        "output_tokens": 91
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_15",
+      "language": "ka",
+      "query": "მომიძებნე დოკუმენტი №1432 და მოკლედ აღწერე მისი შინაარსი.",
+      "expected_class": "named_document_lookup",
+      "group": "new_synthetic",
+      "request_id": "q035",
+      "baseline": {
+        "question_class": "named_document_lookup",
+        "confidence": 0.9,
+        "alternatives": [],
+        "why": [
+          "named document signal detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "მომიძებნე დოკუმენტი №1432 და მოკლედ აღწერე მისი შინაარსი.",
+        "language": "ka",
+        "normalized_query": "მომიძებნე დოკუმენტი №1432 და მოკლედ აღწერე მისი შინაარსი.",
+        "topic": null,
+        "subject": null,
+        "goal": null,
+        "document_ref": "1432",
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "document_ref"
+        ],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": "1432",
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "named_document_lookup",
+        "confidence": 0.98,
+        "probabilities": {
+          "local_regulation_lookup": 0.0,
+          "named_document_lookup": 0.98,
+          "canonical_law_lookup": 0.0,
+          "amendment_tracking": 0.0,
+          "unclear": 0.02,
+          "practical_tax_guidance": 0.0,
+          "dispute_practice": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.629034399986267,
+      "usage": {
+        "input_tokens": 681,
+        "output_tokens": 91
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_16",
+      "language": "ru",
+      "query": "Какие поправки к правилам регистрации по НДС вступили в силу в 2026 году?",
+      "expected_class": "amendment_tracking",
+      "group": "new_synthetic",
+      "request_id": "q036",
+      "baseline": {
+        "question_class": "amendment_tracking",
+        "confidence": 0.85,
+        "alternatives": [],
+        "why": [
+          "amendment markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Какие поправки к правилам регистрации по НДС вступили в силу в 2026 году?",
+        "language": "ru",
+        "normalized_query": "какие поправки к правилам регистрации по ндс вступили в силу в 2026 году?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "amendment_tracking",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "amendment"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "amendment_tracking",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "amendment_tracking",
+        "confidence": 0.92,
+        "probabilities": {
+          "named_document_lookup": 0.01,
+          "local_regulation_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "canonical_law_lookup": 0.02,
+          "amendment_tracking": 0.93,
+          "unclear": 0.04,
+          "practical_tax_guidance": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.7436717999516986,
+      "usage": {
+        "input_tokens": 677,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_17",
+      "language": "en",
+      "query": "What changed in the VAT registration rules during 2026 compared with 2025?",
+      "expected_class": "amendment_tracking",
+      "group": "new_synthetic",
+      "request_id": "q037",
+      "baseline": {
+        "question_class": "amendment_tracking",
+        "confidence": 0.85,
+        "alternatives": [],
+        "why": [
+          "amendment markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "What changed in the VAT registration rules during 2026 compared with 2025?",
+        "language": "en",
+        "normalized_query": "what changed in the vat registration rules during 2026 compared with 2025?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "amendment_tracking",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "amendment"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "amendment_tracking",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "amendment_tracking",
+        "confidence": 0.96,
+        "probabilities": {
+          "canonical_law_lookup": 0.0,
+          "named_document_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 0.03,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.97,
+          "dispute_practice": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.7825424000038765,
+      "usage": {
+        "input_tokens": 653,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_18",
+      "language": "ka",
+      "query": "რა ცვლილებები შევიდა დღგ-ის რეგისტრაციის წესებში 2026 წელს 2025 წელთან შედარებით?",
+      "expected_class": "amendment_tracking",
+      "group": "new_synthetic",
+      "request_id": "q038",
+      "baseline": {
+        "question_class": "amendment_tracking",
+        "confidence": 0.85,
+        "alternatives": [],
+        "why": [
+          "amendment markers detected"
+        ]
+      },
+      "parsed": {
+        "raw_query": "რა ცვლილებები შევიდა დღგ-ის რეგისტრაციის წესებში 2026 წელს 2025 წელთან შედარებით?",
+        "language": "ka",
+        "normalized_query": "რა ცვლილებები შევიდა დღგ-ის რეგისტრაციის წესებში 2026 წელს 2025 წელთან შედარებით?",
+        "topic": "vat",
+        "subject": null,
+        "goal": "amendment_tracking",
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [
+          "amendment"
+        ],
+        "entities": {
+          "topic": "vat",
+          "subject": null,
+          "goal": "amendment_tracking",
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "amendment_tracking",
+        "confidence": 0.99,
+        "probabilities": {
+          "unclear": 0.0,
+          "named_document_lookup": 0.0,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 1.0,
+          "canonical_law_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 2.0982533999485895,
+      "usage": {
+        "input_tokens": 704,
+        "output_tokens": 92
+      },
+      "baseline_correct": true,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_19",
+      "language": "ru",
+      "query": "Помогите с этим, пожалуйста.",
+      "expected_class": "unclear",
+      "group": "new_synthetic",
+      "request_id": "q039",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Помогите с этим, пожалуйста.",
+        "language": "ru",
+        "normalized_query": "помогите с этим, пожалуйста.",
+        "topic": null,
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "unclear",
+        "confidence": 1.0,
+        "probabilities": {
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0,
+          "unclear": 1.0,
+          "dispute_practice": 0.0,
+          "named_document_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.769790499994997,
+      "usage": {
+        "input_tokens": 645,
+        "output_tokens": 90
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_20",
+      "language": "en",
+      "query": "Can you explain this?",
+      "expected_class": "unclear",
+      "group": "new_synthetic",
+      "request_id": "q040",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "Can you explain this?",
+        "language": "en",
+        "normalized_query": "can you explain this?",
+        "topic": null,
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "unclear",
+        "confidence": 1.0,
+        "probabilities": {
+          "named_document_lookup": 0.0,
+          "dispute_practice": 0.0,
+          "unclear": 1.0,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.7422286000219174,
+      "usage": {
+        "input_tokens": 637,
+        "output_tokens": 90
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    },
+    {
+      "id": "fresh_21",
+      "language": "ka",
+      "query": "შეგიძლიათ დამეხმაროთ?",
+      "expected_class": "unclear",
+      "group": "new_synthetic",
+      "request_id": "q041",
+      "baseline": {
+        "question_class": "canonical_law_lookup",
+        "confidence": 0.7,
+        "alternatives": [
+          {
+            "class": "practical_tax_guidance",
+            "score": 0.45
+          }
+        ],
+        "why": [
+          "defaulted to canonical law lookup"
+        ]
+      },
+      "parsed": {
+        "raw_query": "შეგიძლიათ დამეხმაროთ?",
+        "language": "ka",
+        "normalized_query": "შეგიძლიათ დამეხმაროთ?",
+        "topic": null,
+        "subject": null,
+        "goal": null,
+        "document_ref": null,
+        "article_ref": null,
+        "point_ref": null,
+        "decision_ref": null,
+        "locality": null,
+        "signals": [],
+        "entities": {
+          "topic": null,
+          "subject": null,
+          "goal": null,
+          "locality": null,
+          "document_ref": null,
+          "article_ref": null,
+          "point_ref": null,
+          "decision_ref": null
+        }
+      },
+      "jev": {
+        "type": "choice",
+        "choice": "unclear",
+        "confidence": 1.0,
+        "probabilities": {
+          "dispute_practice": 0.0,
+          "unclear": 1.0,
+          "practical_tax_guidance": 0.0,
+          "amendment_tracking": 0.0,
+          "named_document_lookup": 0.0,
+          "canonical_law_lookup": 0.0,
+          "local_regulation_lookup": 0.0
+        }
+      },
+      "resolved_model": "jev-1.13.0",
+      "client_elapsed_seconds": 1.6597189999883994,
+      "usage": {
+        "input_tokens": 652,
+        "output_tokens": 90
+      },
+      "baseline_correct": false,
+      "jev_correct": true
+    }
+  ]
+}

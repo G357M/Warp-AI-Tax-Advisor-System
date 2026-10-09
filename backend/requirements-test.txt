@@ -17,5 +17,6 @@ httpx==0.28.1
 # 1.6 TestClient and breaks our warnings-as-errors gate during collection.
 anyio==4.14.2
 pgvector==0.5.0
+mcp==2.2.0
 beautifulsoup4==4.12.3
 pytest==8.4.2

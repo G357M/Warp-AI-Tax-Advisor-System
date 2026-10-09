@@ -14,6 +14,8 @@ from rag.pipeline import rag_pipeline
 from .pipeline_v2 import pipeline_v2
 from .query_classifier import classify_query
 from .query_parser import parse_query
+from .jev_router import JevOptions, jev_router
+from .dispute_context import expand_dispute_context
 from .faq_tax_matrix import get_tax_faq_entry, match_tax_faq_entry
 from .public_response import (
     authoritative_tax_fact_response,
@@ -21,6 +23,7 @@ from .public_response import (
     compress_rollout_context_text,
     direct_tax_faq_response,
     out_of_scope_response,
+    is_pure_refusal,
     dividend_tax_rate_response,
     finalize_rollout_response,
     import_vat_response,
@@ -84,6 +87,31 @@ def _iso_date(value: Any) -> Optional[str]:
     return value.isoformat() if value else None
 
 
+def _format_dispute_stats(trace, article, s, total):
+    years = f"{s['y0']}–{s['y1']}" if s.get("y0") and s.get("y1") else ""
+    lang = _response_language((trace.parsed_query or {}).get("language"))
+    if lang == "en":
+        return (
+            f"Practice statistics for Tax Code article {article}"
+            + (f" ({years})" if years else "")
+            + f": of {total} decisions in the database, the complaint was fully satisfied in {s['satisfied']}, "
+              f"partially satisfied in {s['partial']}, and rejected in {s['rejected']} cases."
+        )
+    if lang == "ka":
+        return (
+            f"პრაქტიკის სტატისტიკა საგადასახადო კოდექსის {article}-ე მუხლზე"
+            + (f" ({years})" if years else "")
+            + f": ბაზაში არსებული {total} გადაწყვეტილებიდან საჩივარი სრულად დაკმაყოფილდა {s['satisfied']}, "
+              f"ნაწილობრივ — {s['partial']}, არ დაკმაყოფილდა — {s['rejected']} შემთხვევაში."
+        )
+    return (
+        f"Статистика практики по статье {article} НК"
+        + (f" ({years})" if years else "")
+        + f": из {total} решений в базе жалоба удовлетворена полностью в {s['satisfied']}, "
+          f"частично — в {s['partial']}, отклонена — в {s['rejected']} случаях."
+    )
+
+
 def _dispute_stats_line(trace) -> Optional[str]:
     """Deterministic practice-statistics sentence appended to dispute answers.
 
@@ -130,28 +158,7 @@ def _dispute_stats_line(trace) -> Optional[str]:
         total = s.get("total") or 0
         if total < 5:
             return None
-        years = f"{s['y0']}–{s['y1']}" if s.get("y0") and s.get("y1") else ""
-        lang = _response_language((trace.parsed_query or {}).get("language"))
-        if lang == "en":
-            return (
-                f"Practice statistics for Tax Code article {article}"
-                + (f" ({years})" if years else "")
-                + f": of {total} decisions in the database, the complaint was fully satisfied in {s['satisfied']}, "
-                  f"partially satisfied in {s['partial']}, and rejected in {s['rejected']} cases."
-            )
-        if lang == "ka":
-            return (
-                f"პრაქტიკის სტატისტიკა საგადასახადო კოდექსის {article}-ე მუხლზე"
-                + (f" ({years})" if years else "")
-                + f": ბაზაში არსებული {total} გადაწყვეტილებიდან საჩივარი სრულად დაკმაყოფილდა {s['satisfied']}, "
-                  f"ნაწილობრივ — {s['partial']}, არ დაკმაყოფილდა — {s['rejected']} შემთხვევაში."
-            )
-        return (
-            f"Статистика практики по статье {article} НК"
-            + (f" ({years})" if years else "")
-            + f": из {total} решений в базе жалоба удовлетворена полностью в {s['satisfied']}, "
-              f"частично — в {s['partial']}, отклонена — в {s['rejected']} случаях."
-        )
+        return _format_dispute_stats(trace, article, s, total)
     except Exception:
         return None
 
@@ -276,15 +283,7 @@ def _extract_point_subsection(section_text: str, point_ref: Optional[str]) -> Op
     return subsection_tail[:end].strip()
 
 
-def _extract_section_text(full_text: Optional[str], metadata: Dict[str, Any], fallback_size: int = 2200) -> Optional[str]:
-    text = full_text or ""
-    if not text:
-        return None
-
-    section_label = str(metadata.get("section_label") or "").strip()
-    article_ref = str(metadata.get("article_ref") or "").strip()
-    point_ref = str(metadata.get("point_ref") or "").strip()
-
+def _find_section_start(text, section_label, article_ref, point_ref):
     needles = [section_label]
     if point_ref and "." in point_ref:
         art, point = point_ref.split(".", 1)
@@ -310,6 +309,19 @@ def _extract_section_text(full_text: Optional[str], metadata: Dict[str, Any], fa
         match = re.search(rf"(?:მუხლი|Article|Статья)\s+{re.escape(article_ref)}\b", text)
         if match:
             start = match.start()
+    return start
+
+
+def _extract_section_text(full_text: Optional[str], metadata: Dict[str, Any], fallback_size: int = 2200) -> Optional[str]:
+    text = full_text or ""
+    if not text:
+        return None
+
+    section_label = str(metadata.get("section_label") or "").strip()
+    article_ref = str(metadata.get("article_ref") or "").strip()
+    point_ref = str(metadata.get("point_ref") or "").strip()
+
+    start = _find_section_start(text, section_label, article_ref, point_ref)
     if start == -1:
         return None
 
@@ -363,6 +375,116 @@ def _document_source_metadata(doc: Document, title: Optional[str], source_url: O
     }
 
 
+def _find_source_document(db, source_url, title):
+    doc = None
+    if source_url:
+        doc = db.query(Document).filter(Document.source_url == source_url).first()
+    if not doc and title:
+        doc = db.query(Document).filter(Document.title == title).first()
+    if not doc and title:
+        doc = db.query(Document).filter(Document.title.ilike(title)).first()
+    return doc
+
+
+def _article_chunk_text(db, doc, article_ref):
+    section_text = None
+    try:
+        # metadata is a plain JSON column (no JSONB comparator, so
+        # no .astext) — use the raw ->> operator. Any failure here
+        # must degrade to the full_text scan, never break the query.
+        art_chunks = (
+            db.query(DocumentChunk)
+            .filter(DocumentChunk.document_id == doc.id)
+            .filter(DocumentChunk.metadata_json.op("->>")("article_ref") == str(article_ref))
+            .order_by(DocumentChunk.chunk_index.asc())
+            .all()
+        )
+        if art_chunks:
+            section_text = "\n\n".join((c.content or "").strip() for c in art_chunks).strip()
+    except Exception as exc:
+        print(f"[RAG_V2] article_ref chunk lookup failed, falling back to text scan: {exc}")
+        section_text = None
+    return section_text
+
+
+def _section_doc_chunk(db, doc, source_url, title, *, chunk_hint, section_label, article_ref, point_ref, question_class):
+    if not (section_label or article_ref or point_ref):
+        return None
+    # Fast path: after article-level rechunking (П1) primary-legislation
+    # chunks carry metadata.article_ref, so the exact article resolves by
+    # chunk metadata instead of a regex scan over full_text. Falls back
+    # to the text scan for documents not yet rechunked.
+    section_text = None
+    if article_ref:
+        section_text = _article_chunk_text(db, doc, article_ref)
+    if not section_text:
+        section_text = _extract_section_text(doc.full_text, {
+            "section_label": section_label,
+            "article_ref": article_ref,
+            "point_ref": point_ref,
+        })
+    if section_text:
+        if point_ref and not _has_explicit_point(section_text, point_ref):
+            article_num, point_num = point_ref.split(".", 1)
+            section_text = (
+                f"Примечание: в статье {article_num} не выделен отдельный пункт {point_num}; ниже приведён полный текст статьи.\n\n"
+                f"{section_text}"
+            )
+        if question_class == "canonical_law_lookup":
+            section_text = compress_canonical_section_text(
+                section_text,
+                article_ref=article_ref,
+                point_ref=point_ref,
+            )
+        return [{
+            "id": f"synthetic:{doc.id}:{chunk_hint or article_ref or section_label or 'section'}",
+            "content": section_text,
+            "metadata": {
+                **_document_source_metadata(doc, title, source_url),
+                "article_ref": article_ref,
+                "point_ref": point_ref,
+                "section_label": section_label,
+            },
+            "similarity": 1.0,
+        }]
+
+    return None
+
+
+def _select_doc_chunks(query, limit, question_class, topic, chunk_hint):
+    topic_terms = _topic_chunk_terms(topic)
+    if question_class == "amendment_tracking" and topic_terms:
+        amendment_chunks = None
+        for term in topic_terms:
+            candidate_chunks = (
+                query.filter(DocumentChunk.content.ilike(f"%{term}%"))
+                .order_by(DocumentChunk.chunk_index.asc())
+                .limit(limit)
+                .all()
+            )
+            if candidate_chunks:
+                amendment_chunks = candidate_chunks
+                break
+        if amendment_chunks:
+            chunks = amendment_chunks
+        else:
+            return []
+    elif chunk_hint is not None:
+        start = max(0, int(chunk_hint) - 1)
+        end = int(chunk_hint) + max(1, limit)
+        hinted = (
+            query.filter(DocumentChunk.chunk_index >= start, DocumentChunk.chunk_index <= end)
+            .order_by(DocumentChunk.chunk_index.asc())
+            .limit(limit)
+            .all()
+        )
+        chunks = hinted or query.order_by(DocumentChunk.chunk_index.asc()).limit(limit).all()
+    else:
+        chunks = query.order_by(DocumentChunk.chunk_index.asc()).limit(limit).all()
+
+    return chunks
+
+
 def _fetch_doc_chunks(
     source_url: Optional[str],
     title: Optional[str],
@@ -377,100 +499,17 @@ def _fetch_doc_chunks(
 ) -> List[Dict[str, Any]]:
     db = SessionLocal()
     try:
-        doc = None
-        if source_url:
-            doc = db.query(Document).filter(Document.source_url == source_url).first()
-        if not doc and title:
-            doc = db.query(Document).filter(Document.title == title).first()
-        if not doc and title:
-            doc = db.query(Document).filter(Document.title.ilike(title)).first()
+        doc = _find_source_document(db, source_url, title)
         if not doc:
             return []
 
-        if section_label or article_ref or point_ref:
-            # Fast path: after article-level rechunking (П1) primary-legislation
-            # chunks carry metadata.article_ref, so the exact article resolves by
-            # chunk metadata instead of a regex scan over full_text. Falls back
-            # to the text scan for documents not yet rechunked.
-            section_text = None
-            if article_ref:
-                try:
-                    # metadata is a plain JSON column (no JSONB comparator, so
-                    # no .astext) — use the raw ->> operator. Any failure here
-                    # must degrade to the full_text scan, never break the query.
-                    art_chunks = (
-                        db.query(DocumentChunk)
-                        .filter(DocumentChunk.document_id == doc.id)
-                        .filter(DocumentChunk.metadata_json.op("->>")("article_ref") == str(article_ref))
-                        .order_by(DocumentChunk.chunk_index.asc())
-                        .all()
-                    )
-                    if art_chunks:
-                        section_text = "\n\n".join((c.content or "").strip() for c in art_chunks).strip()
-                except Exception as exc:
-                    print(f"[RAG_V2] article_ref chunk lookup failed, falling back to text scan: {exc}")
-                    section_text = None
-            if not section_text:
-                section_text = _extract_section_text(doc.full_text, {
-                    "section_label": section_label,
-                    "article_ref": article_ref,
-                    "point_ref": point_ref,
-                })
-            if section_text:
-                if point_ref and not _has_explicit_point(section_text, point_ref):
-                    article_num, point_num = point_ref.split(".", 1)
-                    section_text = (
-                        f"Примечание: в статье {article_num} не выделен отдельный пункт {point_num}; ниже приведён полный текст статьи.\n\n"
-                        f"{section_text}"
-                    )
-                if question_class == "canonical_law_lookup":
-                    section_text = compress_canonical_section_text(
-                        section_text,
-                        article_ref=article_ref,
-                        point_ref=point_ref,
-                    )
-                return [{
-                    "id": f"synthetic:{doc.id}:{chunk_hint or article_ref or section_label or 'section'}",
-                    "content": section_text,
-                    "metadata": {
-                        **_document_source_metadata(doc, title, source_url),
-                        "article_ref": article_ref,
-                        "point_ref": point_ref,
-                        "section_label": section_label,
-                    },
-                    "similarity": 1.0,
-                }]
+        section = _section_doc_chunk(db, doc, source_url, title, chunk_hint=chunk_hint,
+            section_label=section_label, article_ref=article_ref, point_ref=point_ref, question_class=question_class)
+        if section:
+            return section
 
         query = db.query(DocumentChunk).filter(DocumentChunk.document_id == doc.id)
-        topic_terms = _topic_chunk_terms(topic)
-        if question_class == "amendment_tracking" and topic_terms:
-            amendment_chunks = None
-            for term in topic_terms:
-                candidate_chunks = (
-                    query.filter(DocumentChunk.content.ilike(f"%{term}%"))
-                    .order_by(DocumentChunk.chunk_index.asc())
-                    .limit(limit)
-                    .all()
-                )
-                if candidate_chunks:
-                    amendment_chunks = candidate_chunks
-                    break
-            if amendment_chunks:
-                chunks = amendment_chunks
-            else:
-                return []
-        elif chunk_hint is not None:
-            start = max(0, int(chunk_hint) - 1)
-            end = int(chunk_hint) + max(1, limit)
-            hinted = (
-                query.filter(DocumentChunk.chunk_index >= start, DocumentChunk.chunk_index <= end)
-                .order_by(DocumentChunk.chunk_index.asc())
-                .limit(limit)
-                .all()
-            )
-            chunks = hinted or query.order_by(DocumentChunk.chunk_index.asc()).limit(limit).all()
-        else:
-            chunks = query.order_by(DocumentChunk.chunk_index.asc()).limit(limit).all()
+        chunks = _select_doc_chunks(query, limit, question_class, topic, chunk_hint)
 
         rows: List[Dict[str, Any]] = []
         for chunk in chunks:
@@ -492,6 +531,16 @@ def _extract_query_year(raw_query: Optional[str]) -> Optional[str]:
     return match.group(1) if match else None
 
 
+def _matches_local_regulation(doc, parsed, title, metadata):
+    locality = str(parsed.get("locality") or "")
+    localities = [str(x) for x in (metadata.get("localities") or [])]
+    locality_stems = LOCALITY_TITLE_STEMS.get(locality, [])
+    title_has_locality = any(stem in title for stem in locality_stems)
+    return doc.get("document_type") == "regulation" and (
+        not locality or locality in localities or title_has_locality
+    )
+
+
 def _doc_matches_rollout_class(doc: Dict[str, Any], trace) -> bool:
     question_class = trace.classification.get("question_class")
     parsed = trace.parsed_query or {}
@@ -499,13 +548,7 @@ def _doc_matches_rollout_class(doc: Dict[str, Any], trace) -> bool:
     metadata = doc.get("metadata") or {}
 
     if question_class == "local_regulation_lookup":
-        locality = str(parsed.get("locality") or "")
-        localities = [str(x) for x in (metadata.get("localities") or [])]
-        locality_stems = LOCALITY_TITLE_STEMS.get(locality, [])
-        title_has_locality = any(stem in title for stem in locality_stems)
-        return doc.get("document_type") == "regulation" and (
-            not locality or locality in localities or title_has_locality
-        )
+        return _matches_local_regulation(doc, parsed, title, metadata)
 
     if question_class == "amendment_tracking":
         topic = str(parsed.get("topic") or "")
@@ -551,6 +594,103 @@ def _filtered_rollout_docs(trace) -> List[Dict[str, Any]]:
     return ranked[: _top_k()]
 
 
+def _tag_rollout_chunks(fetched, doc, trace):
+    metadata = doc.get("metadata") or {}
+    chunk_hint = metadata.get("chunk_hint")
+    section_label = metadata.get("section_label")
+    article_ref = metadata.get("article_ref")
+    point_ref = metadata.get("point_ref")
+    for item in fetched:
+        item["content"] = compress_rollout_context_text(
+            item.get("content"),
+            question_class=trace.classification.get("question_class"),
+        )
+        item["_rerank_score"] = doc.get("final_score", 0.0)
+        item["metadata"] = {
+            **item.get("metadata", {}),
+            "retrieval_channel": doc.get("channel"),
+            "chunk_hint": chunk_hint,
+            "section_label": item.get("metadata", {}).get("section_label") or section_label,
+            "article_ref": item.get("metadata", {}).get("article_ref") or article_ref,
+            "point_ref": item.get("metadata", {}).get("point_ref") or point_ref,
+        }
+
+
+def _semantic_rollout_chunks(doc, metadata, title, source_url, semantic_content):
+    return [{
+        "id": f"semantic:{doc.get('document_id')}:{metadata.get('chunk_index')}",
+        "content": semantic_content,
+        "metadata": {
+            "document_id": str(doc.get("document_id") or ""),
+            "title": title or "",
+            "document_title": title or "",
+            "document_type": doc.get("document_type") or "",
+            "source_url": source_url or "",
+            "url": source_url or "",
+            "document_number": metadata.get("document_number"),
+            "date_published": metadata.get("date_published"),
+            "date_effective": metadata.get("date_effective"),
+            "document_status": metadata.get("document_status"),
+            "authority": metadata.get("authority"),
+        },
+        "similarity": metadata.get("similarity", 0.5),
+    }]
+
+
+def _rollout_doc_chunks(doc, trace, index):
+    source_url = doc.get("source_url")
+    title = doc.get("title")
+    metadata = doc.get("metadata") or {}
+    chunk_hint = metadata.get("chunk_hint")
+    section_label = metadata.get("section_label")
+    article_ref = metadata.get("article_ref")
+    point_ref = metadata.get("point_ref")
+    if trace.classification.get("question_class") == "amendment_tracking":
+        limit = 1
+    elif trace.classification.get("question_class") == "named_document_lookup":
+        limit = 1
+    else:
+        limit = 2
+    semantic_content = metadata.get("chunk_content")
+    if (
+        (trace.parsed_query or {}).get("goal") == "appeal_procedure"
+        and index == 0
+        and source_url == TAX_CODE_SOURCE["url"]
+    ):
+        fetched = []
+        for exact_article in ("299", "297"):
+            fetched.extend(
+                _fetch_doc_chunks(
+                    source_url,
+                    title,
+                    limit=1,
+                    section_label=f"მუხლი {exact_article}",
+                    article_ref=exact_article,
+                    question_class=trace.classification.get("question_class"),
+                    topic="tax",
+                )
+            )
+    elif semantic_content:
+        # The semantic channel already retrieved the exact grounding chunk.
+        semantic_content = expand_dispute_context(
+            doc, semantic_content, trace.classification.get("question_class")
+        )
+        fetched = _semantic_rollout_chunks(doc, metadata, title, source_url, semantic_content)
+    else:
+        fetched = _fetch_doc_chunks(
+            source_url,
+            title,
+            limit=limit,
+            chunk_hint=chunk_hint,
+            section_label=section_label,
+            article_ref=article_ref,
+            point_ref=point_ref,
+            question_class=trace.classification.get("question_class"),
+            topic=trace.parsed_query.get("topic"),
+        )
+    return fetched
+
+
 def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
     """Turn ranked candidates into grounding chunks for generation.
 
@@ -566,86 +706,10 @@ def _build_rollout_chunks(trace) -> List[Dict[str, Any]]:
     ranked = _filtered_rollout_docs(trace)
     chunks: List[Dict[str, Any]] = []
     for index, doc in enumerate(ranked):
-        source_url = doc.get("source_url")
-        title = doc.get("title")
-        metadata = doc.get("metadata") or {}
-        chunk_hint = metadata.get("chunk_hint")
-        section_label = metadata.get("section_label")
-        article_ref = metadata.get("article_ref")
-        point_ref = metadata.get("point_ref")
-        if trace.classification.get("question_class") == "amendment_tracking":
-            limit = 1
-        elif trace.classification.get("question_class") == "named_document_lookup":
-            limit = 1
-        else:
-            limit = 2 if doc.get("channel") in {"article_resolver", "point_resolver"} else 2
-        semantic_content = metadata.get("chunk_content")
-        if (
-            (trace.parsed_query or {}).get("goal") == "appeal_procedure"
-            and index == 0
-            and source_url == TAX_CODE_SOURCE["url"]
-        ):
-            fetched = []
-            for exact_article in ("299", "297"):
-                fetched.extend(
-                    _fetch_doc_chunks(
-                        source_url,
-                        title,
-                        limit=1,
-                        section_label=f"მუხლი {exact_article}",
-                        article_ref=exact_article,
-                        question_class=trace.classification.get("question_class"),
-                        topic="tax",
-                    )
-                )
-        elif semantic_content:
-            # The semantic channel already retrieved the exact grounding chunk.
-            fetched = [{
-                "id": f"semantic:{doc.get('document_id')}:{metadata.get('chunk_index')}",
-                "content": semantic_content,
-                "metadata": {
-                    "document_id": str(doc.get("document_id") or ""),
-                    "title": title or "",
-                    "document_title": title or "",
-                    "document_type": doc.get("document_type") or "",
-                    "source_url": source_url or "",
-                    "url": source_url or "",
-                    "document_number": metadata.get("document_number"),
-                    "date_published": metadata.get("date_published"),
-                    "date_effective": metadata.get("date_effective"),
-                    "document_status": metadata.get("document_status"),
-                    "authority": metadata.get("authority"),
-                },
-                "similarity": metadata.get("similarity", 0.5),
-            }]
-        else:
-            fetched = _fetch_doc_chunks(
-                source_url,
-                title,
-                limit=limit,
-                chunk_hint=chunk_hint,
-                section_label=section_label,
-                article_ref=article_ref,
-                point_ref=point_ref,
-                question_class=trace.classification.get("question_class"),
-                topic=trace.parsed_query.get("topic"),
-            )
+        fetched = _rollout_doc_chunks(doc, trace, index)
         if index == 0 and not fetched:
             return []
-        for item in fetched:
-            item["content"] = compress_rollout_context_text(
-                item.get("content"),
-                question_class=trace.classification.get("question_class"),
-            )
-            item["_rerank_score"] = doc.get("final_score", 0.0)
-            item["metadata"] = {
-                **item.get("metadata", {}),
-                "retrieval_channel": doc.get("channel"),
-                "chunk_hint": chunk_hint,
-                "section_label": item.get("metadata", {}).get("section_label") or section_label,
-                "article_ref": item.get("metadata", {}).get("article_ref") or article_ref,
-                "point_ref": item.get("metadata", {}).get("point_ref") or point_ref,
-            }
+        _tag_rollout_chunks(fetched, doc, trace)
         chunks.extend(fetched)
     return chunks
 
@@ -692,6 +756,22 @@ def _topic_label(language: Optional[str], topic: str) -> str:
     return labels[lang].get(topic, topic)
 
 
+def _amendment_source_chunks(ranked):
+    source_chunks: List[Dict[str, Any]] = []
+    for doc in ranked[:3]:
+        fetched = _fetch_doc_chunks(
+            doc.get("source_url"),
+            doc.get("title"),
+            limit=1,
+        )
+        if fetched:
+            for item in fetched:
+                item["_rerank_score"] = doc.get("final_score", 0.0)
+            source_chunks.extend(fetched)
+
+    return source_chunks
+
+
 def _no_evidence_amendment_response(trace) -> Optional[Dict[str, Any]]:
     parsed = trace.parsed_query or {}
     if trace.classification.get("question_class") != "amendment_tracking":
@@ -707,17 +787,7 @@ def _no_evidence_amendment_response(trace) -> Optional[Dict[str, Any]]:
 
     year = _extract_query_year(parsed.get("raw_query"))
     year_text = f" в {year} году" if year else ""
-    source_chunks: List[Dict[str, Any]] = []
-    for doc in ranked[:3]:
-        fetched = _fetch_doc_chunks(
-            doc.get("source_url"),
-            doc.get("title"),
-            limit=1,
-        )
-        if fetched:
-            for item in fetched:
-                item["_rerank_score"] = doc.get("final_score", 0.0)
-            source_chunks.extend(fetched)
+    source_chunks = _amendment_source_chunks(ranked)
 
     sources = rag_pipeline._prepare_sources(source_chunks)
     if not sources:
@@ -875,6 +945,16 @@ def _no_evidence_dispute_response(trace) -> Optional[Dict[str, Any]]:
     }
 
 
+def _dispute_generation_guard(parsed: Dict[str, Any]) -> str:
+    if parsed.get("decision_ref") or parsed.get("document_ref"):
+        return "If the context does not contain a confirmed match for the dispute number, do not invent details. "
+    return (
+        "No specific dispute number was requested. Summarize only the relevant facts or reasoning "
+        "explicitly present in the retrieved excerpts. State when an excerpt does not show the final outcome; "
+        "do not infer an outcome or treat one decision as a general rule. "
+    )
+
+
 def _generation_query(query: str, trace, context: str) -> str:
     ranked = trace.reranking.get("top_ranked_documents", [])
     metadata = (ranked[0].get("metadata") or {}) if ranked else {}
@@ -900,6 +980,10 @@ def _generation_query(query: str, trace, context: str) -> str:
             "Do not retell the full article text, do not use markdown emphasis, and do not include markdown links."
             f" {language_guard}"
         )
+    return _general_generation_query(query, question_class, parsed, answer_lang, language_guard)
+
+
+def _general_generation_query(query, question_class, parsed, answer_lang, language_guard) -> str:
     if question_class == "amendment_tracking":
         return (
             f"{query}\n\n"
@@ -963,27 +1047,15 @@ def _generation_query(query: str, trace, context: str) -> str:
         return (
             f"{query}\n\n"
             f"Answer in {answer_lang} as plain text, briefly and strictly based on the found dispute. "
-            "If the context does not contain a confirmed match for the dispute number, do not invent details. "
+            f"{_dispute_generation_guard(parsed)}"
             "Do not use markdown emphasis or markdown links."
             f" {language_guard}"
         )
     return query
 
 
-def maybe_run_live_rollout(
-    *,
-    query: str,
-    language: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None,
-) -> Optional[Dict[str, Any]]:
-    if _mode() != "rollout":
-        return None
-
-    # Scope checks use only the deterministic parser/classifier. Running them
-    # before candidate generation prevents obvious foreign/off-topic questions
-    # from spending a translation or answer-generation LLM call.
-    parsed = parse_query(query, language=language)
-    classification = classify_query(parsed)
+def _protected_live_response(parsed, classification) -> Optional[Dict[str, Any]]:
+    """Resolve scope and approved contracts before any external routing."""
     scope_trace = SimpleNamespace(
         parsed_query=parsed.model_dump(),
         classification=classification.model_dump(),
@@ -1026,9 +1098,11 @@ def maybe_run_live_rollout(
             },
         }
 
-    trace = pipeline_v2.build_trace(query, language=language)
-    question_class = trace.classification.get("question_class")
+    return None
 
+
+def _authoritative_live_response(trace) -> Optional[Dict[str, Any]]:
+    question_class = trace.classification.get("question_class")
     # Authoritative guards win regardless of retrieval, so a correct canonical
     # answer is never lost when the vector search returns nothing relevant.
     # Authoritative answers for facts retrieval can't yet ground cross-lingually.
@@ -1053,35 +1127,24 @@ def maybe_run_live_rollout(
             "_rag_v2": {"mode": "rollout_authoritative", "question_class": question_class},
         }
 
-    if question_class not in _rollout_classes():
-        return None
-    if not trace.source_audit.get("passed"):
-        local_no_evidence = _no_evidence_local_regulation_response(trace)
-        if local_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=local_regulation_lookup grounded_no_evidence=1")
-            return local_no_evidence
-        dispute_no_evidence = _no_evidence_dispute_response(trace)
-        if dispute_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=dispute_practice grounded_no_evidence=1")
-            return dispute_no_evidence
-        return None
+    return None
 
-    rollout_chunks = _build_rollout_chunks(trace)
-    if not rollout_chunks:
-        local_no_evidence = _no_evidence_local_regulation_response(trace)
-        if local_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=local_regulation_lookup grounded_no_evidence=1")
-            return local_no_evidence
-        dispute_no_evidence = _no_evidence_dispute_response(trace)
-        if dispute_no_evidence:
-            print("[RAG_V2_ROLLOUT] class=dispute_practice grounded_no_evidence=1")
-            return dispute_no_evidence
-        no_evidence = _no_evidence_amendment_response(trace)
-        if no_evidence:
-            print("[RAG_V2_ROLLOUT] class=amendment_tracking grounded_no_evidence=1")
-            return no_evidence
-        return None
 
+def _missing_live_response(trace, *, include_amendment: bool) -> Optional[Dict[str, Any]]:
+    handlers = [_no_evidence_local_regulation_response, _no_evidence_dispute_response]
+    if include_amendment:
+        handlers.append(_no_evidence_amendment_response)
+    for handler in handlers:
+        result = handler(trace)
+        if result:
+            question_class = result["_rag_v2"]["question_class"]
+            print(f"[RAG_V2_ROLLOUT] class={question_class} grounded_no_evidence=1")
+            return result
+    return None
+
+
+def _generate_live_response(query, conversation_history, trace, rollout_chunks) -> Optional[Dict[str, Any]]:
+    question_class = trace.classification.get("question_class")
     context = rag_pipeline._assemble_context(rollout_chunks)
     generation_query = _generation_query(query, trace, context)
     response = rag_pipeline.llm.generate_response(
@@ -1115,7 +1178,7 @@ def maybe_run_live_rollout(
         # Retained minimal guard: import VAT (retrieval does not ground the 18% rate).
         response = import_vat_response(trace) or response
     response = finalize_rollout_response(response, trace)
-    if question_class == "dispute_practice":
+    if question_class == "dispute_practice" and not is_pure_refusal(response):
         stats_line = _dispute_stats_line(trace)
         if stats_line:
             response = f"{response}\n\n{stats_line}"
@@ -1137,3 +1200,54 @@ def maybe_run_live_rollout(
     }
     print(f"[RAG_V2_ROLLOUT] class={question_class} sources={len(sources)} chunks={len(rollout_chunks)}")
     return result
+
+
+def maybe_run_live_rollout(
+    *,
+    query: str,
+    language: str,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+) -> Optional[Dict[str, Any]]:
+    if _mode() != "rollout":
+        return None
+
+    # Scope checks use only the deterministic parser/classifier. Running them
+    # before candidate generation prevents obvious foreign/off-topic questions
+    # from spending a translation or answer-generation LLM call.
+    parsed = parse_query(query, language=language)
+    classification = classify_query(parsed)
+    protected = _protected_live_response(parsed, classification)
+    if protected:
+        return protected
+
+    # Curated answers and scope checks above never depend on the external router.
+    decision = jev_router.decide(parsed, classification, JevOptions.from_settings(settings))
+    if decision.needs_clarification:
+        prompts = {
+            "ru": "Уточните, пожалуйста, какой налог или правовой вопрос в Грузии вас интересует и что нужно выяснить.",
+            "ka": "გთხოვთ, დააზუსტოთ, საქართველოში რომელი გადასახადი ან სამართლებრივი საკითხი გაინტერესებთ და რისი გარკვევა გსურთ.",
+            "en": "Please specify the Georgian tax or legal issue you are asking about and what you need to find out.",
+        }
+        return {
+            "response": prompts.get(language, prompts["en"]), "sources": [], "retrieved_count": 0,
+            "_rag_v2": {"mode": "rollout_clarification", "question_class": classification.question_class},
+        }
+    if decision.classification is classification:
+        trace = pipeline_v2.build_trace(query, language=language)
+    else:
+        trace = pipeline_v2.build_trace(query, language=language, classification_override=decision.classification)
+    question_class = trace.classification.get("question_class")
+
+    authoritative = _authoritative_live_response(trace)
+    if authoritative:
+        return authoritative
+
+    if question_class not in _rollout_classes():
+        return None
+    if not trace.source_audit.get("passed"):
+        return _missing_live_response(trace, include_amendment=False)
+
+    rollout_chunks = _build_rollout_chunks(trace)
+    if not rollout_chunks:
+        return _missing_live_response(trace, include_amendment=True)
+    return _generate_live_response(query, conversation_history, trace, rollout_chunks)

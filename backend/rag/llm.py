@@ -43,6 +43,19 @@ def _translation_key(text: str) -> str:
     return _TRANSLATION_REDIS_PREFIX + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
+def _read_cached_translation(client, redis_key, key):
+    if client is not None:
+        try:
+            cached = client.get(redis_key)
+            if cached:
+                if len(_TRANSLATION_CACHE) < 5000:
+                    _TRANSLATION_CACHE[key] = cached
+                return cached
+        except Exception:
+            pass
+    return None
+
+
 class LLMClient:
     """Client for interacting with Large Language Models."""
 
@@ -162,15 +175,9 @@ class LLMClient:
             return _TRANSLATION_CACHE[key]
         redis_key = _translation_key(key)
         client = _translation_redis()
-        if client is not None:
-            try:
-                cached = client.get(redis_key)
-                if cached:
-                    if len(_TRANSLATION_CACHE) < 5000:
-                        _TRANSLATION_CACHE[key] = cached
-                    return cached
-            except Exception:
-                pass
+        cached = _read_cached_translation(client, redis_key, key)
+        if cached:
+            return cached
         try:
             messages = [
                 SystemMessage(content=(

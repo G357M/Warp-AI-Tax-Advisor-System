@@ -8,6 +8,12 @@ services:
   postgres:
     image: pgvector/pgvector:pg15
     container_name: infohub-postgres
+    # Docker's default 64 MB /dev/shm is too small for the dynamic shared
+    # memory of parallel index builds: restoring a dump (HNSW indexes) or a
+    # REINDEX fails with "could not resize shared memory segment". Proven by
+    # the 2026-10-06 restore drill. Takes effect only when the container is
+    # recreated; scripts/deploy_production.sh never recreates postgres.
+    shm_size: 1g
     environment:
       POSTGRES_USER: infohub_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -54,6 +60,8 @@ services:
       - JWT_PREVIOUS_SECRET_KEYS=${JWT_PREVIOUS_SECRET_KEYS:-}
       - JWT_PREVIOUS_SECRET_ACCEPT_UNTIL=${JWT_PREVIOUS_SECRET_ACCEPT_UNTIL:-}
       - RATE_LIMIT_BYPASS_TOKEN=${RATE_LIMIT_BYPASS_TOKEN}
+      - MCP_ACCESS_TOKEN=${MCP_ACCESS_TOKEN:-}
+      - MCP_ALLOWED_HOSTS=${MCP_ALLOWED_HOSTS:-tax-advisor.ge,www.tax-advisor.ge,localhost:*,127.0.0.1:*,backend:*}
       - RATE_LIMIT_AUTH=${RATE_LIMIT_AUTH:-10/minute}
       - RATE_LIMIT_AUTH_RECOVERY=${RATE_LIMIT_AUTH_RECOVERY:-10/hour}
       - SECRET_KEY=${SECRET_KEY}
@@ -86,6 +94,11 @@ services:
       - INFOHUB_RAG_V2_SHADOW_LOG_PATH=${INFOHUB_RAG_V2_SHADOW_LOG_PATH:-/tmp/rag_v2_shadow.jsonl}
       - INFOHUB_RAG_V2_ROLLOUT_CLASSES=${INFOHUB_RAG_V2_ROLLOUT_CLASSES:-named_document_lookup,canonical_law_lookup,local_regulation_lookup,amendment_tracking}
       - INFOHUB_RAG_V2_ROLLOUT_TOP_K=${INFOHUB_RAG_V2_ROLLOUT_TOP_K:-3}
+      - JEV_MODE=${JEV_MODE:-off}
+      - TYPESAFE_API_KEY=${TYPESAFE_API_KEY:-}
+      - JEV_MODEL=${JEV_MODEL:-jev-1.13.0}
+      - JEV_TIMEOUT_SECONDS=${JEV_TIMEOUT_SECONDS:-2.0}
+      - JEV_MIN_CONFIDENCE=${JEV_MIN_CONFIDENCE:-0.90}
       - INFOHUB_EMBEDDING_V2=${INFOHUB_EMBEDDING_V2:-0}
       - EMBEDDING_ALLOW_DOWNLOAD=${EMBEDDING_ALLOW_DOWNLOAD:-false}
       - INFOHUB_DISABLED_GUARDS=${INFOHUB_DISABLED_GUARDS:-}

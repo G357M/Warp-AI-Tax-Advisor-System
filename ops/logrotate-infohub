@@ -1,4 +1,4 @@
-/root/infohub/logs/cron.log {
+/root/infohub/logs/cron.log /root/infohub/logs/db-backup.log /root/infohub/logs/restore-drill.log {
     daily
     rotate 14
     compress
