@@ -281,6 +281,7 @@ jobs:
 
       - run: npm ci --ignore-scripts
       - run: npm run lint
+      - run: npm run check:admin-styles
       - run: npm run type-check
       - run: npm run build
       - name: Validate same-origin Matsne browser collector syntax
