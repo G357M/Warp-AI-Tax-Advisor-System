@@ -108,6 +108,13 @@ docker compose run --rm --no-deps backend \
         --apply \
         --expected-contract-sha256 "$BILLING_REVIEW_SCHEMA_CONTRACT_SHA256"
 
+# Install the append-only administrator action journal before runtime writes to it.
+ADMIN_AUDIT_SCHEMA_CONTRACT_SHA256="2188fabf9649f88e0952a04f33d75580575ecab1a0f15e5a2795bf57af59a0ac"
+docker compose run --rm --no-deps backend \
+    python scripts/add_admin_audit_log.py \
+        --apply \
+        --expected-contract-sha256 "$ADMIN_AUDIT_SCHEMA_CONTRACT_SHA256"
+
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.
 docker compose run --rm --no-deps backend python scripts/add_auth_recovery.py
