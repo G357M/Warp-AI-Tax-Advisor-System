@@ -2,7 +2,7 @@
 
 import json
 from typing import Any, Literal, Optional
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
 
     # Billing stays manual until a separately verified merchant adapter is
     # enabled.  This address is public checkout contact data, not a secret.
-    BILLING_CONTACT_EMAIL: str = "ggrishikashvili@gmail.com"
+    BILLING_CONTACT_EMAIL: str = "info@tax-advisor.ge"
     BILLING_MANUAL_CHECKOUT_TTL_HOURS: int = Field(default=168, ge=1, le=2160)
     BILLING_TBC_ENABLED: bool = False
     TBC_API_BASE_URL: str = "https://api.tbcbank.ge"
@@ -232,40 +232,49 @@ class Settings(BaseSettings):
         if missing:
             raise ValueError("BILLING_TBC_ENABLED requires " + ", ".join(missing))
 
-        api_url = urlparse(self.TBC_API_BASE_URL)
+        production = self.ENVIRONMENT == "production"
+        _validate_tbc_api_origin(urlparse(self.TBC_API_BASE_URL), production)
         return_url = urlparse(self.TBC_RETURN_URL)
         callback_url = urlparse(self.TBC_CALLBACK_URL)
-        if api_url.scheme != "https" or not api_url.hostname:
-            raise ValueError("TBC_API_BASE_URL must be an HTTPS origin")
-        if (
-            api_url.username
-            or api_url.password
-            or api_url.port not in {None, 443}
-            or api_url.path not in {"", "/"}
-            or api_url.query
-            or api_url.fragment
-        ):
-            raise ValueError("TBC_API_BASE_URL must be a clean HTTPS origin")
-        if self.ENVIRONMENT == "production" and api_url.hostname != "api.tbcbank.ge":
-            raise ValueError("Production TBC_API_BASE_URL must use api.tbcbank.ge")
-        for name, parsed in {
-            "TBC_RETURN_URL": return_url,
-            "TBC_CALLBACK_URL": callback_url,
-        }.items():
-            if parsed.scheme != "https" or not parsed.hostname:
-                raise ValueError(f"{name} must be an HTTPS URL")
-            if parsed.username or parsed.password or parsed.port not in {None, 443} or parsed.fragment:
-                raise ValueError(f"{name} must not contain credentials, a custom port or fragment")
-        if self.ENVIRONMENT == "production":
-            if return_url.hostname != "tax-advisor.ge" or return_url.path != "/account":
-                raise ValueError("Production TBC_RETURN_URL must use tax-advisor.ge/account")
-            if (
-                callback_url.hostname != "tax-advisor.ge"
-                or callback_url.path != "/api/v1/billing/providers/tbc/callback"
-                or callback_url.query
-            ):
-                raise ValueError("Production TBC_CALLBACK_URL must use the registered Tax Advisor endpoint")
+        _validate_https_url("TBC_RETURN_URL", return_url)
+        _validate_https_url("TBC_CALLBACK_URL", callback_url)
+        if production:
+            _validate_production_tbc_urls(return_url, callback_url)
         return self
+
+
+def _validate_tbc_api_origin(api_url: ParseResult, production: bool) -> None:
+    if api_url.scheme != "https" or not api_url.hostname:
+        raise ValueError("TBC_API_BASE_URL must be an HTTPS origin")
+    if (
+        api_url.username
+        or api_url.password
+        or api_url.port not in {None, 443}
+        or api_url.path not in {"", "/"}
+        or api_url.query
+        or api_url.fragment
+    ):
+        raise ValueError("TBC_API_BASE_URL must be a clean HTTPS origin")
+    if production and api_url.hostname != "api.tbcbank.ge":
+        raise ValueError("Production TBC_API_BASE_URL must use api.tbcbank.ge")
+
+
+def _validate_https_url(name: str, parsed: ParseResult) -> None:
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError(f"{name} must be an HTTPS URL")
+    if parsed.username or parsed.password or parsed.port not in {None, 443} or parsed.fragment:
+        raise ValueError(f"{name} must not contain credentials, a custom port or fragment")
+
+
+def _validate_production_tbc_urls(return_url: ParseResult, callback_url: ParseResult) -> None:
+    if return_url.hostname != "tax-advisor.ge" or return_url.path != "/account":
+        raise ValueError("Production TBC_RETURN_URL must use tax-advisor.ge/account")
+    if (
+        callback_url.hostname != "tax-advisor.ge"
+        or callback_url.path != "/api/v1/billing/providers/tbc/callback"
+        or callback_url.query
+    ):
+        raise ValueError("Production TBC_CALLBACK_URL must use the registered Tax Advisor endpoint")
 
 
 # Global settings instance
