@@ -126,7 +126,7 @@ class Settings(BaseSettings):
 
     # Billing stays manual until a separately verified merchant adapter is
     # enabled.  This address is public checkout contact data, not a secret.
-    BILLING_CONTACT_EMAIL: str = "ggrishikashvili@gmail.com"
+    BILLING_CONTACT_EMAIL: str = "info@tax-advisor.ge"
     BILLING_MANUAL_CHECKOUT_TTL_HOURS: int = Field(default=168, ge=1, le=2160)
     BILLING_TBC_ENABLED: bool = False
     TBC_API_BASE_URL: str = "https://api.tbcbank.ge"

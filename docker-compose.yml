@@ -78,7 +78,7 @@ services:
       - SMTP_FROM=${SMTP_FROM:-}
       - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
       - SMTP_USE_SSL=${SMTP_USE_SSL:-false}
-      - BILLING_CONTACT_EMAIL=${BILLING_CONTACT_EMAIL:-ggrishikashvili@gmail.com}
+      - BILLING_CONTACT_EMAIL=${BILLING_CONTACT_EMAIL:-info@tax-advisor.ge}
       - BILLING_MANUAL_CHECKOUT_TTL_HOURS=${BILLING_MANUAL_CHECKOUT_TTL_HOURS:-168}
       - BILLING_TBC_ENABLED=${BILLING_TBC_ENABLED:-false}
       - TBC_API_BASE_URL=${TBC_API_BASE_URL:-https://api.tbcbank.ge}

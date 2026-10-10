@@ -1142,14 +1142,24 @@ credentials:
 ```dotenv
 EMAIL_DELIVERY_ENABLED=true
 AUTH_PUBLIC_BASE_URL=https://tax-advisor.ge
-SMTP_HOST=smtp.provider.example
+SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
-SMTP_USER=provider-user
-SMTP_PASSWORD=provider-secret
-SMTP_FROM=Tax Advisor <noreply@tax-advisor.ge>
+SMTP_USER=resend
+SMTP_PASSWORD=re_...
+SMTP_FROM=Tax Advisor <info@tax-advisor.ge>
 SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 ```
+
+The provider is Resend over SMTP; no SDK is involved. `SMTP_USER` is the
+literal string `resend` and `SMTP_PASSWORD` is a Resend API key restricted to
+*Sending access* for the `tax-advisor.ge` domain. The sender domain
+`tax-advisor.ge` must show *Verified* in the Resend dashboard: add exactly the
+records Resend generates (DKIM `resend._domainkey`, SPF on the `send`
+subdomain) in Cloudflare as DNS-only, plus a DMARC record
+`_dmarc TXT "v=DMARC1; p=none; rua=mailto:info@tax-advisor.ge"`. Resend only
+sends; replies to `info@tax-advisor.ge` need separate inbound handling
+(Cloudflare Email Routing forwarding to an operator mailbox).
 
 Use exactly one transport mode: STARTTLS (normally port 587) or implicit SSL
 (normally port 465). `SMTP_PASSWORD` is mandatory when `SMTP_USER` is set. The
