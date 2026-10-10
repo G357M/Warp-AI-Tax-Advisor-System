@@ -28,6 +28,7 @@ from billing.gateway import (
     payment_methods,
 )
 from billing.review import allowed_actions, assert_reviewable, decision_payload, digest, snapshot
+from core.admin_audit import record_admin_action
 from core.config import settings
 from core.database import get_db
 from core.plans import get_active_plan
@@ -60,6 +61,7 @@ class ActivateRequest(BaseModel):
     email: Optional[str] = None
     plan: Optional[str] = Field(default=None, pattern="^(pro|business)$")
     months: int = Field(default=1, ge=1, le=24)
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def require_checkout_or_legacy_identity(self) -> "ActivateRequest":
@@ -851,6 +853,18 @@ def refresh_checkout(
     return _reconcile_tbc_payment(db, checkout, payment)
 
 
+def _subscription_snapshot(db: Session, user_id) -> Optional[dict]:
+    """Access-relevant subscription fields for the admin journal; no payment data."""
+    sub = db.query(Subscription).filter_by(user_id=user_id).first()
+    if not sub:
+        return None
+    return {
+        "plan": sub.plan,
+        "status": sub.status,
+        "period_end": sub.period_end.isoformat() if sub.period_end else None,
+    }
+
+
 @router.post("/admin/activate")
 def activate_subscription(
     body: ActivateRequest,
@@ -858,7 +872,6 @@ def activate_subscription(
     db: Session = Depends(get_db),
 ):
     """Settle a manual checkout, or use the temporary legacy email workflow."""
-    del admin
     if body.checkout_id is not None:
         checkout = (
             db.query(BillingCheckout)
@@ -899,7 +912,12 @@ def activate_subscription(
             checkout.updated_at = utc_now()
             db.commit()
             raise HTTPException(status_code=409, detail="Checkout has expired")
+        before = _subscription_snapshot(db, user.id)
         payment = _settle_checkout(db, user, checkout, "manual", None)
+        db.flush()
+        record_admin_action(db, actor=admin, action="subscription.activated", target_type="checkout",
+                            target_id=checkout.id, before=before,
+                            after=_subscription_snapshot(db, user.id), reason=body.reason)
         db.commit()
         return {
             "email": user.email,
@@ -917,6 +935,7 @@ def activate_subscription(
     user = db.query(User).filter_by(email=email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User with this email not found")
+    before = _subscription_snapshot(db, user.id)
     plan = PLAN_CATALOG[body.plan or ""]
     now = utc_now()
     legacy_checkout = BillingCheckout(
@@ -933,6 +952,10 @@ def activate_subscription(
     db.add(legacy_checkout)
     db.flush()
     payment = _settle_checkout(db, user, legacy_checkout, "manual", None)
+    db.flush()
+    record_admin_action(db, actor=admin, action="subscription.activated", target_type="user",
+                        target_id=user.id, before=before,
+                        after=_subscription_snapshot(db, user.id), reason=body.reason)
     db.commit()
     sub = db.query(Subscription).filter_by(user_id=user.id).one()
     return {

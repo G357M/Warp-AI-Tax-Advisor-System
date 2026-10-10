@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from core.admin_audit import record_admin_action
 from core.database import get_db
 from core.security import require_admin
 from core.time_utils import utc_now
@@ -155,6 +156,7 @@ def list_users(
 
 class RoleUpdate(BaseModel):
     role: str = Field(pattern="^(user|admin)$")
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 
 @router.patch("/users/{user_id}/role")
@@ -169,8 +171,12 @@ def update_user_role(
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.role = body.role
-    db.commit()
+    if user.role != body.role:
+        before = {"role": user.role}
+        user.role = body.role
+        record_admin_action(db, actor=admin, action="user.role_changed", target_type="user",
+                            target_id=user.id, before=before, after={"role": user.role}, reason=body.reason)
+        db.commit()
     return {"id": str(user.id), "username": user.username, "role": user.role}
 
 
@@ -245,17 +251,23 @@ def list_feedback(
 
 class FeedbackStatusUpdate(BaseModel):
     status: str = Field(pattern="^(new|in_progress|fixed)$")
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 
 @router.patch("/feedback/{feedback_id}")
 def update_feedback_status(
     feedback_id: UUID,
     body: FeedbackStatusUpdate,
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     item = db.get(Feedback, feedback_id)
     if not item:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    item.status = body.status
-    db.commit()
+    if item.status != body.status:
+        before = {"status": item.status}
+        item.status = body.status
+        record_admin_action(db, actor=admin, action="feedback.status_changed", target_type="feedback",
+                            target_id=item.id, before=before, after={"status": item.status}, reason=body.reason)
+        db.commit()
     return {"id": str(item.id), "status": item.status}

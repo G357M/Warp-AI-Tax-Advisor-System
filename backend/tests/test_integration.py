@@ -49,6 +49,7 @@ from api.routes import account, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
 from models import (
+    AdminAuditLog,
     AuthActionToken,
     BillingCheckout,
     BillingProviderEvent,
@@ -108,6 +109,7 @@ TEST_TABLES = [
     BillingCheckout.__table__,
     BillingProviderEvent.__table__,
     BillingReviewDecision.__table__,
+    AdminAuditLog.__table__,
 ]
 
 
@@ -308,7 +310,7 @@ def test_admin_checkout_settlement_is_idempotent(client):
 
     activated = client.post(
         "/api/v1/billing/admin/activate",
-        json={"checkout_id": checkout_id},
+        json={"checkout_id": checkout_id, "reason": "bank transfer received"},
     )
     assert activated.status_code == 200
     assert activated.json()["replayed"] is False
@@ -333,8 +335,30 @@ def test_admin_checkout_settlement_is_idempotent(client):
         assert str(checkout.settled_payment_id) == activated.json()["payment_id"]
         payment = db.query(Payment).filter_by(subscription_id=subscription.id).one()
         assert payment.amount_minor == 4900
+        [entry] = db.query(AdminAuditLog).filter_by(target_id=checkout_id).all()
+        assert entry.action == "subscription.activated" and entry.target_type == "checkout"
+        assert entry.actor_id == db.query(User).filter_by(username=admin_username).one().id
+        assert entry.before is None
+        assert entry.after["plan"] == "pro" and entry.after["status"] == "active"
+        assert entry.reason == "bank transfer received"
     finally:
         db.close()
+
+
+def test_legacy_email_activation_is_journaled(client):
+    register_and_login(client, "legacy-customer")
+    register_and_login(client, "legacy-admin")
+    _make_current_user_admin("legacy-admin")
+    with TestingSessionLocal() as db:
+        customer = db.query(User).filter_by(username="legacy-customer").one()
+        email, customer_id = customer.email, customer.id
+    response = client.post("/api/v1/billing/admin/activate",
+                           json={"email": email, "plan": "business", "months": 3})
+    assert response.status_code == 200
+    with TestingSessionLocal() as db:
+        [entry] = db.query(AdminAuditLog).filter_by(target_id=str(customer_id)).all()
+        assert (entry.action, entry.target_type) == ("subscription.activated", "user")
+        assert entry.after["plan"] == "business" and entry.reason is None
 
 
 def test_tbc_checkout_is_unavailable_without_explicit_merchant_activation(client):
