@@ -64,8 +64,8 @@ Ingestion runs on the server via cron (`run_scraper.sh`). The old `/api/v1/scrap
 
 ## 📖 Documentation
 
-- **Full Status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
-- **Night Summary:** [OVERNIGHT_WORK_SUMMARY.md](OVERNIGHT_WORK_SUMMARY.md)
+- **Current State:** [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md)
+- **Historical reports:** [docs/archive/](docs/archive/README.md)
 - **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **API Docs:** http://localhost:8000/docs (when running)
 
@@ -121,6 +121,6 @@ The system has **5 test documents** about Georgian tax law:
 
 ---
 
-**Need help?** Check [OVERNIGHT_WORK_SUMMARY.md](OVERNIGHT_WORK_SUMMARY.md) for detailed info!
+**Need help?** Check [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for the current production state.
 
 *Let's ship it! 🚀*

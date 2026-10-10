@@ -4,6 +4,10 @@
 
 Этот файл — краткое актуальное описание production-состояния проекта `tax-advisor.ge`.
 
+**Обновлено:** 2026-10-29 (main `dc37bc1`). Живые счётчики корпуса ниже
+последний раз проверялись 2026-08-24/26; изменения сентября–октября описаны в
+разделе «Изменения с 2026-08-26» и пунктах 38–43 Operational notes.
+
 Если другие документы в репозитории противоречат этому файлу, приоритет такой:
 1. `docs/CURRENT_STATE.md`
 2. `/root/infohub/README.md`
@@ -90,6 +94,48 @@ infohub.rs.ge / infohubapi.rs.ge
 - disposable restore server `163175971`, firewall `11504939` and temporary SSH
   key were removed after evidence capture; production, DNS and Plausible were not
   changed.
+
+## Изменения с 2026-08-26 (main по 2026-10-13)
+
+Всё перечисленное слито в `main`, CI на `main` зелёный. В репозитории нет
+свежего live-снимка production; статус выпуска указан только там, где он
+зафиксирован в коммитах или документации.
+
+- **Billing:** клиентский биллинг, provider-ready TBC Checkout,
+  версионированное согласие с условиями покупки (пункты 36–37), а также
+  операторская сверка платежей `/admin/billing` с append-only журналом решений
+  (PR #2, `docs/BILLING_RECONCILIATION.md`, `docs/BILLING_RELEASE.md`). TBC в
+  production по-прежнему выключен (`BILLING_TBC_ENABLED=false`, договора с
+  банком нет); порядок включения — `docs/TBC_RELEASE.md`.
+- **TypeSafe JEV:** серверная маршрутизация вопросов `backend/rag_v2/jev_router.py`
+  с режимами `off`/`shadow`/`assist`; по `docs/TYPESAFE_JEV.md` production
+  переведён в `assist` в выпуске 2026-10-01.
+- **RAG:** короткие фрагменты судебных решений расширяются соседним контекстом
+  того же документа (до 6 000 символов), отказ генератора сохраняет статус
+  `insufficient`, retrieval и generation защищённых ответов разделены.
+  Изменение системной политики для dispute-ответов откачено после live-проверки
+  (PR #10).
+- **MCP:** приватный read-only MCP-коннектор для Claude (`docs/MCP_CONNECTOR.md`),
+  включается только при заданном `MCP_ACCESS_TOKEN`.
+- **Резервное копирование:** ночной проверяемый `pg_dump`, ежемесячный restore
+  drill и Telegram-оповещения о сбоях (пункты 38–41).
+- **Админ-панель, этапы 1–5a (11–13 октября):** общий UI на RU/KA/EN и
+  append-only журнал действий администратора `/admin/audit`; клиенты
+  `/admin/users` (поиск, карточка, роль, блокировка, выдача тарифа, ручной
+  платёж, отмена); качество ответов `/admin/quality` с псевдонимами
+  пользователей, оценками 👍/👎 и append-only ревью; тренды `/admin/trends`;
+  состояние ночных задач `/admin/system` и корпус `/admin/corpus`. Старые
+  `/admin/scraper`, `GET /api/v1/admin/ops` и `/api/v1/scraper/*` удалены,
+  ingestion идёт только через cron `run_scraper.sh`. Этап 4 — первый deploy,
+  который делает `ALTER` живой таблицы `messages`; выпускать в тихое окно
+  (`docs/PRODUCTION_OPERATIONS.md`). Подробности — `docs/DEVELOPMENT_MEMORY.md`.
+- **Почта:** описана настройка Resend SMTP для писем подтверждения и сброса
+  пароля с отправителем `info@tax-advisor.ge` (`docs/PRODUCTION_OPERATIONS.md`).
+  Включение в production в репозитории не зафиксировано, поэтому пункт 26 ниже
+  остаётся в силе до проверки.
+- **Зависимости:** закрыты advisories в `sharp`, `source-map-js`, Next.js и
+  billing-зависимостях; CI-установки зафиксированы lock-файлом
+  `backend/requirements-ci.lock`.
 
 Main containers:
 - `infohub-backend`
@@ -259,6 +305,12 @@ plan, CSV, audit и manifest отдельными SHA-256 без записи в
 35. **Parser-backed legal answers now share one scalable article contract.** The factory contains 39 expert-authored contracts / 117 RU/EN/KA answers and 50 verified article bindings. The batch adds funded-pension contributions, tax limitation, overpayment refunds, return correction, payroll filing, VAT filing/payment, reverse charge, input-VAT deduction, individual property-tax deadlines, late-return penalties and the VAT-registration-failure penalty. The Funded Pension Law is pinned to Matsne publication 12 and its official PDF page for article 3 because Matsne's current HTML stores the consolidated act in one technical point without article-level anchors. The former funded-pension literal was removed, so every recognized legal fact now delegates to the same contract factory. The same contract controls direct routing, the primary retrieval article, the final citation boundary and the generated public canary, preventing answer/retrieval citation drift. A syntax-derived CI audit classifies all 18 parser goals: 14 are contract-backed and four require contextual retrieval; any hard-coded authoritative fact now fails CI with no allowlisted exception. Contract and coverage audits are read-only and call-free; the generated 117-request suite remains dry-run-first, loopback-only and manually executed because public responses may invoke the provider.
 36. **The client cabinet has a fail-closed billing foundation and a provider-ready TBC adapter.** A public backend catalog is the runtime authority for plan prices and feature codes. New checkout intents store the authenticated user, server-selected amount in integer tetri, currency, provider, status, expiry and a per-user idempotency key; a reused key cannot create a second order or switch plans. Manual invoice settlement can reference the exact checkout UUID and repeated admin settlement cannot duplicate the payment. The TBC adapter obtains credentials only server-side, creates a hosted-bank order, permits only the official redirect host and verifies every known callback or browser return through Get Payment before accepting the exact order, amount and currency. Callback evidence is a normalized digest rather than a raw provider payload; unknown IDs cause no bank query, duplicate success cannot create another payment and ambiguous/return states stop for review. The cabinet exposes the flow in RU/KA/EN, but production TBC remains explicitly unavailable until merchant onboarding, credentials and activation evidence exist. Recurring charges, operator refund/reconciliation tools, Bank of Georgia and Business organizations/seats are still incomplete stages.
 37. **Public purchase terms and checkout consent are versioned end to end.** Five parity-matched RU/KA/EN pages publish Modern LLC identity and contacts, final Pro 49 GEL / Business 149 GEL prices, non-VAT-registered treatment, digital activation, privacy, a voluntary first-period 24-hour guarantee that does not reduce statutory consumer rights, and fixed 30-day access without automatic renewal. The client must accept the current terms and separately request immediate service before a paid action is enabled. The API requires the exact catalog terms version and literal true confirmations, while each checkout stores the version and both UTC acceptance timestamps. The additive provider schema remains legacy-safe because consent columns are nullable only for historical rows; an old unaudited idempotent row cannot be replayed as a current accepted checkout. Refund execution remains manual and is not falsely advertised as automatic.
+38. **Nightly database backup is verified, not just written.** `ops/backup-infohub-db.sh` runs from `/etc/cron.d/infohub-db-backup` at 01:30 UTC, clear of the 03:00 scraper. It writes a custom-format dump to `/root/backups/infohub`, proves it with `pg_restore --list` for `documents`, `document_chunks` and `users`, records a SHA-256 and keeps the newest four verified dumps; a failed or unverifiable dump never rotates out a good one. The weekly off-server copy remains the off-site layer. `scripts/deploy_production.sh` installs the cron entry.
+39. **The nightly dump has a monthly restore drill.** `ops/restore-drill-infohub-db.sh` checks the SHA-256, restores the newest dump into a throwaway network-less container from the production image (1 CPU, 2 GB, 1 GB `/dev/shm`, read-only backup mount) and compares row counts, schema objects, invalid indexes and a pgvector nearest-neighbour query with the live database. It runs on the first Saturday of each month at 22:15 UTC and shares the backup lock. The first production drill failed on Docker's 64 MB `/dev/shm`; the second restored cleanly in about an hour with matching row counts but stopped on its own catalog query, which was then fixed and covered by a CI integration test against the pgvector service.
+40. **Production PostgreSQL declares 1 GB `/dev/shm`.** The drill showed that parallel HNSW index builds during a real restore would fail on the default 64 MB. `docker-compose.yml` now sets `shm_size: 1g`, but deploys never recreate postgres: the setting takes effect only after a deliberate `docker compose up -d --no-deps postgres`.
+41. **Backup and drill failures alert in Telegram.** `ops/ops_alert.sh` reuses the scraper's `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`; a missing credential or failed send is logged and never masks the job's exit code.
+42. **The stale `document_chunks_backup_20260630` table has a guarded removal script.** No code reads the ~48k-row safety copy from the 2026-06-30 re-chunking, but every dump and drill carries it. `ops/drop-stale-chunks-backup.sh` is a dry run by default; `--apply` drops the table only when a checksummed nightly dump younger than 36 hours exists. The repository does not record whether `--apply` has been run.
+43. **Billing operator reconciliation is merged.** `/admin/billing` and `GET /api/v1/billing/admin/reconciliation` show unresolved bank orders with verified event evidence in RU/KA/EN; decisions go to a separate append-only journal created by `backend/scripts/add_billing_review_journal.py`. Opening the queue never refunds, contacts the bank, activates a plan or writes a decision. Release gates are in `docs/BILLING_RELEASE.md`.
 
 ---
 
@@ -273,7 +325,10 @@ plan, CSV, audit и manifest отдельными SHA-256 без записи в
 - фактическая проверка подготовленной decision-facts выборки профильным экспертом и документирование результатов без смешения структурной метрики с юридической достоверностью;
 - последовательное закрытие полной decision-facts очереди через защищённые worksheets; машинные duplicate-классы используются только для приоритизации, не как основание для удаления;
 - подключение production SMTP и end-to-end smoke для уже реализованных email verification / password recovery;
-- production onboarding и sandbox/reconciliation drill для готового TBC Checkout adapter без включения до подтверждённых merchant credentials;
+- договор с TBC, sandbox-прогон и включение TBC Checkout по `docs/TBC_RELEASE.md`; операторская сверка уже в `main`;
+- пересоздать production postgres в плановое окно, чтобы вступил в силу `shm_size: 1g`;
+- после проверки свежего ночного дампа удалить `document_chunks_backup_20260630` через `ops/drop-stale-chunks-backup.sh --apply`;
+- повторно снять live-счётчики корпуса и health для этого файла (последний снимок — 2026-08-24/26);
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
 - квартальный повтор recovery drill с новым pinned evidence, чтобы подтверждённое восстановление не стало одноразовым историческим фактом.
 
