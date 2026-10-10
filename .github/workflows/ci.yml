@@ -97,6 +97,7 @@ jobs:
           tests/test_jev_live_integration.py
           tests/test_billing_gateway.py
           tests/test_admin_audit.py
+          tests/test_public_config.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py
           tests/test_production_storage_audit.py

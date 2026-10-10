@@ -10,7 +10,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -27,6 +26,7 @@ from billing.gateway import (
     get_gateway,
     payment_methods,
 )
+from billing.reconciliation import reconciliation_queue_filter
 from billing.review import allowed_actions, assert_reviewable, decision_payload, digest, snapshot
 from core.admin_audit import record_admin_action
 from core.config import settings
@@ -224,19 +224,7 @@ def reconciliation_queue(
     del admin
     rows = (
         db.query(BillingCheckout)
-        .filter(or_(
-            BillingCheckout.status.in_(("provider_unknown", "provider_review")),
-            and_(
-                BillingCheckout.provider == "tbc",
-                BillingCheckout.status.in_(("pending", "expired")),
-                BillingCheckout.settled_payment_id.is_(None),
-                BillingCheckout.expires_at < utc_now(),
-                or_(
-                    BillingCheckout.provider_status.is_(None),
-                    BillingCheckout.provider_status.notin_(("Failed", "Expired")),
-                ),
-            ),
-        ))
+        .filter(reconciliation_queue_filter())
         .order_by(BillingCheckout.created_at.asc(), BillingCheckout.id.asc())
         .offset(offset)
         .limit(limit + 1)

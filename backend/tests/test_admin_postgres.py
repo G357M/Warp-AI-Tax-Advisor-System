@@ -1,5 +1,6 @@
 """Admin journal, journaled mutations and admin read APIs on real PostgreSQL."""
 import os
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -13,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from api.routes import admin as admin_routes
 from core.config import settings
 from core.database import Base, engine
+from core.time_utils import utc_now
 from models import (AdminAuditLog, BillingCheckout, Conversation, Document, Feedback, Message,
                     Payment, Subscription, User)
 from models.document import DecisionFacts, LawAmendment
@@ -133,3 +135,61 @@ def test_feedback_status_change_is_journaled_once(database):
     [entry] = _entries(sessions)
     assert entry.action == "feedback.status_changed" and entry.target_id == str(feedback_id)
     assert entry.before == {"status": "new"} and entry.after == {"status": "fixed"}
+
+
+def _audit(sessions, **kwargs):
+    params = {"action": None, "actor_id": None, "limit": 50, "offset": 0}
+    params.update(kwargs)
+    with sessions() as db:
+        return admin_routes.list_audit(db=db, **params)
+
+
+def test_audit_listing_filters_and_paginates(database):
+    sessions, ids = database
+    with sessions() as db:
+        actor = db.get(User, ids.admin_id)
+        admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="admin"), actor, db)
+        admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="user"), actor, db)
+        item = Feedback(user_id=ids.user_id, message="x")
+        db.add(item)
+        db.commit()
+        admin_routes.update_feedback_status(item.id, admin_routes.FeedbackStatusUpdate(status="fixed"), actor, db)
+    everything = _audit(sessions)
+    assert everything["total"] == 3
+    assert everything["items"][0]["action"] == "feedback.status_changed"  # newest first
+    assert everything["items"][0]["actor"]["username"].startswith("admin-")
+    roles = _audit(sessions, action="user.role_changed")
+    assert roles["total"] == 2 and {i["after"]["role"] for i in roles["items"]} == {"admin", "user"}
+    page = _audit(sessions, limit=1, offset=1)
+    assert page["total"] == 3 and len(page["items"]) == 1
+    assert _audit(sessions, actor_id=ids.user_id)["total"] == 0
+
+
+def _checkout(user_id, **fields):
+    values = dict(user_id=user_id, plan="pro", months=1, amount_minor=4900, currency="GEL",
+                  provider="manual", status="pending", idempotency_key=uuid4().hex,
+                  expires_at=utc_now() + timedelta(hours=1), terms_version="2026-09-08",
+                  terms_accepted_at=utc_now(), immediate_service_requested_at=utc_now())
+    values.update(fields)
+    return BillingCheckout(**values)
+
+
+def test_stats_attention_counts_match_lists(database):
+    from api.routes import billing as billing_routes
+    sessions, ids = database
+    with sessions() as db:
+        db.add_all([
+            Feedback(user_id=ids.user_id, message="new one"),
+            Feedback(user_id=ids.user_id, message="done", status="fixed"),
+            _checkout(ids.user_id),  # manual, pending, live
+            _checkout(ids.user_id, expires_at=utc_now() - timedelta(hours=1)),  # manual, expired
+            _checkout(ids.user_id, provider="tbc", status="provider_review", provider_order_id=uuid4().hex),
+            _checkout(ids.user_id, provider="tbc", status="provider_unknown", provider_order_id=uuid4().hex),
+        ])
+        db.commit()
+        stats = admin_routes.system_stats(db)
+        listed = billing_routes.reconciliation_queue(limit=100, offset=0, admin=db.get(User, ids.admin_id), db=db)
+    assert stats["feedback"] == {"new": 1}
+    assert stats["billing"]["manual_pending"] == 1
+    assert stats["billing"]["reconciliation_open"] == len(listed["items"]) == 2
+    assert stats["attention"] == {"ingest_stale": True}  # no documents at all

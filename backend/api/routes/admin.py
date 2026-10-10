@@ -9,16 +9,20 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
+from billing.reconciliation import reconciliation_queue_filter
 from core.admin_audit import record_admin_action
 from core.database import get_db
+from core.public_config import public_config
 from core.security import require_admin
 from core.time_utils import utc_now
-from models import Feedback, User
+from models import AdminAuditLog, BillingCheckout, Feedback, User
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
+
+INGEST_STALE_HOURS = 36
 
 
 @router.get("/stats")
@@ -55,6 +59,14 @@ def system_stats(db: Session = Depends(get_db)):
           (SELECT count(*) FROM messages) AS messages,
           (SELECT count(*) FROM messages WHERE created_at >= now() - interval '7 days') AS messages_7d
     """)).one()
+    feedback_new = db.query(func.count(Feedback.id)).filter(Feedback.status == "new").scalar()
+    reconciliation_open = db.query(func.count(BillingCheckout.id)).filter(reconciliation_queue_filter()).scalar()
+    manual_pending = db.query(func.count(BillingCheckout.id)).filter(
+        BillingCheckout.provider == "manual",
+        BillingCheckout.status == "pending",
+        BillingCheckout.expires_at >= utc_now(),
+    ).scalar()
+    ingest_stale = last_ingest is None or last_ingest < utc_now() - timedelta(hours=INGEST_STALE_HOURS)
     return {
         "documents": {
             "total": sum(r[1] for r in docs),
@@ -79,6 +91,9 @@ def system_stats(db: Session = Depends(get_db)):
             "messages": convs.messages,
             "messages_7d": convs.messages_7d,
         },
+        "feedback": {"new": feedback_new},
+        "billing": {"reconciliation_open": reconciliation_open, "manual_pending": manual_pending},
+        "attention": {"ingest_stale": ingest_stale},
     }
 
 
@@ -271,3 +286,43 @@ def update_feedback_status(
                             target_id=item.id, before=before, after={"status": item.status}, reason=body.reason)
         db.commit()
     return {"id": str(item.id), "status": item.status}
+
+
+@router.get("/audit")
+def list_audit(
+    action: Optional[str] = Query(default=None, max_length=64),
+    actor_id: Optional[UUID] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(AdminAuditLog, User.username).outerjoin(User, User.id == AdminAuditLog.actor_id)
+    if action:
+        query = query.filter(AdminAuditLog.action == action)
+    if actor_id:
+        query = query.filter(AdminAuditLog.actor_id == actor_id)
+    total = query.count()
+    rows = (query.order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+            .offset(offset).limit(limit).all())
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": str(entry.id),
+                "actor": {"id": str(entry.actor_id), "username": username},
+                "action": entry.action,
+                "target_type": entry.target_type,
+                "target_id": entry.target_id,
+                "before": entry.before,
+                "after": entry.after,
+                "reason": entry.reason,
+                "created_at": entry.created_at.isoformat(),
+            }
+            for entry, username in rows
+        ],
+    }
+
+
+@router.get("/config")
+def admin_config():
+    return public_config()
