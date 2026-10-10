@@ -49,7 +49,7 @@
 | `id` | UUID PK | |
 | `actor_id` | UUID NOT NULL | администратор; без FK, чтобы удаление пользователя не ломало журнал |
 | `action` | VARCHAR(64) NOT NULL | `user.role_changed`, `subscription.activated`, `feedback.status_changed` |
-| `target_type` | VARCHAR(32) NOT NULL | `user`, `subscription`, `checkout`, `feedback` |
+| `target_type` | VARCHAR(32) NOT NULL | `user`, `checkout`, `feedback` |
 | `target_id` | VARCHAR(64) NOT NULL | id объекта строкой |
 | `before` | JSON NULL | значимые поля до изменения |
 | `after` | JSON NULL | значимые поля после |
@@ -103,7 +103,8 @@ def record_admin_action(db, *, actor, action, target_type, target_id,
 
 ### API чтения
 
-`GET /admin/audit?action=&actor_id=&since=&until=&limit=50&offset=0` →
+`GET /admin/audit?action=&actor_id=&limit=50&offset=0` (фильтры по датам
+не нужны этапу 1: журнал листается от новых к старым) →
 `{items: [{id, actor: {id, username}, action, target_type, target_id, before,
 after, reason, created_at}], total}`. `limit` ≤ 200. Под `require_admin`
 (через router-зависимость, как остальные `/admin`).
@@ -140,8 +141,9 @@ success `--success`, error `--error*`, warning `#d97706`.
 
 `frontend/lib/admin-i18n.ts`: словарь `{ru, ka, en}` по разделам (`nav`,
 `common`, `dashboard`, `audit`, `config`, `users`, `documents`, `feedback`,
-`scraper`, `analytics`) и хук `useAdminCopy(section)`, использующий язык из
-`useLang()`. Даты и числа форматируются локалью языка (`ru-RU`, `ka-GE`,
+`scraper`, `analytics`) и хук `useAdminCopy()` → `{lang, c, locale}`,
+использующий язык из `useLang()`; `ka` и `en` типизированы по `ru`, поэтому
+пропущенная строка ломает typecheck. Даты и числа форматируются локалью языка (`ru-RU`, `ka-GE`,
 `en-GB`). Грузинские строки проверяются по `georgian-writing-style`.
 Строки Payments остаются в `lib/billing-reconciliation.ts`.
 
