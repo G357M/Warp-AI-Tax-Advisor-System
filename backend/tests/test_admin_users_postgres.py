@@ -413,3 +413,159 @@ def test_journal_failure_rolls_back_block(database, monkeypatch):
     with sessions() as db:
         assert db.get(User, user_id).is_active is True
     assert _entries(sessions) == []
+
+
+def test_grant_extends_same_plan_without_payment(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "gifted")
+        sub = _sub(db, user, "pro", days=10)
+        db.commit()
+        user_id, old_end = user.id, sub.period_end
+    body = routes.GrantRequest(plan="pro", days=30, reason="compensation")
+    result = _act(sessions, routes.grant_plan, user_id, body, ids.admin_id)
+    with sessions() as db:
+        sub = db.query(Subscription).filter_by(user_id=user_id).one()
+        assert sub.period_end == old_end + timedelta(days=30) and sub.payment_provider == "grant"
+        assert db.query(Payment).count() == 0 and db.query(BillingCheckout).count() == 0
+    assert result["subscription"]["source"] == "grant"
+    [entry] = _entries(sessions)
+    assert entry.action == "subscription.granted" and entry.after["days"] == 30
+
+
+def test_grant_without_paid_plan_starts_now(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "fresh")
+        db.commit()
+        user_id = user.id
+    _act(sessions, routes.grant_plan, user_id, routes.GrantRequest(plan="business", days=7, reason="partner"),
+         ids.admin_id)
+    with sessions() as db:
+        sub = db.query(Subscription).filter_by(user_id=user_id).one()
+        assert sub.plan == "business" and sub.status == "active"
+        assert timedelta(days=6, hours=23) < sub.period_end - utc_now() <= timedelta(days=7)
+
+
+def test_grant_over_other_active_plan_needs_replace_flag(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "switcher")
+        _sub(db, user, "business", days=20)
+        db.commit()
+        user_id = user.id
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, routes.grant_plan, user_id, routes.GrantRequest(plan="pro", days=30, reason="downgrade"),
+             ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "active_plan_differs")
+    assert _entries(sessions) == []
+    _act(sessions, routes.grant_plan, user_id,
+         routes.GrantRequest(plan="pro", days=30, replace_active=True, reason="downgrade"), ids.admin_id)
+    [entry] = _entries(sessions)
+    assert entry.before["plan"] == "business" and entry.after["plan"] == "pro"
+
+
+def test_grant_same_unlimited_plan_is_rejected(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "forever")
+        _sub(db, user, "pro", days=None)
+        db.commit()
+        user_id = user.id
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, routes.grant_plan, user_id, routes.GrantRequest(plan="pro", days=5, reason="extra"),
+             ids.admin_id)
+    assert exc.value.detail["code"] == "plan_unlimited"
+
+
+@pytest.mark.parametrize("action, body", [
+    ("grant_plan", lambda: routes.GrantRequest(plan="pro", days=5, reason="gift")),
+    ("record_payment", lambda: routes.PaymentRequest(plan="pro", months=1, reason="cash")),
+])
+def test_admins_get_no_plan_actions(database, action, body):
+    sessions, ids = database
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, getattr(routes, action), ids.admin_id, body(), ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "admin_has_business")
+
+
+def test_record_payment_creates_settled_checkout_and_payment(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "payer")
+        db.commit()
+        user_id = user.id
+    result = _act(sessions, routes.record_payment, user_id,
+                  routes.PaymentRequest(plan="pro", months=3, reason="bank transfer #42"), ids.admin_id)
+    with sessions() as db:
+        [checkout] = db.query(BillingCheckout).all()
+        [payment] = db.query(Payment).all()
+        assert checkout.status == "paid" and checkout.settled_payment_id == payment.id
+        assert checkout.amount_minor == 4900 * 3 and payment.amount_minor == 4900 * 3
+    assert result["subscription"]["source"] == "payment"
+    [entry] = _entries(sessions)
+    assert (entry.action, entry.target_type, entry.reason) == ("subscription.activated", "user", "bank transfer #42")
+
+
+def test_cancel_ends_access_now_and_records_category(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "refunded")
+        _sub(db, user, "pro", days=12)
+        db.commit()
+        user_id = user.id
+    result = _act(sessions, routes.cancel_subscription, user_id,
+                  routes.CancelRequest(category="refund", reason="refund via bank"), ids.admin_id)
+    assert result["profile"]["effective_plan"] == "free" and result["subscription"]["status"] == "canceled"
+    with sessions() as db:
+        sub = db.query(Subscription).filter_by(user_id=user_id).one()
+        assert sub.period_end <= utc_now()
+    [entry] = _entries(sessions)
+    assert entry.action == "subscription.canceled" and entry.after["category"] == "refund"
+    assert entry.before["status"] == "active"
+
+
+def test_cancel_without_active_paid_plan_is_409(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "nothing-to-cancel")
+        _sub(db, user, "pro", days=-1)
+        db.commit()
+        user_id = user.id
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, routes.cancel_subscription, user_id,
+             routes.CancelRequest(category="other", reason="cleanup"), ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "no_active_subscription")
+
+
+@pytest.mark.parametrize("action, body, patch_target", [
+    ("grant_plan", lambda: routes.GrantRequest(plan="pro", days=5, reason="gift"), "routes"),
+    ("cancel_subscription", lambda: routes.CancelRequest(category="fraud", reason="chargeback"), "routes"),
+    ("record_payment", lambda: routes.PaymentRequest(plan="pro", months=1, reason="cash"), "billing"),
+])
+def test_journal_failure_rolls_back_plan_actions(database, monkeypatch, action, body, patch_target):
+    from api.routes import billing as billing_routes
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "rollback-plan")
+        if action == "cancel_subscription":
+            _sub(db, user, "pro", days=10)
+        db.commit()
+        user_id = user.id
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("journal unavailable")
+
+    monkeypatch.setattr(routes if patch_target == "routes" else billing_routes, "record_admin_action", broken)
+    with sessions() as db:
+        with pytest.raises(RuntimeError):
+            getattr(routes, action)(user_id, body(), admin=db.get(User, ids.admin_id), db=db)
+        db.rollback()
+    with sessions() as db:
+        subs = db.query(Subscription).filter_by(user_id=user_id).all()
+        if action == "cancel_subscription":
+            assert subs[0].status == "active"
+        else:
+            assert subs == []
+        assert db.query(Payment).count() == 0 and db.query(BillingCheckout).count() == 0
+    assert _entries(sessions) == []

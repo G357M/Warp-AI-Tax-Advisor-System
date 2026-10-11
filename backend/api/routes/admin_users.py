@@ -7,11 +7,14 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from api.routes.billing import settle_manual_payment
 from core.admin_audit import record_admin_action
-from core.admin_users import Reason, admin_error, list_users_page, user_card
+from core.admin_users import (Reason, admin_error, grant_window, list_users_page, paid_subscription_active,
+                              subscription_snapshot, user_card)
 from core.database import get_db
 from core.security import require_admin
-from models import User
+from core.time_utils import utc_now
+from models import Subscription, User
 
 router = APIRouter(prefix="/admin/users", tags=["Admin"], dependencies=[Depends(require_admin)])
 
@@ -121,3 +124,93 @@ def unblock_user(user_id: UUID, body: ReasonBody, admin: User = Depends(require_
         record_admin_action(db, actor=admin, action="user.unblocked", target_type="user", target_id=user.id,
                             before={"is_active": False}, after={"is_active": True}, reason=body.reason)
     return finish(db, user, changed)
+
+
+class GrantRequest(BaseModel):
+    plan: Literal["pro", "business"]
+    days: int = Field(ge=1, le=366)
+    replace_active: bool = False
+    reason: Reason
+
+
+class PaymentRequest(BaseModel):
+    plan: Literal["pro", "business"]
+    months: int = Field(ge=1, le=24)
+    reason: Reason
+
+
+class CancelRequest(BaseModel):
+    category: Literal["refund", "mistaken_activation", "fraud", "other"]
+    reason: Reason
+
+
+def _locked_subscription(db: Session, user: User):
+    return db.query(Subscription).filter_by(user_id=user.id).with_for_update().first()
+
+
+def _not_admin(user: User) -> None:
+    if user.role == "admin":
+        raise admin_error(409, "admin_has_business", "Administrators already have the business plan")
+
+
+@router.post(
+    "/{user_id}/grant",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Administrator, another active plan or an unlimited plan"},
+    },
+)
+def grant_plan(user_id: UUID, body: GrantRequest, admin: User = Depends(require_admin),
+               db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    _not_admin(user)
+    sub = _locked_subscription(db, user)
+    start, end = grant_window(sub, body.plan, body.days, utc_now(), body.replace_active)
+    before = subscription_snapshot(sub)
+    if sub is None:
+        sub = Subscription(user_id=user.id)
+        db.add(sub)
+    sub.plan, sub.status, sub.period_start, sub.period_end = body.plan, "active", start, end
+    sub.payment_provider, sub.auto_renew = "grant", False
+    db.flush()
+    record_admin_action(db, actor=admin, action="subscription.granted", target_type="user", target_id=user.id,
+                        before=before, after={**subscription_snapshot(sub), "days": body.days}, reason=body.reason)
+    return finish(db, user, True)
+
+
+@router.post(
+    "/{user_id}/record-payment",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Administrators already have the business plan"},
+    },
+)
+def record_payment(user_id: UUID, body: PaymentRequest, admin: User = Depends(require_admin),
+                   db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    _not_admin(user)
+    settle_manual_payment(db, admin=admin, user=user, plan_id=body.plan, months=body.months, reason=body.reason)
+    return finish(db, user, True)
+
+
+@router.post(
+    "/{user_id}/cancel-subscription",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "No active paid subscription"},
+    },
+)
+def cancel_subscription(user_id: UUID, body: CancelRequest, admin: User = Depends(require_admin),
+                        db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    sub = _locked_subscription(db, user)
+    now = utc_now()
+    if user.role == "admin" or not paid_subscription_active(sub, now):
+        raise admin_error(409, "no_active_subscription", "No active paid subscription")
+    before = subscription_snapshot(sub)
+    sub.status, sub.period_end = "canceled", now
+    db.flush()
+    record_admin_action(db, actor=admin, action="subscription.canceled", target_type="user", target_id=user.id,
+                        before=before, after={**subscription_snapshot(sub), "category": body.category},
+                        reason=body.reason)
+    return finish(db, user, True)
