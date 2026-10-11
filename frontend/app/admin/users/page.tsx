@@ -1,8 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { authFetch } from '@/lib/auth';
+import Link from 'next/link';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { adminSend, errorText } from '@/lib/admin-api';
 import { formatDate, formatDateTime, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
+import type { AdminUserRow, UsersPage } from '@/lib/admin-types';
+import { useAdminFetch } from '@/lib/use-admin-fetch';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { DataTable, type Column } from '@/components/admin/DataTable';
 import { Pagination } from '@/components/admin/Pagination';
@@ -10,81 +14,90 @@ import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { Badge } from '@/components/admin/Badge';
 import styles from '../admin.module.css';
 
-interface AdminUser {
-  id: string; username: string; email: string; role: 'user' | 'admin';
-  created_at: string | null; last_login: string | null; plan: string; period_end: string | null;
-}
-
-type Pending =
-  | { kind: 'role'; user: AdminUser; role: 'user' | 'admin' }
-  | { kind: 'settle'; checkoutId: string }
-  | { kind: 'activate'; email: string; plan: 'pro' | 'business'; months: number };
-
+const PLAN_FILTERS = ['free', 'pro', 'business', 'expiring'] as const;
+const STATUS_FILTERS = ['active', 'blocked', 'unverified', 'admin'] as const;
+const SORTS = ['created_desc', 'last_login_desc', 'period_end_asc'] as const;
 const LIMIT = 50;
 
-async function send(url: string, method: string, body: object, fallback: string) {
-  const res = await authFetch(url, { method, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : fallback);
-  return data;
+function pick<T extends string>(value: string | null, allowed: readonly T[]): T | '' {
+  return value !== null && (allowed as readonly string[]).includes(value) ? (value as T) : '';
 }
 
-export default function AdminUsers() {
+interface SettleResult { email: string; plan: string; period_end: string | null; replayed: boolean }
+
+type AdminCopy = ReturnType<typeof useAdminCopy>['c'];
+
+function StatusBadge({ user, c }: Readonly<{ user: AdminUserRow; c: AdminCopy }>) {
+  if (!user.is_active) return <Badge tone="error">{c.users.statuses.blocked}</Badge>;
+  if (!user.email_verified) return <Badge tone="warning">{c.users.statuses.unverified}</Badge>;
+  if (user.role === 'admin') return <Badge tone="neutral">{c.users.statuses.admin}</Badge>;
+  return <>{c.common.dash}</>;
+}
+
+function UsersList() {
   const { c, locale } = useAdminCopy();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
-  const [error, setError] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const q = (params.get('q') ?? '').trim().slice(0, 100);
+  const plan = pick(params.get('plan'), PLAN_FILTERS);
+  const status = pick(params.get('status'), STATUS_FILTERS);
+  const sort = pick(params.get('sort'), SORTS);
+  const offset = Math.max(0, Math.floor(Number(params.get('offset')) || 0));
+
+  const update = useCallback((patch: Record<string, string>) => {
+    const next = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(patch)) { if (v) next.set(k, v); else next.delete(k); }
+    if (!('offset' in patch)) next.delete('offset');
+    const s = next.toString();
+    router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+  }, [params, pathname, router]);
+
+  // The box follows the URL (back/forward, reset) without clobbering what the user is typing.
+  const [draft, setDraft] = useState(q);
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) { setSeenQ(q); if (draft.trim() !== q) setDraft(q); }
+  useEffect(() => {
+    if (draft.trim().slice(0, 100) === q) return;
+    const t = setTimeout(() => update({ q: draft.trim().slice(0, 100) }), 300);
+    return () => clearTimeout(t);
+  }, [draft, q, update]);
+
+  const query = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
+  if (q) query.set('q', q);
+  if (plan) query.set('plan', plan);
+  if (status) query.set('status', status);
+  if (sort) query.set('sort', sort);
+  const { data, error, loading, reload } = useAdminFetch<UsersPage>(`/api/v1/admin/users?${query}`);
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const filtered = Boolean(q || plan || status || sort);
+  const listQuery = params.toString();
+  const cardHref = (id: string) => `/admin/users/${id}${listQuery ? `?back=${encodeURIComponent(`?${listQuery}`)}` : ''}`;
+  const reset = () => { setDraft(''); router.replace(pathname, { scroll: false }); };
+
   const [checkoutId, setCheckoutId] = useState('');
-  const [email, setEmail] = useState('');
-  const [plan, setPlan] = useState<'pro' | 'business'>('pro');
-  const [months, setMonths] = useState(1);
-  const [pending, setPending] = useState<Pending | null>(null);
-
-  const load = useCallback(() => {
-    authFetch(`/api/v1/admin/users?limit=${LIMIT}&offset=${offset}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => { setUsers(d.items); setTotal(d.total); setError(false); })
-      .catch(() => setError(true))
-      .finally(() => setLoadedOffset(offset));
-  }, [offset]);
-  useEffect(load, [load]);
-  const loading = loadedOffset !== offset;
-  const retry = () => { setError(false); load(); };
-  const goTo = (next: number) => { setError(false); setOffset(next); };
-
-  const confirm = async (reason: string) => {
-    if (!pending) return;
-    const until = (d: { period_end: string | null }) => formatDate(d.period_end, locale);
-    if (pending.kind === 'role') {
-      await send(`/api/v1/admin/users/${pending.user.id}/role`, 'PATCH', { role: pending.role, reason }, c.common.saveError);
-    } else if (pending.kind === 'settle') {
-      const d = await send('/api/v1/billing/admin/activate', 'POST', { checkout_id: pending.checkoutId, reason }, c.common.saveError);
-      setMessage((d.replayed ? c.users.replayed : c.users.settled)(d.email, d.plan, until(d)));
-      setCheckoutId('');
-    } else {
-      const d = await send('/api/v1/billing/admin/activate', 'POST',
-        { email: pending.email, plan: pending.plan, months: pending.months, reason }, c.common.saveError);
-      setMessage(c.users.activated(d.email, d.plan, until(d)));
-      setEmail('');
+  const [settling, setSettling] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const settle = async (reason: string) => {
+    if (!settling) return;
+    let d: SettleResult;
+    try {
+      d = await adminSend<SettleResult>('/api/v1/billing/admin/activate', 'POST', { checkout_id: settling, reason });
+    } catch (e) {
+      throw new Error(errorText(c, e));
     }
-    load();
+    setMessage((d.replayed ? c.users.replayed : c.users.settled)(d.email, d.plan, formatDate(d.period_end, locale)));
+    setCheckoutId('');
+    reload();
   };
 
-  const dialogTitle = !pending ? '' : pending.kind === 'role' ? c.users.confirmRole(pending.user.username, pending.role)
-    : pending.kind === 'settle' ? c.users.confirmSettle : c.users.confirmActivate(pending.email, pending.plan, pending.months);
-
-  const columns: Column<AdminUser>[] = [
-    { key: 'login', header: c.users.login, render: (u) => <strong>{u.username}</strong> },
+  const columns: Column<AdminUserRow>[] = [
+    { key: 'login', header: c.users.login, render: (u) => <Link href={cardHref(u.id)}><strong>{u.username}</strong></Link> },
     { key: 'email', header: c.users.email, render: (u) => u.email },
-    { key: 'role', header: c.users.role, render: (u) => <select className={styles.select} aria-label={`${c.users.role}: ${u.username}`}
-      value={u.role} onChange={(e) => setPending({ kind: 'role', user: u, role: e.target.value as 'user' | 'admin' })}>
-      <option value="user">user</option><option value="admin">admin</option>
-    </select> },
-    { key: 'plan', header: c.users.plan, render: (u) => <Badge tone={u.plan === 'free' ? 'neutral' : 'success'}>{u.plan}</Badge> },
+    { key: 'plan', header: c.users.plan, render: (u) => <Badge tone={u.plan === 'free' ? 'neutral' : 'success'}>{c.users.plans[u.plan]}</Badge> },
     { key: 'until', header: c.users.until, render: (u) => formatDate(u.period_end, locale) },
+    { key: 'status', header: c.users.status, render: (u) => <StatusBadge user={u} c={c} /> },
     { key: 'last', header: c.users.lastLogin, render: (u) => <span className={styles.muted}>{formatDateTime(u.last_login, locale)}</span> },
   ];
 
@@ -92,34 +105,47 @@ export default function AdminUsers() {
     <PageHeader title={`${c.users.title} (${formatNumber(total, locale)})`} />
 
     <section className={`liquid-glass ${styles.panel}`}>
+      <div className={styles.toolbar}>
+        <input className={styles.input} type="search" aria-label={c.users.search} placeholder={c.users.search}
+          maxLength={100} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <select className={styles.select} aria-label={c.users.planFilter} value={plan} onChange={(e) => update({ plan: e.target.value })}>
+          <option value="">{c.users.planFilter}: {c.common.all}</option>
+          {PLAN_FILTERS.map((p) => <option key={p} value={p}>{c.users.plans[p]}</option>)}
+        </select>
+        <select className={styles.select} aria-label={c.users.statusFilter} value={status} onChange={(e) => update({ status: e.target.value })}>
+          <option value="">{c.users.statusFilter}: {c.common.all}</option>
+          {STATUS_FILTERS.map((s) => <option key={s} value={s}>{c.users.statuses[s]}</option>)}
+        </select>
+        <select className={styles.select} aria-label={c.users.sortLabel} value={sort || 'created_desc'}
+          onChange={(e) => update({ sort: e.target.value === 'created_desc' ? '' : e.target.value })}>
+          {SORTS.map((s) => <option key={s} value={s}>{c.users.sorts[s]}</option>)}
+        </select>
+        {filtered && <button type="button" className={styles.button} onClick={reset}>{c.users.reset}</button>}
+      </div>
+    </section>
+
+    <DataTable columns={columns} rows={users} rowKey={(u) => u.id} loading={loading} error={error} onRetry={reload}
+      emptyText={filtered ? c.users.notFound : undefined} />
+    {!loading && !error && filtered && users.length === 0 &&
+      <button type="button" className={styles.button} onClick={reset}>{c.users.reset}</button>}
+    <Pagination offset={offset} limit={LIMIT} total={total} onChange={(next) => update({ offset: next ? String(next) : '' })} />
+
+    <section className={`liquid-glass ${styles.panel}`}>
       <h2 className={styles.panelTitle}>{c.users.settleTitle}</h2>
       <div className={styles.toolbar}>
         <input className={styles.input} aria-label={c.users.checkoutPlaceholder} placeholder={c.users.checkoutPlaceholder}
           value={checkoutId} onChange={(e) => setCheckoutId(e.target.value)} />
         <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={!checkoutId.trim()}
-          onClick={() => setPending({ kind: 'settle', checkoutId: checkoutId.trim() })}>{c.users.settle}</button>
-      </div>
-      <hr className={styles.divider} />
-      <h2 className={styles.panelTitle}>{c.users.legacyTitle}</h2>
-      <div className={styles.toolbar}>
-        <input className={styles.input} type="email" aria-label={c.users.emailPlaceholder} placeholder={c.users.emailPlaceholder}
-          value={email} onChange={(e) => setEmail(e.target.value)} />
-        <select className={styles.select} aria-label={c.users.plan} value={plan} onChange={(e) => setPlan(e.target.value as 'pro' | 'business')}>
-          <option value="pro">Pro</option><option value="business">Business</option>
-        </select>
-        <select className={styles.select} aria-label={c.users.period} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-          {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{c.users.months(m)}</option>)}
-        </select>
-        <button type="button" className={styles.button} disabled={!email.trim()}
-          onClick={() => setPending({ kind: 'activate', email: email.trim(), plan, months })}>{c.users.activate}</button>
+          onClick={() => setSettling(checkoutId.trim())}>{c.users.settle}</button>
       </div>
       {message && <p className={styles.notice} role="status">{message}</p>}
     </section>
 
-    <DataTable columns={columns} rows={users} rowKey={(u) => u.id} loading={loading} error={error} onRetry={retry} />
-    <Pagination offset={offset} limit={LIMIT} total={total} onChange={goTo} />
-
-    <ConfirmDialog open={pending !== null} onOpenChange={(open) => { if (!open) setPending(null); }}
-      title={dialogTitle} onConfirm={confirm} />
+    <ConfirmDialog open={settling !== null} onOpenChange={(open) => { if (!open) setSettling(null); }}
+      title={c.users.confirmSettle} onConfirm={settle} />
   </div>;
+}
+
+export default function AdminUsers() {
+  return <Suspense><UsersList /></Suspense>;
 }
