@@ -2,15 +2,14 @@
 name: Tax Advisor — Payment reconciliation
 description: Local design record for the admin payment-evidence worklist and audited operator decisions.
 colors:
-  navy-background: "#0f172a"
-  navy-surface: "#1e293b"
-  slate-hover: "#334155"
-  divider: "#475569"
-  control-border: "#64748b"
-  selection-border: "#94a3b8"
-  secondary-text: "#cbd5e1"
-  primary-text: "#fff"
-  focus-error: "#fca5a5"
+  background: "hsl(var(--background))"   # #000
+  surface: "hsl(var(--secondary))"       # quiet raised surface
+  divider: "hsl(var(--border))"
+  control-border: "hsl(var(--input))"
+  selection-border: "hsl(var(--primary))" # #DC2626
+  secondary-text: "hsl(var(--muted-foreground))"
+  primary-text: "hsl(var(--foreground))"
+  focus: "hsl(var(--ring))"
 typography:
   body:
     fontFamily: "var(--font-barlow), var(--font-inter), var(--font-georgian), Inter Fallback, Barlow Fallback, system-ui, sans-serif"
@@ -76,7 +75,7 @@ spacing:
 
 ## Overview
 
-This is a scoped record of the implemented payment reconciliation surface as of 2026-09-10, including the third-stage decision controls. Its persisted surface mode is **Operate**: an administrator scans unresolved orders, compares evidence, prepares an allowed decision, checks its access effect, and records an audited reason. The incumbent navy admin worklist is the visual authority; this narrow extension has no approved design comp and does not establish a new visual world or replace root `DESIGN.md`.
+This is a scoped record of the implemented payment reconciliation surface as of 2026-09-10, including the third-stage decision controls. Its persisted surface mode is **Operate**: an administrator scans unresolved orders, compares evidence, prepares an allowed decision, checks its access effect, and records an audited reason. The shared admin worklist (palette from `globals.css`) is the visual authority; this narrow extension has no approved design comp and does not establish a new visual world or replace root `DESIGN.md`.
 
 The product commitments applied here are precise language, visible uncertainty, and equal billing functionality in Russian, Georgian, and English. The implemented operator process supports retaining review, confirming payment, or confirming bank failure/expiry when the preview allows it. Actual refunds and access revocation remain outside this surface.
 
@@ -84,7 +83,7 @@ The implementation lives in `page.tsx`, `ReviewControls.tsx`, and the locally sc
 
 ## Colors
 
-Navy background and slightly lighter surfaces continue the existing admin palette. White carries headings and primary evidence; light slate carries labels, identifiers, and supporting copy. Slate borders divide the queue and detail region and make selected rows distinguishable. Pale red is reserved for visible focus and error text. Payment uncertainty is expressed in words; there is no decorative health indicator or color-only payment verdict.
+The page uses the shared admin palette from `globals.css`: the black background and quiet raised surfaces continue the rest of the admin. The foreground token carries headings and primary evidence; the muted-foreground token carries labels, identifiers, and supporting copy. Border tokens divide the queue and detail region and make selected rows distinguishable. The ring token is reserved for visible focus and error text. Payment uncertainty is expressed in words; there is no decorative health indicator or color-only payment verdict.
 
 ## Typography
 
@@ -108,9 +107,9 @@ These CSS Modules add no shadows or decorative animation. Depth comes from tonal
 
 ## Shapes
 
-Queue rows and navigation links have 12px corners. Refresh, paging, retry, sign-in, and menu controls have pill outlines. Controls and navigation links have at least 44px height; event disclosure summaries have at least 52px height. Focus uses a 2px outline with 3px offset, while the programmatically focusable details region uses a slate outline with 6px offset when focus-visible applies.
+Queue rows and navigation links have 12px corners. Refresh, paging, retry, sign-in, and menu controls have pill outlines. Controls and navigation links have at least 44px height; event disclosure summaries have at least 52px height. Focus uses a 2px outline with 3px offset, while the programmatically focusable details region uses a primary-colour outline with 6px offset when focus-visible applies.
 
-Decision buttons reuse the pill treatment and permit wrapping labels. Native select and textarea fields have 8px corners, navy surfaces, 12px padding, and a 44px minimum height; the textarea resizes vertically. The confirmation label is at least 44px high around a 20px checkbox. Fields and the checkbox retain visible focus outlines. The native select may ellipsize its closed value; factual identifiers and journal reasons wrap.
+Decision buttons reuse the pill treatment and permit wrapping labels. Native select and textarea fields have 8px corners, secondary-surface fills, 12px padding, and a 44px minimum height; the textarea resizes vertically. The confirmation label is at least 44px high around a 20px checkbox. Fields and the checkbox retain visible focus outlines. The native select may ellipsize its closed value; factual identifiers and journal reasons wrap.
 
 ## Components
 
