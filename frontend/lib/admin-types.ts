@@ -40,3 +40,36 @@ export function summarizeChange(entry: AuditEntry): string {
     return `${key}: ${show(from)} → ${show(to)}`;
   }).join('; ');
 }
+
+export type PlanId = 'free' | 'pro' | 'business';
+
+export interface AdminUserRow {
+  id: string; username: string; email: string; role: 'user' | 'admin';
+  created_at: string | null; last_login: string | null; plan: PlanId; period_end: string | null;
+  is_active: boolean; email_verified: boolean;
+}
+
+export interface UsersPage { total: number; items: AdminUserRow[] }
+
+export interface UserCard {
+  profile: {
+    id: string; username: string; email: string; full_name: string | null; role: 'user' | 'admin';
+    effective_plan: PlanId; is_active: boolean; email_verified: boolean;
+    created_at: string | null; last_login: string | null;
+  };
+  subscription: {
+    plan: PlanId; status: 'active' | 'past_due' | 'canceled'; period_start: string | null;
+    period_end: string | null; days_left: number | null; source: 'grant' | 'payment';
+  } | null;
+  payments: { id: string; created_at: string | null; amount_minor: number; currency: string; provider: string; status: string }[];
+  checkouts: {
+    id: string; created_at: string | null; plan: PlanId; months: number; amount_minor: number; currency: string;
+    provider: string; status: string; expires_at: string | null;
+  }[];
+  activity: {
+    conversations_7d: number; conversations_30d: number; questions_7d: number; questions_30d: number;
+    questions_today: number | null; daily_limit: number | null; feedback_total: number;
+  };
+}
+
+export type UserCardResponse = UserCard & { changed: boolean; sent?: boolean };

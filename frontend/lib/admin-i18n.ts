@@ -11,6 +11,19 @@ export type AdminLocale = string | string[];
 // Intl uses the first supported entry; ru-RU gives dd.MM.yyyy, HH:mm, as in Georgia.
 export const ADMIN_LOCALE: Record<Lang, AdminLocale> = { ru: 'ru-RU', ka: ['ka-GE', 'ru-RU'], en: 'en-GB' };
 
+export const ADMIN_ACTIONS = [
+  'user.role_changed', 'subscription.activated', 'feedback.status_changed', 'user.blocked', 'user.unblocked',
+  'subscription.granted', 'subscription.canceled', 'user.password_reset_sent', 'user.verification_sent',
+] as const;
+export type AdminAction = (typeof ADMIN_ACTIONS)[number];
+
+export const ADMIN_ERROR_CODES = [
+  'user_not_found', 'feedback_not_found', 'cannot_block_self', 'cannot_block_admin', 'cannot_demote_self',
+  'user_blocked', 'admin_has_business', 'active_plan_differs', 'plan_unlimited', 'no_active_subscription',
+  'email_already_verified', 'email_unavailable',
+] as const;
+export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
+
 const ru = {
   nav: {
     menu: 'Меню администратора', checking: 'Проверяем доступ…', admin: 'Администрирование', back: 'На сайт',
@@ -20,6 +33,7 @@ const ru = {
   common: {
     loading: 'Загружаем…', loadError: 'Не удалось загрузить данные.', retry: 'Повторить', empty: 'Пока пусто.',
     refresh: 'Обновить', cancel: 'Отмена', confirm: 'Подтвердить', reason: 'Причина (необязательно)',
+    reasonRequired: 'Причина (обязательно, не короче 3 символов)',
     reasonHint: 'Попадёт в журнал действий.', saveError: 'Не удалось сохранить изменение.',
     prev: 'Назад', next: 'Вперёд', range: (from: number, to: number, total: string) => `${from}–${to} из ${total}`,
     all: 'Все', dash: '—', yes: 'да', no: 'нет', set: 'задан', notSet: 'не задан',
@@ -46,7 +60,10 @@ const ru = {
     actions: {
       'user.role_changed': 'Смена роли', 'subscription.activated': 'Активация подписки',
       'feedback.status_changed': 'Статус обращения',
-    } as Record<string, string>,
+      'user.blocked': 'Блокировка', 'user.unblocked': 'Разблокировка', 'subscription.granted': 'Подарок тарифа',
+      'subscription.canceled': 'Досрочное прекращение', 'user.password_reset_sent': 'Письмо сброса пароля',
+      'user.verification_sent': 'Письмо подтверждения',
+    } satisfies Record<AdminAction, string>,
     targets: { user: 'Пользователь', checkout: 'Заявка', feedback: 'Обращение' } as Record<string, string>,
   },
   config: {
@@ -56,6 +73,11 @@ const ru = {
     name: 'Параметр', value: 'Значение',
   },
   users: {
+    status: 'Статус', search: 'Поиск по email, логину или имени', planFilter: 'Тариф', statusFilter: 'Статус',
+    sortLabel: 'Сортировка', reset: 'Сбросить фильтры', notFound: 'Никого не найдено.',
+    plans: { free: 'Free', pro: 'Pro', business: 'Business', expiring: 'Истекает в течение 7 дней' },
+    statuses: { active: 'Активен', blocked: 'Заблокирован', unverified: 'Email не подтверждён', admin: 'Администратор' },
+    sorts: { created_desc: 'Сначала новые', last_login_desc: 'По последнему входу', period_end_asc: 'По окончанию подписки' },
     title: 'Пользователи', settleTitle: 'Подтвердить заявку клиента после оплаты',
     checkoutPlaceholder: 'UUID заявки из кабинета клиента', settle: 'Подтвердить оплату',
     legacyTitle: 'Резервный режим без заявки (для старых счетов)', emailPlaceholder: 'email клиента',
@@ -69,6 +91,48 @@ const ru = {
     confirmSettle: 'Подтвердить оплату по этой заявке и открыть доступ?',
     confirmActivate: (email: string, plan: string, months: number) => `Активировать ${plan} на ${months} мес. для ${email}?`,
   },
+  card: {
+    back: '← К списку', notFound: 'Пользователь не найден.',
+    profile: 'Профиль', fullName: 'Полное имя', registered: 'Регистрация', lastLogin: 'Последний вход', role: 'Роль',
+    subscription: 'Подписка', noSubscription: 'Подписки нет.', plan: 'Тариф', status: 'Статус', until: 'До',
+    daysLeft: (n: number) => `осталось ${n} дн.`, source: 'Источник',
+    sources: { grant: 'подарок', payment: 'оплата' },
+    subStatuses: { active: 'активна', past_due: 'просрочена', canceled: 'прекращена' },
+    payments: 'Платежи', checkouts: 'Заявки', date: 'Дата', amount: 'Сумма', provider: 'Способ', state: 'Статус',
+    settle: 'Провести', none: 'Записей нет.',
+    activity: 'Активность', questions7d: 'Вопросов за 7 дней', questions30d: 'Вопросов за 30 дней',
+    conversations: (n: string) => `диалогов: ${n}`, today: 'Вопросов сегодня',
+    todayValue: (n: string, m: string) => `${n} из ${m}`, noData: 'нет данных', feedback: 'Обращений',
+    actions: 'Действия', access: 'Доступ', subscriptionGroup: 'Подписка', emails: 'Письма',
+    block: 'Заблокировать', unblock: 'Разблокировать', changeRole: 'Сменить роль',
+    demoteFirst: 'Чтобы заблокировать администратора, сначала снимите роль.',
+    grant: 'Подарить или продлить', recordPayment: 'Записать оплату', cancel: 'Прекратить досрочно',
+    sendReset: 'Отправить сброс пароля', sendVerification: 'Отправить подтверждение email',
+    confirmBlock: (u: string) => `Заблокировать ${u}? Все активные сессии будут завершены.`,
+    confirmUnblock: (u: string) => `Разблокировать ${u}?`,
+    confirmRole: (u: string) => `Сменить роль ${u}?`, newRole: 'Новая роль',
+    grantTitle: (u: string) => `Подарить или продлить тариф для ${u}`, daysLabel: 'Дней', customDays: 'Своё число',
+    activeUntil: (d: string) => `Будет активно до ${d}`,
+    replaceWarning: (p: string) => `Сейчас активен тариф ${p}. Оставшееся время по нему будет потеряно.`,
+    replaceConfirm: 'Заменить текущий тариф',
+    paymentTitle: (u: string) => `Записать оплату от ${u}`, monthsLabel: 'Месяцев', amountLabel: 'Сумма по тарифу',
+    cancelTitle: (u: string) => `Прекратить подписку ${u} досрочно`, category: 'Причина прекращения',
+    categories: { refund: 'Возврат средств', mistaken_activation: 'Ошибочная активация', fraud: 'Мошенничество или chargeback', other: 'Другое' },
+    cancelWarning: (n: number) => `Оплачено ещё ${n} дн. Доступ закроется сразу. Возврат денег делается вне системы.`,
+    confirmReset: (e: string) => `Отправить письмо для сброса пароля на ${e}?`,
+    confirmVerification: (e: string) => `Отправить письмо подтверждения на ${e}?`,
+    done: 'Готово.', unchanged: 'Изменений нет: состояние уже такое.',
+    emailSent: 'Письмо отправлено.', emailCooldown: 'Письмо уже отправлялось недавно, попробуйте позже.',
+  },
+  errors: {
+    user_not_found: 'Пользователь не найден.', feedback_not_found: 'Обращение не найдено.',
+    cannot_block_self: 'Нельзя заблокировать самого себя.', cannot_block_admin: 'Сначала снимите роль администратора.',
+    cannot_demote_self: 'Нельзя снять права администратора с самого себя.', user_blocked: 'Пользователь заблокирован.',
+    admin_has_business: 'У администратора и так тариф Business.',
+    active_plan_differs: 'Активен другой тариф — подтвердите замену.',
+    plan_unlimited: 'У текущего тарифа нет даты окончания.', no_active_subscription: 'Нет активной платной подписки.',
+    email_already_verified: 'Email уже подтверждён.', email_unavailable: 'Отправка почты не настроена.',
+  } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Обращения', date: 'Дата', user: 'Пользователь', page: 'Страница', message: 'Сообщение', status: 'Статус',
     statuses: { new: 'Новое', in_progress: 'В работе', fixed: 'Исправлено' } as Record<string, string>,
@@ -110,6 +174,7 @@ const ka: AdminCopy = {
   common: {
     loading: 'იტვირთება…', loadError: 'მონაცემები ვერ ჩაიტვირთა.', retry: 'ხელახლა ცდა', empty: 'ჯერ ცარიელია.',
     refresh: 'განახლება', cancel: 'გაუქმება', confirm: 'დადასტურება', reason: 'მიზეზი (არასავალდებულო)',
+    reasonRequired: 'მიზეზი (სავალდებულოა, მინიმუმ 3 სიმბოლო)',
     reasonHint: 'ჩაიწერება მოქმედებების ჟურნალში.', saveError: 'ცვლილება ვერ შეინახა.',
     prev: 'უკან', next: 'შემდეგი', range: (from: number, to: number, total: string) => `${from}–${to} / ${total}`,
     all: 'ყველა', dash: '—', yes: 'კი', no: 'არა', set: 'მითითებულია', notSet: 'არ არის მითითებული',
@@ -136,6 +201,9 @@ const ka: AdminCopy = {
     actions: {
       'user.role_changed': 'როლის შეცვლა', 'subscription.activated': 'გამოწერის გააქტიურება',
       'feedback.status_changed': 'მიმართვის სტატუსი',
+      'user.blocked': 'დაბლოკვა', 'user.unblocked': 'განბლოკვა', 'subscription.granted': 'ტარიფის ჩუქება',
+      'subscription.canceled': 'ვადაზე ადრე შეწყვეტა', 'user.password_reset_sent': 'პაროლის აღდგენის წერილი',
+      'user.verification_sent': 'დადასტურების წერილი',
     },
     targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა' },
   },
@@ -146,6 +214,11 @@ const ka: AdminCopy = {
     name: 'პარამეტრი', value: 'მნიშვნელობა',
   },
   users: {
+    status: 'სტატუსი', search: 'ძიება ელფოსტით, მომხმარებლის სახელით ან სახელით', planFilter: 'ტარიფი', statusFilter: 'სტატუსი',
+    sortLabel: 'დახარისხება', reset: 'ფილტრების გასუფთავება', notFound: 'არავინ მოიძებნა.',
+    plans: { free: 'Free', pro: 'Pro', business: 'Business', expiring: 'ვადა 7 დღეში იწურება' },
+    statuses: { active: 'აქტიურია', blocked: 'დაბლოკილია', unverified: 'ელფოსტა დაუდასტურებელია', admin: 'ადმინისტრატორი' },
+    sorts: { created_desc: 'ჯერ ახალი', last_login_desc: 'ბოლო შესვლის მიხედვით', period_end_asc: 'გამოწერის დასრულების მიხედვით' },
     title: 'მომხმარებლები', settleTitle: 'კლიენტის განაცხადის დადასტურება გადახდის შემდეგ',
     checkoutPlaceholder: 'განაცხადის UUID კლიენტის კაბინეტიდან', settle: 'გადახდის დადასტურება',
     legacyTitle: 'სარეზერვო რეჟიმი განაცხადის გარეშე (ძველი ანგარიშებისთვის)', emailPlaceholder: 'კლიენტის ელფოსტა',
@@ -159,6 +232,48 @@ const ka: AdminCopy = {
     confirmSettle: 'დადასტურდეს ამ განაცხადის გადახდა და გაიხსნას წვდომა?',
     confirmActivate: (email: string, plan: string, months: number) => `გააქტიურდეს ${plan} ${months} თვით ${email}-ისთვის?`,
   },
+  card: {
+    back: '← სიაში დაბრუნება', notFound: 'მომხმარებელი ვერ მოიძებნა.',
+    profile: 'პროფილი', fullName: 'სრული სახელი', registered: 'რეგისტრაცია', lastLogin: 'ბოლო შესვლა', role: 'როლი',
+    subscription: 'გამოწერა', noSubscription: 'გამოწერა არ არის.', plan: 'ტარიფი', status: 'სტატუსი', until: 'ვადა',
+    daysLeft: (n: number) => `დარჩა ${n} დღე`, source: 'წყარო',
+    sources: { grant: 'საჩუქარი', payment: 'გადახდა' },
+    subStatuses: { active: 'აქტიურია', past_due: 'ვადაგასულია', canceled: 'შეწყვეტილია' },
+    payments: 'გადახდები', checkouts: 'განაცხადები', date: 'თარიღი', amount: 'თანხა', provider: 'გადახდის მეთოდი', state: 'სტატუსი',
+    settle: 'დადასტურება', none: 'ჩანაწერები არ არის.',
+    activity: 'აქტივობა', questions7d: 'კითხვები ბოლო 7 დღეში', questions30d: 'კითხვები ბოლო 30 დღეში',
+    conversations: (n: string) => `დიალოგები: ${n}`, today: 'კითხვები დღეს',
+    todayValue: (n: string, m: string) => `${m}-დან ${n}`, noData: 'მონაცემები არ არის', feedback: 'მიმართვები',
+    actions: 'მოქმედებები', access: 'წვდომა', subscriptionGroup: 'გამოწერა', emails: 'წერილები',
+    block: 'დაბლოკვა', unblock: 'განბლოკვა', changeRole: 'როლის შეცვლა',
+    demoteFirst: 'ადმინისტრატორის დასაბლოკად ჯერ როლი უნდა მოხსნათ.',
+    grant: 'ტარიფის ჩუქება ან გახანგრძლივება', recordPayment: 'გადახდის ჩაწერა', cancel: 'ვადაზე ადრე შეწყვეტა',
+    sendReset: 'პაროლის აღდგენის წერილის გაგზავნა', sendVerification: 'დადასტურების წერილის გაგზავნა',
+    confirmBlock: (u: string) => `დაიბლოკოს ${u}? ყველა აქტიური სესია დასრულდება.`,
+    confirmUnblock: (u: string) => `განიბლოკოს ${u}?`,
+    confirmRole: (u: string) => `შეიცვალოს ${u}-ის როლი?`, newRole: 'ახალი როლი',
+    grantTitle: (u: string) => `ტარიფის ჩუქება ან გახანგრძლივება: ${u}`, daysLabel: 'დღეები', customDays: 'სხვა რაოდენობა',
+    activeUntil: (d: string) => `აქტიური იქნება ${d}-მდე`,
+    replaceWarning: (p: string) => `ამჟამად აქტიურია ${p} ტარიფი. მასზე დარჩენილი დრო დაიკარგება.`,
+    replaceConfirm: 'მიმდინარე ტარიფის ჩანაცვლება',
+    paymentTitle: (u: string) => `გადახდის ჩაწერა: ${u}`, monthsLabel: 'თვეები', amountLabel: 'ტარიფის ფასი',
+    cancelTitle: (u: string) => `გამოწერის ვადაზე ადრე შეწყვეტა: ${u}`, category: 'შეწყვეტის მიზეზი',
+    categories: { refund: 'თანხის დაბრუნება', mistaken_activation: 'შეცდომით გააქტიურება', fraud: 'თაღლითობა ან chargeback', other: 'სხვა' },
+    cancelWarning: (n: number) => `გადახდილია კიდევ ${n} დღე. წვდომა მაშინვე დაიკეტება. თანხას სისტემის გარეთ დააბრუნებენ.`,
+    confirmReset: (e: string) => `გაიგზავნოს პაროლის აღდგენის წერილი მისამართზე ${e}?`,
+    confirmVerification: (e: string) => `გაიგზავნოს დადასტურების წერილი მისამართზე ${e}?`,
+    done: 'მზადაა.', unchanged: 'ცვლილება არ მომხდარა: მდგომარეობა უკვე ასეთია.',
+    emailSent: 'წერილი გაიგზავნა.', emailCooldown: 'წერილი ცოტა ხნის წინ უკვე გაიგზავნა, სცადეთ მოგვიანებით.',
+  },
+  errors: {
+    user_not_found: 'მომხმარებელი ვერ მოიძებნა.', feedback_not_found: 'მიმართვა ვერ მოიძებნა.',
+    cannot_block_self: 'საკუთარი თავის დაბლოკვა შეუძლებელია.', cannot_block_admin: 'ჯერ ადმინისტრატორის როლი მოხსენით.',
+    cannot_demote_self: 'საკუთარი ადმინისტრატორის უფლების მოხსნა შეუძლებელია.', user_blocked: 'მომხმარებელი დაბლოკილია.',
+    admin_has_business: 'ადმინისტრატორს უკვე აქვს Business ტარიფი.',
+    active_plan_differs: 'აქტიურია სხვა ტარიფი, დაადასტურეთ ჩანაცვლება.',
+    plan_unlimited: 'მიმდინარე ტარიფს დასრულების თარიღი არ აქვს.', no_active_subscription: 'აქტიური ფასიანი გამოწერა არ არის.',
+    email_already_verified: 'ელფოსტა უკვე დადასტურებულია.', email_unavailable: 'ფოსტის გაგზავნა არ არის გამართული.',
+  } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'მიმართვები', date: 'თარიღი', user: 'მომხმარებელი', page: 'გვერდი', message: 'შეტყობინება', status: 'სტატუსი',
     statuses: { new: 'ახალი', in_progress: 'მუშავდება', fixed: 'გამოსწორებულია' },
@@ -198,6 +313,7 @@ const en: AdminCopy = {
   common: {
     loading: 'Loading…', loadError: 'Could not load the data.', retry: 'Retry', empty: 'Nothing here yet.',
     refresh: 'Refresh', cancel: 'Cancel', confirm: 'Confirm', reason: 'Reason (optional)',
+    reasonRequired: 'Reason (required, at least 3 characters)',
     reasonHint: 'Saved to the action log.', saveError: 'Could not save the change.',
     prev: 'Previous', next: 'Next', range: (from: number, to: number, total: string) => `${from}–${to} of ${total}`,
     all: 'All', dash: '—', yes: 'yes', no: 'no', set: 'set', notSet: 'not set',
@@ -224,6 +340,9 @@ const en: AdminCopy = {
     actions: {
       'user.role_changed': 'Role change', 'subscription.activated': 'Subscription activation',
       'feedback.status_changed': 'Feedback status',
+      'user.blocked': 'Block', 'user.unblocked': 'Unblock', 'subscription.granted': 'Plan gift',
+      'subscription.canceled': 'Early cancellation', 'user.password_reset_sent': 'Password reset email',
+      'user.verification_sent': 'Verification email',
     },
     targets: { user: 'User', checkout: 'Order', feedback: 'Feedback' },
   },
@@ -234,6 +353,11 @@ const en: AdminCopy = {
     name: 'Setting', value: 'Value',
   },
   users: {
+    status: 'Status', search: 'Search by email, login or name', planFilter: 'Plan', statusFilter: 'Status',
+    sortLabel: 'Sort', reset: 'Reset filters', notFound: 'No one found.',
+    plans: { free: 'Free', pro: 'Pro', business: 'Business', expiring: 'Expires within 7 days' },
+    statuses: { active: 'Active', blocked: 'Blocked', unverified: 'Email not verified', admin: 'Administrator' },
+    sorts: { created_desc: 'Newest first', last_login_desc: 'By last login', period_end_asc: 'By subscription end' },
     title: 'Users', settleTitle: 'Confirm a customer order after payment',
     checkoutPlaceholder: 'Order UUID from the customer account', settle: 'Confirm payment',
     legacyTitle: 'Fallback without an order (legacy invoices)', emailPlaceholder: 'customer email',
@@ -247,6 +371,48 @@ const en: AdminCopy = {
     confirmSettle: 'Confirm payment for this order and grant access?',
     confirmActivate: (email: string, plan: string, months: number) => `Activate ${plan} for ${months} mo for ${email}?`,
   },
+  card: {
+    back: '← Back to list', notFound: 'User not found.',
+    profile: 'Profile', fullName: 'Full name', registered: 'Registered', lastLogin: 'Last login', role: 'Role',
+    subscription: 'Subscription', noSubscription: 'No subscription.', plan: 'Plan', status: 'Status', until: 'Until',
+    daysLeft: (n: number) => `${n} days left`, source: 'Source',
+    sources: { grant: 'gift', payment: 'payment' },
+    subStatuses: { active: 'active', past_due: 'past due', canceled: 'ended' },
+    payments: 'Payments', checkouts: 'Orders', date: 'Date', amount: 'Amount', provider: 'Method', state: 'Status',
+    settle: 'Settle', none: 'No records.',
+    activity: 'Activity', questions7d: 'Questions, 7 days', questions30d: 'Questions, 30 days',
+    conversations: (n: string) => `conversations: ${n}`, today: 'Questions today',
+    todayValue: (n: string, m: string) => `${n} of ${m}`, noData: 'no data', feedback: 'Feedback',
+    actions: 'Actions', access: 'Access', subscriptionGroup: 'Subscription', emails: 'Emails',
+    block: 'Block', unblock: 'Unblock', changeRole: 'Change role',
+    demoteFirst: 'To block an administrator, remove the admin role first.',
+    grant: 'Gift or extend', recordPayment: 'Record payment', cancel: 'End early',
+    sendReset: 'Send password reset', sendVerification: 'Send verification email',
+    confirmBlock: (u: string) => `Block ${u}? All active sessions will end.`,
+    confirmUnblock: (u: string) => `Unblock ${u}?`,
+    confirmRole: (u: string) => `Change ${u}'s role?`, newRole: 'New role',
+    grantTitle: (u: string) => `Gift or extend a plan for ${u}`, daysLabel: 'Days', customDays: 'Custom',
+    activeUntil: (d: string) => `Active until ${d}`,
+    replaceWarning: (p: string) => `${p} is active now. Its remaining time will be lost.`,
+    replaceConfirm: 'Replace the current plan',
+    paymentTitle: (u: string) => `Record a payment from ${u}`, monthsLabel: 'Months', amountLabel: 'Plan price',
+    cancelTitle: (u: string) => `End ${u}'s subscription early`, category: 'Reason for ending',
+    categories: { refund: 'Refund', mistaken_activation: 'Mistaken activation', fraud: 'Fraud or chargeback', other: 'Other' },
+    cancelWarning: (n: number) => `${n} paid days remain. Access ends now. Refunds are handled outside the system.`,
+    confirmReset: (e: string) => `Send a password reset email to ${e}?`,
+    confirmVerification: (e: string) => `Send a verification email to ${e}?`,
+    done: 'Done.', unchanged: 'No change: already in that state.',
+    emailSent: 'Email sent.', emailCooldown: 'An email was sent recently; try again later.',
+  },
+  errors: {
+    user_not_found: 'User not found.', feedback_not_found: 'Feedback not found.',
+    cannot_block_self: 'You cannot block yourself.', cannot_block_admin: 'Remove the admin role first.',
+    cannot_demote_self: 'You cannot remove your own admin role.', user_blocked: 'The user is blocked.',
+    admin_has_business: 'Administrators already have Business.',
+    active_plan_differs: 'Another plan is active — confirm the replacement.',
+    plan_unlimited: 'The current plan has no end date.', no_active_subscription: 'No active paid subscription.',
+    email_already_verified: 'Email is already verified.', email_unavailable: 'Email delivery is not configured.',
+  } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Feedback', date: 'Date', user: 'User', page: 'Page', message: 'Message', status: 'Status',
     statuses: { new: 'New', in_progress: 'In progress', fixed: 'Fixed' },
@@ -299,4 +465,8 @@ export function formatDate(value: string | null, locale: AdminLocale): string {
 
 export function formatNumber(value: number, locale: AdminLocale): string {
   return value.toLocaleString(locale);
+}
+
+export function actionLabel(c: AdminCopy, action: string): string {
+  return (c.audit.actions as Record<string, string>)[action] ?? action;
 }
