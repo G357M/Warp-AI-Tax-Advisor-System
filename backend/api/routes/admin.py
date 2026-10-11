@@ -2,6 +2,8 @@
 Admin API: real system stats, document/user management, ops visibility.
 All endpoints require the admin role.
 """
+import os
+import tempfile
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional
@@ -23,6 +25,9 @@ from models import AdminAuditLog, BillingCheckout, Feedback, User
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
 INGEST_STALE_HOURS = 36
+
+# Operator backfill logs are written by hand (nohup ... > <dir>/<name>.log); on Linux this is /tmp.
+LOG_DIR = Path(os.environ.get("ADMIN_OPS_LOG_DIR", tempfile.gettempdir()))
 
 
 @router.get("/stats")
@@ -174,7 +179,13 @@ class RoleUpdate(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=1000)
 
 
-@router.patch("/users/{user_id}/role")
+@router.patch(
+    "/users/{user_id}/role",
+    responses={
+        400: {"description": "Admin cannot remove their own admin role"},
+        404: {"description": "User not found"},
+    },
+)
 def update_user_role(
     user_id: UUID,
     body: RoleUpdate,
@@ -226,8 +237,8 @@ def ops_status(db: Session = Depends(get_db)):
         },
         "logs": {
             "scraper": _tail("/app/logs/scraper.log"),
-            "law_amendments_backfill": _tail("/tmp/law_amendments_backfill.log"),
-            "decision_facts_backfill": _tail("/tmp/decision_facts_backfill.log"),
+            "law_amendments_backfill": _tail(str(LOG_DIR / "law_amendments_backfill.log")),
+            "decision_facts_backfill": _tail(str(LOG_DIR / "decision_facts_backfill.log")),
         },
     }
 
@@ -269,7 +280,7 @@ class FeedbackStatusUpdate(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=1000)
 
 
-@router.patch("/feedback/{feedback_id}")
+@router.patch("/feedback/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 def update_feedback_status(
     feedback_id: UUID,
     body: FeedbackStatusUpdate,

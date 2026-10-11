@@ -26,7 +26,7 @@ interface Analytics {
 const pct = (rate: number | null) => (rate == null ? '—' : `${Math.round(rate * 100)}%`);
 const vars = (v: Record<string, string>) => v as CSSProperties;
 
-function StackedBar({ row, c }: { row: OutcomeRow; c: AdminCopy }) {
+function StackedBar({ row, c }: Readonly<{ row: OutcomeRow; c: AdminCopy }>) {
   const total = row.satisfied + row.partially_satisfied + row.rejected;
   if (!total) return <div className={styles.barTrack} />;
   return <div className={styles.barTrack}>
@@ -36,14 +36,14 @@ function StackedBar({ row, c }: { row: OutcomeRow; c: AdminCopy }) {
   </div>;
 }
 
-function Legend({ c }: { c: AdminCopy }) {
+function Legend({ c }: Readonly<{ c: AdminCopy }>) {
   return <div className={styles.legend}>
     {OUTCOMES.map(({ key, color }) => <span key={key}>
       <span className={styles.swatch} style={vars({ '--c': color })} />{c.analytics.outcomes[key]}</span>)}
   </div>;
 }
 
-function BarSection({ title, rows, c }: { title: string; rows: { label: string; row: OutcomeRow }[]; c: AdminCopy }) {
+function BarSection({ title, rows, c }: Readonly<{ title: string; rows: { label: string; row: OutcomeRow }[]; c: AdminCopy }>) {
   return <section className={`liquid-glass ${styles.panel}`}>
     <h2 className={styles.panelTitle}>{title}</h2>
     <Legend c={c} />

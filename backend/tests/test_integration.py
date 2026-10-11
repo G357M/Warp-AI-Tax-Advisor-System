@@ -131,7 +131,7 @@ def isolated_database():
     Base.metadata.drop_all(engine, tables=list(reversed(TEST_TABLES)))
 
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     test_client = TestClient(app)
     yield test_client
