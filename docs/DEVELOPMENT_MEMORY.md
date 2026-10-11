@@ -300,3 +300,13 @@ merge или production deployment.
 - `/admin/config` is a whitelist (`core/public_config.py`); secrets are booleans only.
 - Dashboard attention counters reuse `billing.reconciliation.reconciliation_queue_filter()`.
 - Next stages: 2 clients → 4 answer quality → 3 trends → 5 operations.
+
+## 2026-10-11 — Admin stage 2 (clients)
+
+- Router `backend/api/routes/admin_users.py`: list (search/filters/sort), card, role, block/unblock, grant,
+  record-payment, cancel-subscription, password-reset and verification emails. Errors are coded
+  `{code, message}`; the frontend maps `code` to RU/KA/EN text.
+- Grants write `payment_provider='grant'` and create no payments. Cancel is immediate. No schema changes.
+- `useAdminFetch` (`lib/use-admin-fetch.ts`) is the pattern for new admin pages: abortable, ignores stale
+  responses. Search and filters live in the URL; the card links back with `?back=`.
+- Card role button appears only after `/auth/me` resolves and is hidden on the admin's own card.

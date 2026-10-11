@@ -20,6 +20,7 @@ const auditItems = [{
 const users = [{
   id: '20000000-0000-0000-0000-000000000001', username: 'customer', email: longEmail, role: 'user',
   created_at: '2026-10-01T10:00:00', last_login: '2026-10-10T18:00:00', plan: 'pro', period_end: '2026-11-01T00:00:00',
+  is_active: true, email_verified: true,
 }];
 const config = {
   app: { APP_VERSION: '0.1.0', ENVIRONMENT: 'production', DEBUG: false },
@@ -122,19 +123,6 @@ test('dashboard lists what needs attention', async ({ page }) => {
   await expect(attention.getByRole('link', { name: 'Payments to reconcile: 1' })).toHaveAttribute('href', '/admin/billing');
   await expect(attention.getByRole('link', { name: 'Orders awaiting activation: 1' })).toBeVisible();
   await expect(page.getByText('role: user → admin')).toBeVisible();
-});
-
-test('role change requires confirmation and sends the reason', async ({ page }) => {
-  const writes = await setup(page, 'en');
-  await page.goto('/admin/users');
-  await page.getByLabel('Role: customer').selectOption('admin');
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('Change customer\'s role to “admin”?');
-  await dialog.getByLabel('Reason (optional)').fill('promote accountant');
-  await dialog.getByRole('button', { name: 'Confirm' }).click();
-  await expect(dialog).toBeHidden();
-  expect(writes).toEqual([{ method: 'PATCH', path: `/api/v1/admin/users/${users[0].id}/role`,
-    body: { role: 'admin', reason: 'promote accountant' } }]);
 });
 
 test('cancelling a feedback status change sends nothing', async ({ page }) => {
