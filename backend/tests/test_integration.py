@@ -50,6 +50,7 @@ from core.config import settings
 from core.database import Base, get_db
 from models import (
     AdminAuditLog,
+    AnswerRating,
     AuthActionToken,
     BillingCheckout,
     BillingProviderEvent,
@@ -106,6 +107,7 @@ TEST_TABLES = [
     AuthActionToken.__table__,
     Conversation.__table__,
     Message.__table__,
+    AnswerRating.__table__,
     Subscription.__table__,
     Payment.__table__,
     BillingCheckout.__table__,
@@ -1162,3 +1164,35 @@ def test_non_admin_is_forbidden_from_user_management(client):
                          ("send-password-reset", {}), ("resend-verification", {})):
         response = client.post(f"/api/v1/admin/users/{some_id}/{action}", json={**body, "reason": "trying"})
         assert response.status_code == 403, action
+
+
+def test_answer_signals_are_stored_and_message_id_returned(client, monkeypatch):
+    username = "signals-user"
+    register_and_login(client, username)
+    db = TestingSessionLocal()
+    user = db.query(User).filter(User.username == username).one()
+    db.add(Subscription(
+        user_id=user.id, plan="pro", status="active",
+        period_start=utc_now(), period_end=utc_now() + timedelta(days=30),
+    ))
+    db.commit()
+    db.close()
+    monkeypatch.setattr(query_routes, "check_and_count_question", lambda *_args: None)
+    monkeypatch.setattr(query_routes.rag_pipeline, "process_query", lambda **_kwargs: {
+        "response": "The VAT rate is grounded in Article 166.",
+        "sources": [{"document_id": None, "title": "Tax Code of Georgia", "document_type": "law",
+                     "url": "https://matsne.gov.ge/", "relevance": 0.99, "article_ref": "166"}],
+        "retrieved_count": 1,
+    })
+    answer = client.post("/api/v1/query", json={"query": "What is the VAT rate?", "language": "en"})
+    assert answer.status_code == 200
+    message_id = answer.json()["message_id"]
+    db = TestingSessionLocal()
+    stored = db.get(Message, UUID(message_id))
+    assert stored.role == "assistant"
+    assert stored.evidence["status"] == "grounded" and stored.evidence["retrieved_count"] == 1
+    assert isinstance(stored.processing_ms, int) and stored.processing_ms >= 0
+    db.close()
+    detail = client.get(f"/api/v1/query/conversations/{answer.json()['conversation_id']}").json()
+    assistant = [m for m in detail["messages"] if m["role"] == "assistant"][0]
+    assert assistant["rating"] is None

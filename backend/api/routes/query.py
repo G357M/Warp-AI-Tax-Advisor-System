@@ -3,7 +3,7 @@ Query processing API routes.
 """
 import logging
 import time
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from core.database import get_db
 from core.plans import get_active_plan, check_and_count_question, refund_question, require_plan
 from core.security import get_current_user
 from core.time_utils import utc_now
-from models import User, Conversation, Message
+from models import User, Conversation, Message, AnswerRating
 from api.schemas import ConversationResponse, QueryRequest, QueryResponse, SourceInfo
 from api.evidence import attach_evidence
 from rag_v2.legal_answer_contracts import ensure_exact_provision_citations
@@ -110,11 +110,15 @@ def process_query(
         result = attach_evidence(result)
         result = ensure_exact_provision_citations(result, query_data.language)
 
+        assistant_id = uuid4()
         db.add(Message(
+            id=assistant_id,
             conversation_id=conversation.id,
             role="assistant",
             content=result["response"],
             sources=result.get("sources", []),
+            evidence={**dict(result["evidence"]), "retrieved_count": int(result.get("retrieved_count", 0))},
+            processing_ms=max(0, int((time.time() - start_time) * 1000)),
         ))
         conversation.updated_at = utc_now()
         db.commit()
@@ -135,6 +139,7 @@ def process_query(
         "sources": [SourceInfo(**src) for src in result.get("sources", [])],
         "evidence": result["evidence"],
         "conversation_id": conversation.id,
+        "message_id": assistant_id,
         "retrieved_count": result.get("retrieved_count", 0),
         "processing_time": processing_time
     }
@@ -194,7 +199,10 @@ def get_conversation(
     messages = db.query(Message).filter(
         Message.conversation_id == conversation_id
     ).order_by(Message.created_at).all()
-    
+
+    ratings = {r.message_id: r for r in db.query(AnswerRating).filter(
+        AnswerRating.message_id.in_([m.id for m in messages if m.role == "assistant"])).all()}
+
     return {
         "conversation": {
             "id": conversation.id,
@@ -209,6 +217,8 @@ def get_conversation(
                 "content": message.content,
                 "sources": message.sources,
                 "created_at": message.created_at,
+                "rating": ({"value": ratings[message.id].value, "comment": ratings[message.id].comment}
+                           if message.id in ratings else None),
             }
             for message in messages
         ],

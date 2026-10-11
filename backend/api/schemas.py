@@ -129,6 +129,7 @@ class QueryResponse(BaseModel):
     sources: List[SourceInfo]
     evidence: EvidenceInfo
     conversation_id: UUID
+    message_id: Optional[UUID] = None
     retrieved_count: int
     processing_time: Optional[float] = None
 
