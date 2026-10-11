@@ -2,6 +2,8 @@
 Admin API: real system stats, document/user management, ops visibility.
 All endpoints require the admin role.
 """
+import os
+import tempfile
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional
@@ -9,15 +11,23 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
+from billing.reconciliation import reconciliation_queue_filter
+from core.admin_audit import record_admin_action
 from core.database import get_db
+from core.public_config import public_config
 from core.security import require_admin
 from core.time_utils import utc_now
-from models import Feedback, User
+from models import AdminAuditLog, BillingCheckout, Feedback, User
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
+
+INGEST_STALE_HOURS = 36
+
+# Operator backfill logs are written by hand (nohup ... > <dir>/<name>.log); on Linux this is /tmp.
+LOG_DIR = Path(os.environ.get("ADMIN_OPS_LOG_DIR", tempfile.gettempdir()))
 
 
 @router.get("/stats")
@@ -54,6 +64,14 @@ def system_stats(db: Session = Depends(get_db)):
           (SELECT count(*) FROM messages) AS messages,
           (SELECT count(*) FROM messages WHERE created_at >= now() - interval '7 days') AS messages_7d
     """)).one()
+    feedback_new = db.query(func.count(Feedback.id)).filter(Feedback.status == "new").scalar()
+    reconciliation_open = db.query(func.count(BillingCheckout.id)).filter(reconciliation_queue_filter()).scalar()
+    manual_pending = db.query(func.count(BillingCheckout.id)).filter(
+        BillingCheckout.provider == "manual",
+        BillingCheckout.status == "pending",
+        BillingCheckout.expires_at >= utc_now(),
+    ).scalar()
+    ingest_stale = last_ingest is None or last_ingest < utc_now() - timedelta(hours=INGEST_STALE_HOURS)
     return {
         "documents": {
             "total": sum(r[1] for r in docs),
@@ -78,6 +96,9 @@ def system_stats(db: Session = Depends(get_db)):
             "messages": convs.messages,
             "messages_7d": convs.messages_7d,
         },
+        "feedback": {"new": feedback_new},
+        "billing": {"reconciliation_open": reconciliation_open, "manual_pending": manual_pending},
+        "attention": {"ingest_stale": ingest_stale},
     }
 
 
@@ -155,9 +176,16 @@ def list_users(
 
 class RoleUpdate(BaseModel):
     role: str = Field(pattern="^(user|admin)$")
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 
-@router.patch("/users/{user_id}/role")
+@router.patch(
+    "/users/{user_id}/role",
+    responses={
+        400: {"description": "Admin cannot remove their own admin role"},
+        404: {"description": "User not found"},
+    },
+)
 def update_user_role(
     user_id: UUID,
     body: RoleUpdate,
@@ -169,8 +197,12 @@ def update_user_role(
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.role = body.role
-    db.commit()
+    if user.role != body.role:
+        before = {"role": user.role}
+        user.role = body.role
+        record_admin_action(db, actor=admin, action="user.role_changed", target_type="user",
+                            target_id=user.id, before=before, after={"role": user.role}, reason=body.reason)
+        db.commit()
     return {"id": str(user.id), "username": user.username, "role": user.role}
 
 
@@ -205,8 +237,8 @@ def ops_status(db: Session = Depends(get_db)):
         },
         "logs": {
             "scraper": _tail("/app/logs/scraper.log"),
-            "law_amendments_backfill": _tail("/tmp/law_amendments_backfill.log"),
-            "decision_facts_backfill": _tail("/tmp/decision_facts_backfill.log"),
+            "law_amendments_backfill": _tail(str(LOG_DIR / "law_amendments_backfill.log")),
+            "decision_facts_backfill": _tail(str(LOG_DIR / "decision_facts_backfill.log")),
         },
     }
 
@@ -245,17 +277,63 @@ def list_feedback(
 
 class FeedbackStatusUpdate(BaseModel):
     status: str = Field(pattern="^(new|in_progress|fixed)$")
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 
-@router.patch("/feedback/{feedback_id}")
+@router.patch("/feedback/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 def update_feedback_status(
     feedback_id: UUID,
     body: FeedbackStatusUpdate,
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     item = db.get(Feedback, feedback_id)
     if not item:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    item.status = body.status
-    db.commit()
+    if item.status != body.status:
+        before = {"status": item.status}
+        item.status = body.status
+        record_admin_action(db, actor=admin, action="feedback.status_changed", target_type="feedback",
+                            target_id=item.id, before=before, after={"status": item.status}, reason=body.reason)
+        db.commit()
     return {"id": str(item.id), "status": item.status}
+
+
+@router.get("/audit")
+def list_audit(
+    action: Optional[str] = Query(default=None, max_length=64),
+    actor_id: Optional[UUID] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(AdminAuditLog, User.username).outerjoin(User, User.id == AdminAuditLog.actor_id)
+    if action:
+        query = query.filter(AdminAuditLog.action == action)
+    if actor_id:
+        query = query.filter(AdminAuditLog.actor_id == actor_id)
+    total = query.count()
+    rows = (query.order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+            .offset(offset).limit(limit).all())
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": str(entry.id),
+                "actor": {"id": str(entry.actor_id), "username": username},
+                "action": entry.action,
+                "target_type": entry.target_type,
+                "target_id": entry.target_id,
+                "before": entry.before,
+                "after": entry.after,
+                "reason": entry.reason,
+                "created_at": entry.created_at.isoformat(),
+            }
+            for entry, username in rows
+        ],
+    }
+
+
+@router.get("/config")
+def admin_config():
+    return public_config()

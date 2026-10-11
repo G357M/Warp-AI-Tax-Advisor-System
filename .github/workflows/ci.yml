@@ -96,6 +96,8 @@ jobs:
           tests/test_jev_router.py
           tests/test_jev_live_integration.py
           tests/test_billing_gateway.py
+          tests/test_admin_audit.py
+          tests/test_public_config.py
           tests/test_embedding_model_loader.py
           tests/test_production_readiness_audit.py
           tests/test_production_storage_audit.py
@@ -250,6 +252,7 @@ jobs:
           tests/test_legal_temporal_review_admission_postgres.py
           tests/test_billing_provider_postgres.py
           tests/test_billing_review_postgres.py
+          tests/test_admin_postgres.py
           tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning
@@ -278,6 +281,8 @@ jobs:
 
       - run: npm ci --ignore-scripts
       - run: npm run lint
+      - run: npm run test:admin-styles
+      - run: npm run check:admin-styles
       - run: npm run type-check
       - run: npm run build
       - name: Validate same-origin Matsne browser collector syntax

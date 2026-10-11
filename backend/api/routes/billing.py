@@ -10,7 +10,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -27,7 +26,9 @@ from billing.gateway import (
     get_gateway,
     payment_methods,
 )
+from billing.reconciliation import reconciliation_queue_filter
 from billing.review import allowed_actions, assert_reviewable, decision_payload, digest, snapshot
+from core.admin_audit import record_admin_action
 from core.config import settings
 from core.database import get_db
 from core.plans import get_active_plan
@@ -36,6 +37,14 @@ from core.time_utils import utc_now
 from models import BillingCheckout, BillingProviderEvent, BillingReviewDecision, Payment, Subscription, User
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
+
+CHECKOUT_NOT_FOUND = "Checkout not found"
+_D409 = "Checkout or decision state conflict"
+_D422 = "Invalid Idempotency-Key"
+_D502 = "Payment provider did not confirm the order"
+_D503 = "Payment provider or bank verification unavailable"
+_R404 = {404: {"description": CHECKOUT_NOT_FOUND}}
+_R503 = {503: {"description": _D503}}
 
 IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 
@@ -60,6 +69,7 @@ class ActivateRequest(BaseModel):
     email: Optional[str] = None
     plan: Optional[str] = Field(default=None, pattern="^(pro|business)$")
     months: int = Field(default=1, ge=1, le=24)
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def require_checkout_or_legacy_identity(self) -> "ActivateRequest":
@@ -222,19 +232,7 @@ def reconciliation_queue(
     del admin
     rows = (
         db.query(BillingCheckout)
-        .filter(or_(
-            BillingCheckout.status.in_(("provider_unknown", "provider_review")),
-            and_(
-                BillingCheckout.provider == "tbc",
-                BillingCheckout.status.in_(("pending", "expired")),
-                BillingCheckout.settled_payment_id.is_(None),
-                BillingCheckout.expires_at < utc_now(),
-                or_(
-                    BillingCheckout.provider_status.is_(None),
-                    BillingCheckout.provider_status.notin_(("Failed", "Expired")),
-                ),
-            ),
-        ))
+        .filter(reconciliation_queue_filter())
         .order_by(BillingCheckout.created_at.asc(), BillingCheckout.id.asc())
         .offset(offset)
         .limit(limit + 1)
@@ -246,7 +244,7 @@ def reconciliation_queue(
     }
 
 
-@router.get("/admin/reconciliation/{checkout_id}")
+@router.get("/admin/reconciliation/{checkout_id}", responses=_R404)
 def reconciliation_detail(
     checkout_id: UUID,
     admin: User = Depends(require_admin),
@@ -256,7 +254,7 @@ def reconciliation_detail(
     del admin
     checkout = db.get(BillingCheckout, checkout_id)
     if not checkout:
-        raise HTTPException(status_code=404, detail="Checkout not found")
+        raise HTTPException(status_code=404, detail=CHECKOUT_NOT_FOUND)
     events = (
         db.query(BillingProviderEvent)
         .filter_by(checkout_id=checkout_id)
@@ -287,7 +285,7 @@ def reconciliation_detail(
 def _review_checkout(db: Session, checkout_id: UUID) -> BillingCheckout:
     checkout = db.query(BillingCheckout).filter_by(id=checkout_id).populate_existing().with_for_update().first()
     if not checkout:
-        raise HTTPException(404, "Checkout not found")
+        raise HTTPException(404, CHECKOUT_NOT_FOUND)
     # Same lock order as callback settlement, including first subscription creation.
     db.query(User).filter_by(id=checkout.user_id).with_for_update().one()
     return checkout
@@ -306,7 +304,7 @@ def _review_bank_evidence(checkout: BillingCheckout) -> dict:
     }
 
 
-@router.get("/admin/reconciliation/{checkout_id}/decisions")
+@router.get("/admin/reconciliation/{checkout_id}/decisions", responses=_R404)
 def review_history(
     checkout_id: UUID, limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0, le=100_000),
@@ -314,7 +312,7 @@ def review_history(
 ):
     del admin
     if not db.get(BillingCheckout, checkout_id):
-        raise HTTPException(404, "Checkout not found")
+        raise HTTPException(404, CHECKOUT_NOT_FOUND)
     rows = db.query(BillingReviewDecision).filter_by(checkout_id=checkout_id).order_by(
         BillingReviewDecision.created_at.desc(), BillingReviewDecision.id.desc(),
     ).offset(offset).limit(limit + 1).all()
@@ -322,7 +320,14 @@ def review_history(
             "next_offset": offset + limit if len(rows) > limit else None}
 
 
-@router.post("/admin/reconciliation/{checkout_id}/preview")
+@router.post(
+    "/admin/reconciliation/{checkout_id}/preview",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def review_preview(
     checkout_id: UUID, verify_provider: bool = Query(default=False),
     admin: User = Depends(require_admin), db: Session = Depends(get_db),
@@ -339,7 +344,14 @@ def review_preview(
     }
 
 
-@router.post("/admin/reconciliation/{checkout_id}/decisions")
+@router.post(
+    "/admin/reconciliation/{checkout_id}/decisions",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def record_review_decision(
     checkout_id: UUID, body: ReviewDecisionRequest,
     idempotency_key: str = Header(alias="Idempotency-Key"),
@@ -447,7 +459,15 @@ def billing_overview(
     }
 
 
-@router.post("/checkout")
+@router.post(
+    "/checkout",
+    responses={
+        422: {"description": _D422},
+        409: {"description": _D409},
+        502: {"description": _D502},
+        503: {"description": _D503},
+    },
+)
 def create_checkout(
     body: CheckoutRequest,
     idempotency_key: str = Header(alias="Idempotency-Key"),
@@ -789,7 +809,7 @@ def _reconcile_tbc_payment(
     }
 
 
-@router.post("/providers/tbc/callback")
+@router.post("/providers/tbc/callback", responses=_R503)
 def tbc_callback(body: ProviderCallback, db: Session = Depends(get_db)):
     """Acknowledge a known payId only after authoritative bank verification."""
     gateway = _available_gateway("tbc")
@@ -817,7 +837,14 @@ def tbc_callback(body: ProviderCallback, db: Session = Depends(get_db)):
     return _reconcile_tbc_payment(db, checkout, payment)
 
 
-@router.post("/checkout/{checkout_id}/refresh")
+@router.post(
+    "/checkout/{checkout_id}/refresh",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def refresh_checkout(
     checkout_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -834,7 +861,7 @@ def refresh_checkout(
         .first()
     )
     if not checkout:
-        raise HTTPException(status_code=404, detail="Checkout not found")
+        raise HTTPException(status_code=404, detail=CHECKOUT_NOT_FOUND)
     if checkout.provider != "tbc" or not checkout.provider_order_id:
         raise HTTPException(status_code=409, detail="Checkout has no online payment to refresh")
     if checkout.status == "paid" and checkout.settled_payment_id:
@@ -851,14 +878,31 @@ def refresh_checkout(
     return _reconcile_tbc_payment(db, checkout, payment)
 
 
-@router.post("/admin/activate")
+def _subscription_snapshot(db: Session, user_id) -> Optional[dict]:
+    """Access-relevant subscription fields for the admin journal; no payment data."""
+    sub = db.query(Subscription).filter_by(user_id=user_id).first()
+    if not sub:
+        return None
+    return {
+        "plan": sub.plan,
+        "status": sub.status,
+        "period_end": sub.period_end.isoformat() if sub.period_end else None,
+    }
+
+
+@router.post(
+    "/admin/activate",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+    },
+)
 def activate_subscription(
     body: ActivateRequest,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Settle a manual checkout, or use the temporary legacy email workflow."""
-    del admin
     if body.checkout_id is not None:
         checkout = (
             db.query(BillingCheckout)
@@ -867,7 +911,7 @@ def activate_subscription(
             .first()
         )
         if not checkout:
-            raise HTTPException(status_code=404, detail="Checkout not found")
+            raise HTTPException(status_code=404, detail=CHECKOUT_NOT_FOUND)
         if checkout.provider != "manual":
             raise HTTPException(
                 status_code=409,
@@ -899,7 +943,12 @@ def activate_subscription(
             checkout.updated_at = utc_now()
             db.commit()
             raise HTTPException(status_code=409, detail="Checkout has expired")
+        before = _subscription_snapshot(db, user.id)
         payment = _settle_checkout(db, user, checkout, "manual", None)
+        db.flush()
+        record_admin_action(db, actor=admin, action="subscription.activated", target_type="checkout",
+                            target_id=checkout.id, before=before,
+                            after=_subscription_snapshot(db, user.id), reason=body.reason)
         db.commit()
         return {
             "email": user.email,
@@ -917,6 +966,7 @@ def activate_subscription(
     user = db.query(User).filter_by(email=email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User with this email not found")
+    before = _subscription_snapshot(db, user.id)
     plan = PLAN_CATALOG[body.plan or ""]
     now = utc_now()
     legacy_checkout = BillingCheckout(
@@ -933,6 +983,10 @@ def activate_subscription(
     db.add(legacy_checkout)
     db.flush()
     payment = _settle_checkout(db, user, legacy_checkout, "manual", None)
+    db.flush()
+    record_admin_action(db, actor=admin, action="subscription.activated", target_type="user",
+                        target_id=user.id, before=before,
+                        after=_subscription_snapshot(db, user.id), reason=body.reason)
     db.commit()
     sub = db.query(Subscription).filter_by(user_id=user.id).one()
     return {

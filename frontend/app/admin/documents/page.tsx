@@ -2,174 +2,71 @@
 
 import { useEffect, useState } from 'react';
 import { authFetch } from '@/lib/auth';
+import { formatDate, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { DataTable, type Column } from '@/components/admin/DataTable';
+import { Pagination } from '@/components/admin/Pagination';
+import styles from '../admin.module.css';
 
 interface AdminDoc {
-  id: string;
-  title: string;
-  document_type: string;
-  document_number: string | null;
-  date_published: string | null;
-  authority: string | null;
-  source_url: string;
-  created_at: string | null;
+  id: string; title: string; document_type: string; document_number: string | null;
+  date_published: string | null; authority: string | null; source_url: string; created_at: string | null;
 }
 
-const TYPES = ['', 'law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
-
-const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '12px',
-};
-
-const input: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.08)',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: '8px',
-  color: 'white',
-  padding: '0.45rem 0.7rem',
-  fontSize: '0.85rem',
-};
-
-// Native dropdown lists ignore the select's translucent styling — give the
-// options an explicit dark background so text stays readable on Windows.
-const option: React.CSSProperties = { background: '#1e293b', color: 'white' };
-
-const PAGE_SIZE = 50;
+const TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
+const LIMIT = 50;
 
 export default function AdminDocuments() {
+  const { c, locale } = useAdminCopy();
   const [items, setItems] = useState<AdminDoc[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [docType, setDocType] = useState('');
-  const [page, setPage] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      offset: String(page * PAGE_SIZE),
-    });
+    const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
     if (search.trim()) params.set('search', search.trim());
     if (docType) params.set('doc_type', docType);
     authFetch(`/api/v1/admin/documents?${params}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        setItems(d.items);
-        setTotal(d.total);
-      })
-      .catch(() => null)
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+      .then((d) => { setItems(d.items); setTotal(d.total); setError(false); })
+      .catch(() => { if (!controller.signal.aborted) setError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [search, docType, page]);
+  }, [search, docType, offset, attempt]);
 
-  const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const columns: Column<AdminDoc>[] = [
+    { key: 'title', header: c.documents.name, render: (d) =>
+      <a href={d.source_url} target="_blank" rel="noopener noreferrer" title={d.title} className={styles.truncate}>{d.title}</a> },
+    { key: 'type', header: c.documents.type, render: (d) => d.document_type },
+    { key: 'number', header: c.documents.number, render: (d) => d.document_number ?? c.common.dash },
+    { key: 'date', header: c.documents.date, render: (d) => formatDate(d.date_published, locale) },
+    { key: 'authority', header: c.documents.authority, render: (d) => d.authority ?? c.common.dash },
+  ];
 
-  return (
-    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1200px' }}>
-      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>
-        Документы ({total.toLocaleString('ru-RU')})
-      </h1>
+  const retry = () => { setError(false); setLoading(true); setAttempt((a) => a + 1); };
+  const onSearch = (v: string) => { setOffset(0); setError(false); setLoading(true); setSearch(v); };
+  const onType = (v: string) => { setOffset(0); setError(false); setLoading(true); setDocType(v); };
+  const onPage = (o: number) => { setError(false); setLoading(true); setOffset(o); };
 
-      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <input
-          style={{ ...input, width: '320px' }}
-          placeholder="Поиск по названию или номеру…"
-          value={search}
-          onChange={(e) => {
-            setLoading(true);
-            setPage(0);
-            setSearch(e.target.value);
-          }}
-        />
-        <select
-          style={input}
-          value={docType}
-          onChange={(e) => {
-            setLoading(true);
-            setPage(0);
-            setDocType(e.target.value);
-          }}
-        >
-          {TYPES.map((t) => (
-            <option key={t} value={t} style={option}>{t || 'все типы'}</option>
-          ))}
-        </select>
-        {loading && <span style={{ alignSelf: 'center', fontSize: '0.8rem', opacity: 0.6 }}>ищу…</span>}
-      </div>
-
-      <div style={{ ...card, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', opacity: 0.7 }}>
-              {['Название', 'Тип', 'Номер', 'Дата', 'Орган'].map((h) => (
-                <th key={h} style={{ padding: '0.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((d) => (
-              <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <td style={{ padding: '0.55rem 1rem', maxWidth: '480px' }}>
-                  <a
-                    href={d.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: 'inherit', textDecoration: 'none' }}
-                    title={d.title}
-                  >
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {d.title}
-                    </span>
-                  </a>
-                </td>
-                <td style={{ padding: '0.55rem 1rem' }}>{d.document_type}</td>
-                <td style={{ padding: '0.55rem 1rem', opacity: 0.8 }}>{d.document_number ?? '—'}</td>
-                <td style={{ padding: '0.55rem 1rem', opacity: 0.8 }}>
-                  {d.date_published ? new Date(d.date_published).toLocaleDateString('ru-RU') : '—'}
-                </td>
-                <td style={{ padding: '0.55rem 1rem', opacity: 0.8, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {d.authority ?? '—'}
-                </td>
-              </tr>
-            ))}
-            {!loading && items.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ padding: '1rem', opacity: 0.6 }}>Ничего не найдено.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-        <button
-          onClick={() => {
-            setLoading(true);
-            setPage((p) => Math.max(p - 1, 0));
-          }}
-          disabled={page === 0}
-          style={{ ...input, cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}
-        >
-          ← Назад
-        </button>
-        <span style={{ fontSize: '0.85rem', opacity: 0.75 }}>
-          страница {page + 1} из {pages.toLocaleString('ru-RU')}
-        </span>
-        <button
-          onClick={() => {
-            setLoading(true);
-            setPage((p) => Math.min(p + 1, pages - 1));
-          }}
-          disabled={page >= pages - 1}
-          style={{ ...input, cursor: page >= pages - 1 ? 'not-allowed' : 'pointer', opacity: page >= pages - 1 ? 0.4 : 1 }}
-        >
-          Вперёд →
-        </button>
-      </div>
+  return <div className={styles.page}>
+    <PageHeader title={`${c.documents.title} (${formatNumber(total, locale)})`} />
+    <div className={styles.toolbar}>
+      <input className={styles.input} type="search" aria-label={c.documents.search} placeholder={c.documents.search}
+        value={search} onChange={(e) => onSearch(e.target.value)} />
+      <select className={styles.select} aria-label={c.documents.type} value={docType}
+        onChange={(e) => onType(e.target.value)}>
+        <option value="">{c.documents.allTypes}</option>
+        {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
     </div>
-  );
+    <DataTable columns={columns} rows={items} rowKey={(d) => d.id} loading={loading} error={error}
+      onRetry={retry} emptyText={c.documents.notFound} />
+    <Pagination offset={offset} limit={LIMIT} total={total} onChange={onPage} />
+  </div>;
 }
