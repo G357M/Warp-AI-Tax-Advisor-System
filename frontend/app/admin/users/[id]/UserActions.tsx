@@ -33,7 +33,7 @@ function AccessButton({ isAdmin, active, onBlock, onUnblock }: {
 }
 
 export function UserActions({ card, onUpdated, onReload }: {
-  card: UserCard; onUpdated: (card: UserCard, notice: string) => void; onReload: () => void;
+  card: UserCard; onUpdated: (card: UserCard, notice: string) => void; onReload: (notice: string) => void;
 }) {
   const { c, locale } = useAdminCopy();
   const { profile, subscription } = card;
@@ -80,12 +80,13 @@ export function UserActions({ card, onUpdated, onReload }: {
   const confirm = async (reason: string) => {
     if (dialog === null) return;
     if (typeof dialog === 'object') {
+      let d: { email: string; plan: string; period_end: string | null; replayed: boolean };
       try {
-        await adminSend('/api/v1/billing/admin/activate', 'POST', { checkout_id: dialog.settle, reason });
+        d = await adminSend('/api/v1/billing/admin/activate', 'POST', { checkout_id: dialog.settle, reason });
       } catch (e) {
         throw new Error(errorText(c, e));
       }
-      onReload();
+      onReload((d.replayed ? c.users.replayed : c.users.settled)(d.email, d.plan, formatDate(d.period_end, locale)));
       return;
     }
     const bodies: Record<Simple, [string, object, ('POST' | 'PATCH')?]> = {

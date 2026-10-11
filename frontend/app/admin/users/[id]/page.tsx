@@ -92,7 +92,7 @@ function Card() {
       </div>
     </section>
 
-    <UserActions card={data} onUpdated={(next, text) => { setData(next); setNotice(text); }} onReload={reload} />
+    <UserActions card={data} onUpdated={(next, text) => { setData(next); setNotice(text); }} onReload={(text) => { setNotice(text); reload(); }} />
 
     <section>
       <h2 className={styles.panelTitle}>{c.card.payments}</h2>
