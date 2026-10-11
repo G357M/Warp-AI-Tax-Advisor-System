@@ -6,7 +6,10 @@
  */
 import { useLang, type Lang } from './i18n';
 
-export const ADMIN_LOCALE: Record<Lang, string> = { ru: 'ru-RU', ka: 'ka-GE', en: 'en-GB' };
+export type AdminLocale = string | string[];
+// Chromium ICU ships no `ka` data, so ka-GE would fall back to en-US (11/1/2026).
+// Intl uses the first supported entry; ru-RU gives dd.MM.yyyy, HH:mm, as in Georgia.
+export const ADMIN_LOCALE: Record<Lang, AdminLocale> = { ru: 'ru-RU', ka: ['ka-GE', 'ru-RU'], en: 'en-GB' };
 
 const ru = {
   nav: {
@@ -276,7 +279,7 @@ const en: AdminCopy = {
 
 const COPY: Record<Lang, AdminCopy> = { ru, ka, en };
 
-export function useAdminCopy(): { lang: Lang; c: AdminCopy; locale: string } {
+export function useAdminCopy(): { lang: Lang; c: AdminCopy; locale: AdminLocale } {
   const lang = useLang();
   return { lang, c: COPY[lang], locale: ADMIN_LOCALE[lang] };
 }
@@ -286,14 +289,14 @@ function parseUtc(value: string): Date {
   return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
 }
 
-export function formatDateTime(value: string | null, locale: string): string {
+export function formatDateTime(value: string | null, locale: AdminLocale): string {
   return value ? parseUtc(value).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' }) : '—';
 }
 
-export function formatDate(value: string | null, locale: string): string {
+export function formatDate(value: string | null, locale: AdminLocale): string {
   return value ? parseUtc(value).toLocaleDateString(locale) : '—';
 }
 
-export function formatNumber(value: number, locale: string): string {
+export function formatNumber(value: number, locale: AdminLocale): string {
   return value.toLocaleString(locale);
 }

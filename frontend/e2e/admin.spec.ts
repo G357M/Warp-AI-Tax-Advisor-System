@@ -156,6 +156,14 @@ test('config shows secrets only as set / not set', async ({ page }) => {
   await expect(secretsTable.getByText('not set', { exact: true }).first()).toBeVisible();
 });
 
+test('Georgian dates render as dd.mm.yyyy, not US style', async ({ page }) => {
+  await setup(page, 'ka');
+  await page.goto('/admin/users');
+  await expect(page.getByText(longEmail).first()).toBeVisible();
+  await expect(page.getByText('01.11.2026').first()).toBeVisible();
+  await expect(page.getByText(/10\.10\.2026, 18:00/).first()).toBeVisible();
+});
+
 test('admin visual baseline', async ({ page }) => {
   await setup(page, 'ru');
   await page.setViewportSize({ width: 1280, height: 900 });
