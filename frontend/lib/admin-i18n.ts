@@ -286,7 +286,7 @@ export function useAdminCopy(): { lang: Lang; c: AdminCopy; locale: AdminLocale 
 
 /** Backend timestamps are naive UTC ISO strings; treat them as UTC. */
 function parseUtc(value: string): Date {
-  return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
+  return new Date(/(?:[zZ]|[+-]\d\d:?\d\d)$/.test(value) ? value : `${value}Z`);
 }
 
 export function formatDateTime(value: string | null, locale: AdminLocale): string {

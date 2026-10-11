@@ -27,11 +27,16 @@ export interface AdminStats {
 export type AdminConfig = Record<string, Record<string, string | number | boolean | null>>;
 
 /** "role: user → admin" style summary of an audit entry's change. */
+function show(value: unknown): string {
+  if (value == null) return '—';
+  return typeof value === 'object' ? JSON.stringify(value) : String(value);
+}
+
 export function summarizeChange(entry: AuditEntry): string {
   const keys = new Set([...Object.keys(entry.before ?? {}), ...Object.keys(entry.after ?? {})]);
   return [...keys].map((key) => {
     const from = entry.before?.[key];
     const to = entry.after?.[key];
-    return `${key}: ${from == null ? '—' : String(from)} → ${to == null ? '—' : String(to)}`;
+    return `${key}: ${show(from)} → ${show(to)}`;
   }).join('; ');
 }
