@@ -7,8 +7,9 @@ from pydantic import StringConstraints
 from sqlalchemy import and_, case, func, literal, or_, select
 from sqlalchemy.orm import Session
 
+from core.plans import FREE_DAILY_QUESTIONS, questions_used_today_or_none
 from core.time_utils import utc_now
-from models import Subscription, User
+from models import BillingCheckout, Conversation, Feedback, Message, Payment, Subscription, User
 
 Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=1000)]
 PAID_PLANS = ("pro", "business")
@@ -103,3 +104,69 @@ def list_users_page(db: Session, *, q, plan, status, sort, limit, offset) -> dic
         "plan": plan_value, "period_end": iso(period_end),
         "is_active": user.is_active, "email_verified": user.email_verified,
     } for user, period_end, plan_value in rows]}
+
+
+CARD_ROWS = 20
+
+
+def subscription_snapshot(sub) -> Optional[dict]:
+    """Access-relevant subscription fields for the admin journal; no payment data."""
+    if sub is None:
+        return None
+    return {"plan": sub.plan, "status": sub.status, "period_end": iso(sub.period_end),
+            "source": "grant" if sub.payment_provider == "grant" else "payment"}
+
+
+def _activity(db: Session, user, plan: str, now) -> dict:
+    d7, d30 = now - timedelta(days=7), now - timedelta(days=30)
+    conversations = db.execute(
+        select(func.count().filter(Conversation.created_at >= d7),
+               func.count().filter(Conversation.created_at >= d30))
+        .where(Conversation.user_id == user.id)
+    ).one()
+    questions = db.execute(
+        select(func.count().filter(Message.created_at >= d7), func.count().filter(Message.created_at >= d30))
+        .select_from(Message).join(Conversation, Message.conversation_id == Conversation.id)
+        .where(Conversation.user_id == user.id, Message.role == "user")
+    ).one()
+    feedback_total = db.execute(
+        select(func.count()).select_from(Feedback).where(Feedback.user_id == user.id)
+    ).scalar_one()
+    return {
+        "conversations_7d": conversations[0], "conversations_30d": conversations[1],
+        "questions_7d": questions[0], "questions_30d": questions[1],
+        "questions_today": questions_used_today_or_none(user.id),
+        "daily_limit": FREE_DAILY_QUESTIONS if plan == "free" else None,
+        "feedback_total": feedback_total,
+    }
+
+
+def user_card(db: Session, user) -> dict:
+    now = utc_now()
+    sub = db.query(Subscription).filter_by(user_id=user.id).first()
+    plan = effective_plan(user, sub, now)
+    subscription = None
+    if sub is not None:
+        live = sub.status == "active" and sub.period_end is not None and sub.period_end >= now
+        snapshot = subscription_snapshot(sub)
+        subscription = {**snapshot, "period_start": iso(sub.period_start),
+                        "days_left": max(0, (sub.period_end - now).days) if live else None}
+    payments = (db.query(Payment).join(Subscription, Payment.subscription_id == Subscription.id)
+                .filter(Subscription.user_id == user.id).order_by(Payment.created_at.desc()).limit(CARD_ROWS).all())
+    checkouts = (db.query(BillingCheckout).filter(BillingCheckout.user_id == user.id)
+                 .order_by(BillingCheckout.created_at.desc()).limit(CARD_ROWS).all())
+    return {
+        "profile": {
+            "id": str(user.id), "username": user.username, "email": user.email, "full_name": user.full_name,
+            "role": user.role, "effective_plan": plan, "is_active": user.is_active,
+            "email_verified": user.email_verified, "created_at": iso(user.created_at),
+            "last_login": iso(user.last_login),
+        },
+        "subscription": subscription,
+        "payments": [{"id": str(p.id), "created_at": iso(p.created_at), "amount_minor": p.amount_minor,
+                      "currency": p.currency, "provider": p.provider, "status": p.status} for p in payments],
+        "checkouts": [{"id": str(c.id), "created_at": iso(c.created_at), "plan": c.plan, "months": c.months,
+                       "amount_minor": c.amount_minor, "currency": c.currency, "provider": c.provider,
+                       "status": c.status, "expires_at": iso(c.expires_at)} for c in checkouts],
+        "activity": _activity(db, user, plan, now),
+    }

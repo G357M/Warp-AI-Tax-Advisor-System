@@ -67,3 +67,10 @@ def test_paid_questions_do_not_touch_daily_counter(monkeypatch):
     plans.refund_question(user, "pro")
 
     assert redis.values == {}
+
+
+def test_questions_used_today_or_none_distinguishes_missing_redis(monkeypatch):
+    from core import plans
+    monkeypatch.setattr(plans, "_redis", lambda: None)
+    assert plans.questions_used_today_or_none("u") is None
+    assert plans.questions_used_today("u") == 0

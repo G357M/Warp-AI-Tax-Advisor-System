@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -168,3 +169,75 @@ def test_sorts_put_empty_values_last(database):
     assert by_login[:2] == ["old", "new"] and set(by_login[2:]) == {"never", "boss"}
     by_end = _names(_list(sessions, q="e", sort="period_end_asc"))
     assert by_end[:2] == ["new", "old"]
+
+
+def _card(sessions, user_id):
+    with sessions() as db:
+        return routes.get_user_card(user_id, db)
+
+
+def test_card_has_profile_subscription_payments_checkouts_and_activity(database, monkeypatch):
+    sessions, _ = database
+    from core import admin_users as core_users
+    monkeypatch.setattr(core_users, "questions_used_today_or_none", lambda _uid: 2)
+    now = utc_now()
+    with sessions() as db:
+        user = _user(db, "carded", full_name="Card Holder")
+        sub = _sub(db, user, "pro", days=10, provider="grant")
+        db.add(Payment(subscription_id=sub.id, amount_gel=49, amount_minor=4900, currency="GEL",
+                       provider="manual", status="succeeded"))
+        db.add(BillingCheckout(user_id=user.id, plan="pro", months=1, amount_minor=4900, currency="GEL",
+                               provider="manual", status="pending", idempotency_key=uuid4().hex,
+                               expires_at=now + timedelta(hours=1)))
+        recent = Conversation(user_id=user.id, created_at=now - timedelta(days=2))
+        older = Conversation(user_id=user.id, created_at=now - timedelta(days=20))
+        db.add_all([recent, older])
+        db.flush()
+        db.add_all([Message(conversation_id=recent.id, role="user", content="q1", created_at=now - timedelta(days=2)),
+                    Message(conversation_id=recent.id, role="assistant", content="a1", created_at=now - timedelta(days=2)),
+                    Message(conversation_id=older.id, role="user", content="q2", created_at=now - timedelta(days=20)),
+                    Feedback(user_id=user.id, message="hi")])
+        db.commit()
+        user_id = user.id
+    card = _card(sessions, user_id)
+    assert card["profile"]["username"] == "carded" and card["profile"]["full_name"] == "Card Holder"
+    assert card["profile"]["effective_plan"] == "pro" and card["profile"]["is_active"] is True
+    assert card["subscription"]["source"] == "grant" and card["subscription"]["days_left"] in (9, 10)
+    assert len(card["payments"]) == 1 and card["payments"][0]["amount_minor"] == 4900
+    assert card["checkouts"][0]["status"] == "pending"
+    assert card["activity"] == {"conversations_7d": 1, "conversations_30d": 2, "questions_7d": 1,
+                                "questions_30d": 2, "questions_today": 2, "daily_limit": None,
+                                "feedback_total": 1}
+
+
+def test_card_without_subscription_or_redis(database, monkeypatch):
+    sessions, ids = database
+    from core import admin_users as core_users
+    monkeypatch.setattr(core_users, "questions_used_today_or_none", lambda _uid: None)
+    with sessions() as db:
+        user = _user(db, "freebie")
+        db.commit()
+        user_id = user.id
+    card = _card(sessions, user_id)
+    assert card["subscription"] is None and card["profile"]["effective_plan"] == "free"
+    assert card["activity"]["questions_today"] is None and card["activity"]["daily_limit"] == 5
+    assert _card(sessions, ids.admin_id)["profile"]["effective_plan"] == "business"
+
+
+def test_card_for_expired_subscription_has_no_days_left(database):
+    sessions, _ = database
+    with sessions() as db:
+        user = _user(db, "lapsed")
+        _sub(db, user, "pro", days=-3)
+        db.commit()
+        user_id = user.id
+    card = _card(sessions, user_id)
+    assert card["subscription"]["plan"] == "pro" and card["subscription"]["days_left"] is None
+    assert card["profile"]["effective_plan"] == "free"
+
+
+def test_card_for_missing_user_is_coded_404(database):
+    sessions, _ = database
+    with pytest.raises(HTTPException) as exc:
+        _card(sessions, uuid4())
+    assert exc.value.status_code == 404 and exc.value.detail["code"] == "user_not_found"
