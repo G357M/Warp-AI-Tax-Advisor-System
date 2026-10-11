@@ -235,6 +235,8 @@ test('user card visual baseline', async ({ page }) => {
   await setup(page);
   await page.goto(`/admin/users/${ID}`);
   await expect(page.getByText('Вопросов за 30 дней')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Платежи' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Сменить роль', exact: true })).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
   await expect(page).toHaveScreenshot('admin-user-card-ru-desktop.png', { fullPage: true });
   const mobile = await page.context().newPage();
@@ -242,6 +244,9 @@ test('user card visual baseline', async ({ page }) => {
   await mobile.setViewportSize({ width: 390, height: 844 });
   await mobile.goto(`/admin/users/${ID}`);
   await expect(mobile.getByText('Nino Beridze')).toBeVisible();
+  await expect(mobile.getByText('კითხვები ბოლო 30 დღეში')).toBeVisible();
+  await expect(mobile.getByRole('heading', { name: 'გადახდები' })).toBeVisible();
+  await expect(mobile.getByRole('button', { name: 'როლის შეცვლა', exact: true })).toBeVisible();
   await mobile.evaluate(async () => { await document.fonts.ready; });
   await expect(mobile).toHaveScreenshot('admin-user-card-ka-mobile.png', { fullPage: true });
   await mobile.close();
