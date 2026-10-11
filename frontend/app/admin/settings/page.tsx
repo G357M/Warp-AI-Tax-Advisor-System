@@ -18,7 +18,7 @@ export default function AdminConfigPage() {
 
   const load = useCallback(() => {
     authFetch('/api/v1/admin/config').then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setConfig).catch(() => setError(true));
+      .then((d) => { setConfig(d); setError(false); }).catch(() => setError(true));
   }, []);
   useEffect(load, [load]);
   const retry = () => { setError(false); load(); };

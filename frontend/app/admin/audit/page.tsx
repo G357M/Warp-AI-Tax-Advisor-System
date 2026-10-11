@@ -23,7 +23,7 @@ export default function AdminAudit() {
     const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
     if (action) params.set('action', action);
     authFetch(`/api/v1/admin/audit?${params}`).then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setData).catch(() => setError(true));
+      .then((d) => { setData(d); setError(false); }).catch(() => setError(true));
   }, [action, offset]);
   useEffect(load, [load]);
   const retry = () => { setError(false); load(); };
@@ -44,7 +44,7 @@ export default function AdminAudit() {
       <select className={styles.select} aria-label={c.audit.action} value={action}
         onChange={(e) => { setOffset(0); setError(false); setAction(e.target.value); }}>
         <option value="">{c.common.all}</option>
-        {ACTIONS.map((a) => <option key={a} value={a}>{c.audit.actions[a]}</option>)}
+        {ACTIONS.map((a) => <option key={a} value={a}>{c.audit.actions[a] ?? a}</option>)}
       </select>
     </div>
     <DataTable columns={columns} rows={data?.items ?? []} rowKey={(e) => e.id}

@@ -19,11 +19,11 @@ export default function AdminDashboard() {
 
   const loadStats = useCallback(() => {
     authFetch('/api/v1/admin/stats').then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setStats).catch(() => setStatsError(true));
+      .then((d) => { setStats(d); setStatsError(false); }).catch(() => setStatsError(true));
   }, []);
   const loadAudit = useCallback(() => {
     authFetch('/api/v1/admin/audit?limit=5').then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setAudit).catch(() => setAuditError(true));
+      .then((d) => { setAudit(d); setAuditError(false); }).catch(() => setAuditError(true));
   }, []);
   useEffect(() => { loadStats(); loadAudit(); }, [loadStats, loadAudit]);
   const retryStats = () => { setStatsError(false); loadStats(); };
