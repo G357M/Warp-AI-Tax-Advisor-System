@@ -180,6 +180,7 @@ def down_unreviewed(db: Session) -> int:
 
 
 def quality_summary(db: Session, period: str) -> dict:
+    # Loads the period's assistant messages into Python; fine at current volume.
     now = utc_now()
     conditions = [Message.role == "assistant"]
     days = PERIOD_DAYS[period]

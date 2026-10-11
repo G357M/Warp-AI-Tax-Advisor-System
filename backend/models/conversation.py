@@ -33,7 +33,7 @@ class Message(Base):
     role = Column(String(20), nullable=False)  # user | assistant
     content = Column(Text, nullable=False)
     sources = Column(JSON, nullable=True)  # Links to documents
-    evidence = Column(JSON, nullable=True)  # answer-quality signals (assistant messages only)
+    evidence = Column(JSON(none_as_null=True), nullable=True)  # answer-quality signals (assistant messages only)
     processing_ms = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, default=utc_now, nullable=False)

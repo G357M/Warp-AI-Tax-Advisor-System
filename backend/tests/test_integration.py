@@ -1251,3 +1251,15 @@ def test_rating_guards(client, monkeypatch):
 
 def test_guest_cannot_rate(client):
     assert client.put(f"/api/v1/query/messages/{uuid4()}/rating", json={"value": 1}).status_code == 401
+
+
+def test_non_admin_is_forbidden_from_answer_quality(client):
+    register_and_login(client, "plain-quality-user")
+    some_id = "00000000-0000-0000-0000-000000000001"
+    assert client.get("/api/v1/admin/quality/answers").status_code == 403
+    assert client.get(f"/api/v1/admin/quality/answers/{some_id}").status_code == 403
+    assert client.get("/api/v1/admin/quality/summary").status_code == 403
+    assert client.post(f"/api/v1/admin/quality/answers/{some_id}/review",
+                       json={"verdict": "wrong", "reasons": [], "reason": "trying"}).status_code == 403
+    assert client.post(f"/api/v1/admin/quality/answers/{some_id}/reveal-user",
+                       json={"reason": "trying"}).status_code == 403

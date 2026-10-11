@@ -13,7 +13,9 @@ from sqlalchemy.orm import sessionmaker
 from core.config import settings
 from core.database import Base, engine
 from core.time_utils import utc_now
-from models import AdminAuditLog, Conversation, Message, User
+from models import (AdminAuditLog, BillingCheckout, Conversation, Document, Feedback, Message, Payment,
+                    Subscription, User)
+from models.document import DecisionFacts, LawAmendment
 from models.answer_quality import AnswerRating, AnswerReview
 from scripts.add_admin_audit_log import apply_schema as apply_audit_schema
 from scripts.add_answer_quality import apply_schema, contract_sha256
@@ -21,7 +23,8 @@ from scripts.add_answer_quality import apply_schema, contract_sha256
 pytestmark = pytest.mark.skipif(os.getenv("BILLING_PROVIDER_POSTGRES_TESTS") != "1",
                                 reason="requires dedicated PostgreSQL")
 
-TABLES = [User, Conversation, Message]
+TABLES = [User, Conversation, Message, Subscription, Payment, BillingCheckout, Feedback, Document,
+          DecisionFacts, LawAmendment]
 
 
 @pytest.fixture
@@ -171,15 +174,22 @@ def test_feed_flags_and_old_answers(database):
         _dialog(db, ids.user_id, question="partial", evidence={"status": "partial", "has_precise_citation": False,
                                                                 "source_count": 0})
         _dialog(db, ids.user_id, question="old", evidence=None, processing_ms=None)
+        conv = Conversation(user_id=ids.user_id)
+        db.add(conv)
+        db.flush()
+        db.add(Message(conversation_id=conv.id, role="user", content="real-old"))
+        db.add(Message(conversation_id=conv.id, role="assistant", content="x", sources=[]))  # evidence SQL NULL
         db.commit()
     q = lambda **kw: sorted(r["question"] for r in _list(sessions, **kw)["items"])  # noqa: E731
     assert q(flags=["slow"]) == ["slow"]
     assert q(flags=["no_precise_citation"]) == ["nocite", "partial"]
     assert q(flags=["not_grounded"]) == ["partial"]
     assert q(flags=["no_sources"]) == ["partial"]
-    assert q(flags=["no_evidence"]) == ["old"]
+    assert q(flags=["no_evidence"]) == ["old", "real-old"]
+    assert q(flags=["no_precise_citation"]) == ["nocite", "partial"]
     assert q(flags=["no_precise_citation", "no_sources"]) == ["partial"]
     rows = {r["question"]: r for r in _list(sessions)["items"]}
+    assert rows["real-old"]["flags"] == ["no_evidence"]
     assert rows["old"]["flags"] == ["no_evidence"] and rows["ok"]["flags"] == []
 
 
@@ -255,3 +265,90 @@ def test_summary_empty_period_returns_nulls(database):
     with sessions() as db:
         s = routes.get_summary(period="7d", db=db)
     assert s["answers"] == 0 and s["down_share"] is None and s["median_processing_ms"] is None
+
+
+from pydantic import ValidationError
+
+
+def _journal(sessions):
+    with sessions() as db:
+        return db.query(AdminAuditLog).order_by(AdminAuditLog.created_at).all()
+
+
+def test_review_appends_history_and_journals(database):
+    sessions, ids = database
+    with sessions() as db:
+        _, _, a = _dialog(db, ids.user_id)
+        db.commit()
+        message_id = a.id
+    body = routes.ReviewRequest(verdict="wrong", reasons=["wrong_citation", "fabricated"], note="cites 168",
+                                reason="weekly review")
+    with sessions() as db:
+        routes.review_answer(message_id, body, admin=db.get(User, ids.admin_id), db=db)
+    with sessions() as db:
+        detail = routes.review_answer(message_id, routes.ReviewRequest(verdict="partial", reasons=[],
+                                      reason="second look"), admin=db.get(User, ids.admin_id), db=db)
+    assert [r["verdict"] for r in detail["reviews"]] == ["partial", "wrong"]
+    assert detail["reviews"][1]["reviewer"]["username"] == "boss"
+    entries = _journal(sessions)
+    assert [e.action for e in entries] == ["answer.reviewed", "answer.reviewed"]
+    assert entries[0].target_type == "message" and entries[0].target_id == str(message_id)
+    assert entries[0].after == {"verdict": "wrong", "reasons": ["wrong_citation", "fabricated"]}
+
+
+def test_review_validation():
+    with pytest.raises(ValidationError):
+        routes.ReviewRequest(verdict="wrong", reasons=["bogus"], reason="testing")
+    with pytest.raises(ValidationError):
+        routes.ReviewRequest(verdict="wrong", reasons=["other", "other"], reason="testing")
+    with pytest.raises(ValidationError):
+        routes.ReviewRequest(verdict="wrong", reasons=[], reason="no")
+
+
+def test_review_rolls_back_when_journal_fails(database, monkeypatch):
+    sessions, ids = database
+    with sessions() as db:
+        _, _, a = _dialog(db, ids.user_id)
+        db.commit()
+        message_id = a.id
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("journal unavailable")
+
+    monkeypatch.setattr(routes, "record_admin_action", broken)
+    with sessions() as db:
+        with pytest.raises(RuntimeError):
+            routes.review_answer(message_id, routes.ReviewRequest(verdict="correct", reasons=[], reason="ok fine"),
+                                 admin=db.get(User, ids.admin_id), db=db)
+        db.rollback()
+    with sessions() as db:
+        assert db.query(AnswerReview).count() == 0
+
+
+def test_reveal_returns_user_and_journals(database):
+    sessions, ids = database
+    with sessions() as db:
+        _, _, a = _dialog(db, ids.user_id)
+        db.commit()
+        message_id = a.id
+    with sessions() as db:
+        result = routes.reveal_user(message_id, routes.RevealRequest(reason="needs follow-up"),
+                                    admin=db.get(User, ids.admin_id), db=db)
+    assert result == {"user_id": str(ids.user_id)}
+    [entry] = _journal(sessions)
+    assert entry.action == "user.identity_revealed" and entry.after == {"user_id": str(ids.user_id)}
+    with sessions() as db:
+        with pytest.raises(HTTPException) as exc:
+            routes.reveal_user(uuid4(), routes.RevealRequest(reason="needs follow-up"),
+                               admin=db.get(User, ids.admin_id), db=db)
+    assert exc.value.detail["code"] == "message_not_found"
+
+
+def test_stats_counts_down_unreviewed(database):
+    from api.routes import admin as admin_routes
+    sessions, ids = database
+    with sessions() as db:
+        _, _, a = _dialog(db, ids.user_id)
+        db.add(AnswerRating(message_id=a.id, user_id=ids.user_id, value=-1))
+        db.commit()
+        assert admin_routes.system_stats(db)["quality"] == {"down_unreviewed": 1}
