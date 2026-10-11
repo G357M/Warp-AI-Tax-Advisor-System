@@ -1199,6 +1199,12 @@ columns; every newly created checkout requires and populates all three. It is
 idempotent and audits the expected columns and duplicate constraints after
 applying.
 
+- `backend/scripts/add_admin_audit_log.py` installs `admin_audit_log`, the append-only journal of
+  administrator actions (role changes, manual subscription activation, feedback status). The deploy
+  script applies it with the pinned `ADMIN_AUDIT_SCHEMA_CONTRACT_SHA256` before starting the backend.
+  The table is additive; rolling back the code leaves it unused and harmless. Rows cannot be updated
+  or deleted (statement trigger `admin_audit_immutable`).
+
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 
 ```dotenv

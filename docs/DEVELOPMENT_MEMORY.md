@@ -289,3 +289,14 @@ merge или production deployment.
 `docs/PRODUCTION_OPERATIONS.md`, `.github/workflows/ci.yml`,
 `.github/workflows/cd.yml`, `backend/billing/catalog.py`,
 `.state/matsne-effective-date-review/tax-code-p000-p245-v2/effective_date_candidates.json`.
+
+## 2026-10-11 — Admin stage 1 (foundation)
+
+- `/admin` uses one CSS module (`app/admin/admin.module.css`) on `globals.css` tokens and the kit in
+  `components/admin/`; copy lives in `lib/admin-i18n.ts` (RU/KA/EN). `npm run check:admin-styles`
+  rejects inline style objects other than CSS custom properties.
+- Admin mutations write `admin_audit_log` in the same transaction via `core.admin_audit.record_admin_action`;
+  no-op changes and activation replays write nothing. Read at `/admin/audit`.
+- `/admin/config` is a whitelist (`core/public_config.py`); secrets are booleans only.
+- Dashboard attention counters reuse `billing.reconciliation.reconciliation_queue_filter()`.
+- Next stages: 2 clients → 4 answer quality → 3 trends → 5 operations.
