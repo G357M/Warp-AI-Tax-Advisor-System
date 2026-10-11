@@ -152,7 +152,7 @@ test('grant over another active plan requires the replace checkbox', async ({ pa
     subscription: { ...card.subscription, plan: 'business' },
   };
   const { writes } = await setup(page, { card: business });
-  const { dialog, reason, confirm } = await openCardDialog(page, 'Подарить или продлить');
+  const { dialog, reason, confirm } = await openCardDialog(page, 'Выдать подарочный сертификат');
   await dialog.getByRole('combobox', { name: 'Тариф' }).selectOption('pro');
   await reason.fill('downgrade on request');
   await expect(confirm).toBeDisabled();
@@ -226,7 +226,7 @@ test('admin card hides block, role and subscription actions', async ({ page }) =
   await setup(page);
   await page.goto(`/admin/users/${ADMIN_ID}`);
   await expect(page.getByText('Чтобы заблокировать администратора, сначала снимите роль.')).toBeVisible();
-  for (const name of ['Заблокировать', 'Подарить или продлить', 'Записать оплату', 'Сменить роль']) {
+  for (const name of ['Заблокировать', 'Выдать подарочный сертификат', 'Записать оплату', 'Сменить роль']) {
     await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
   }
 });
