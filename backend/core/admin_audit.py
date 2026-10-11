@@ -1,7 +1,11 @@
 """Record administrator actions in the append-only journal."""
 from models import AdminAuditLog
 
-ADMIN_ACTIONS = frozenset({"user.role_changed", "subscription.activated", "feedback.status_changed"})
+ADMIN_ACTIONS = frozenset({
+    "user.role_changed", "subscription.activated", "feedback.status_changed",
+    "user.blocked", "user.unblocked", "subscription.granted", "subscription.canceled",
+    "user.password_reset_sent", "user.verification_sent",
+})
 TARGET_TYPES = frozenset({"user", "checkout", "feedback"})
 REASON_MAX_LENGTH = 1000
 

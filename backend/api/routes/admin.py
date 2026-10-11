@@ -9,13 +9,14 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from billing.reconciliation import reconciliation_queue_filter
 from core.admin_audit import record_admin_action
+from core.admin_users import admin_error
 from core.database import get_db
 from core.public_config import public_config
 from core.security import require_admin
@@ -141,38 +142,6 @@ def list_documents(
     }
 
 
-class RoleUpdate(BaseModel):
-    role: str = Field(pattern="^(user|admin)$")
-    reason: Optional[str] = Field(default=None, max_length=1000)
-
-
-@router.patch(
-    "/users/{user_id}/role",
-    responses={
-        400: {"description": "Admin cannot remove their own admin role"},
-        404: {"description": "User not found"},
-    },
-)
-def update_user_role(
-    user_id: UUID,
-    body: RoleUpdate,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    if user_id == admin.id and body.role != "admin":
-        raise HTTPException(status_code=400, detail="Нельзя снять права администратора с самого себя.")
-    user = db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.role != body.role:
-        before = {"role": user.role}
-        user.role = body.role
-        record_admin_action(db, actor=admin, action="user.role_changed", target_type="user",
-                            target_id=user.id, before=before, after={"role": user.role}, reason=body.reason)
-        db.commit()
-    return {"id": str(user.id), "username": user.username, "role": user.role}
-
-
 def _tail(path: str, lines: int = 12) -> list:
     try:
         content = Path(path).read_text(encoding="utf-8", errors="replace").strip().splitlines()
@@ -256,7 +225,7 @@ def update_feedback_status(
 ):
     item = db.get(Feedback, feedback_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise admin_error(404, "feedback_not_found", "Feedback not found")
     if item.status != body.status:
         before = {"status": item.status}
         item.status = body.status

@@ -57,4 +57,8 @@ def test_unknown_action_and_target_are_rejected():
 
 
 def test_action_set_is_closed():
-    assert ADMIN_ACTIONS == {"user.role_changed", "subscription.activated", "feedback.status_changed"}
+    assert ADMIN_ACTIONS == {
+        "user.role_changed", "subscription.activated", "feedback.status_changed",
+        "user.blocked", "user.unblocked", "subscription.granted", "subscription.canceled",
+        "user.password_reset_sent", "user.verification_sent",
+    }
