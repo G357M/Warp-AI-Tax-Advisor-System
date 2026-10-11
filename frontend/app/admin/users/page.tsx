@@ -2,201 +2,124 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '@/lib/auth';
+import { formatDate, formatDateTime, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { DataTable, type Column } from '@/components/admin/DataTable';
+import { Pagination } from '@/components/admin/Pagination';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { Badge } from '@/components/admin/Badge';
+import styles from '../admin.module.css';
 
 interface AdminUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  created_at: string | null;
-  last_login: string | null;
-  plan: string;
-  period_end: string | null;
+  id: string; username: string; email: string; role: 'user' | 'admin';
+  created_at: string | null; last_login: string | null; plan: string; period_end: string | null;
 }
 
-const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '12px',
-  padding: '1.25rem',
-};
+type Pending =
+  | { kind: 'role'; user: AdminUser; role: 'user' | 'admin' }
+  | { kind: 'settle'; checkoutId: string }
+  | { kind: 'activate'; email: string; plan: 'pro' | 'business'; months: number };
 
-const input: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.08)',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: '8px',
-  color: 'white',
-  padding: '0.45rem 0.7rem',
-  fontSize: '0.85rem',
-};
+const LIMIT = 50;
 
-// Native dropdown lists need an explicit dark background for readable options.
-const option: React.CSSProperties = { background: '#1e293b', color: 'white' };
+async function send(url: string, method: string, body: object, fallback: string) {
+  const res = await authFetch(url, { method, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : fallback);
+  return data;
+}
 
 export default function AdminUsers() {
+  const { c, locale } = useAdminCopy();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
+  const [error, setError] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [checkoutId, setCheckoutId] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState<'pro' | 'business'>('pro');
   const [months, setMonths] = useState(1);
+  const [pending, setPending] = useState<Pending | null>(null);
 
   const load = useCallback(() => {
-    authFetch('/api/v1/admin/users?limit=100')
+    authFetch(`/api/v1/admin/users?limit=${LIMIT}&offset=${offset}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        setUsers(d.items);
-        setTotal(d.total);
-      })
-      .catch(() => setMessage('Не получилось загрузить пользователей.'));
-  }, []);
-
+      .then((d) => { setUsers(d.items); setTotal(d.total); setError(false); })
+      .catch(() => setError(true))
+      .finally(() => setLoadedOffset(offset));
+  }, [offset]);
   useEffect(load, [load]);
+  const loading = loadedOffset !== offset;
+  const retry = () => { setError(false); load(); };
+  const goTo = (next: number) => { setError(false); setOffset(next); };
 
-  const activate = async () => {
-    setMessage(null);
-    const res = await authFetch('/api/v1/billing/admin/activate', {
-      method: 'POST',
-      body: JSON.stringify({ email: email.trim(), plan, months }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setMessage(`Активировано: ${data.email} → ${data.plan} до ${new Date(data.period_end).toLocaleDateString('ru-RU')}`);
-      setEmail('');
-      load();
-    } else {
-      setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось активировать подписку.');
-    }
-  };
-
-  const settleCheckout = async () => {
-    setMessage(null);
-    const res = await authFetch('/api/v1/billing/admin/activate', {
-      method: 'POST',
-      body: JSON.stringify({ checkout_id: checkoutId.trim() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setMessage(
-        `${data.replayed ? 'Уже подтверждено' : 'Оплата подтверждена'}: ${data.email} → ${data.plan} до ${new Date(data.period_end).toLocaleDateString('ru-RU')}`,
-      );
+  const confirm = async (reason: string) => {
+    if (!pending) return;
+    const until = (d: { period_end: string | null }) => formatDate(d.period_end, locale);
+    if (pending.kind === 'role') {
+      await send(`/api/v1/admin/users/${pending.user.id}/role`, 'PATCH', { role: pending.role, reason }, c.common.saveError);
+    } else if (pending.kind === 'settle') {
+      const d = await send('/api/v1/billing/admin/activate', 'POST', { checkout_id: pending.checkoutId, reason }, c.common.saveError);
+      setMessage((d.replayed ? c.users.replayed : c.users.settled)(d.email, d.plan, until(d)));
       setCheckoutId('');
-      load();
     } else {
-      setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось подтвердить заявку.');
+      const d = await send('/api/v1/billing/admin/activate', 'POST',
+        { email: pending.email, plan: pending.plan, months: pending.months, reason }, c.common.saveError);
+      setMessage(c.users.activated(d.email, d.plan, until(d)));
+      setEmail('');
     }
+    load();
   };
 
-  const setRole = async (user: AdminUser, role: string) => {
-    setMessage(null);
-    const res = await authFetch(`/api/v1/admin/users/${user.id}/role`, {
-      method: 'PATCH',
-      body: JSON.stringify({ role }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) load();
-    else setMessage(typeof data.detail === 'string' ? data.detail : 'Не получилось изменить роль.');
-  };
+  const dialogTitle = !pending ? '' : pending.kind === 'role' ? c.users.confirmRole(pending.user.username, pending.role)
+    : pending.kind === 'settle' ? c.users.confirmSettle : c.users.confirmActivate(pending.email, pending.plan, pending.months);
 
-  return (
-    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1100px' }}>
-      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>Пользователи ({total})</h1>
+  const columns: Column<AdminUser>[] = [
+    { key: 'login', header: c.users.login, render: (u) => <strong>{u.username}</strong> },
+    { key: 'email', header: c.users.email, render: (u) => u.email },
+    { key: 'role', header: c.users.role, render: (u) => <select className={styles.select} aria-label={`${c.users.role}: ${u.username}`}
+      value={u.role} onChange={(e) => setPending({ kind: 'role', user: u, role: e.target.value as 'user' | 'admin' })}>
+      <option value="user">user</option><option value="admin">admin</option>
+    </select> },
+    { key: 'plan', header: c.users.plan, render: (u) => <Badge tone={u.plan === 'free' ? 'neutral' : 'success'}>{u.plan}</Badge> },
+    { key: 'until', header: c.users.until, render: (u) => formatDate(u.period_end, locale) },
+    { key: 'last', header: c.users.lastLogin, render: (u) => <span className={styles.muted}>{formatDateTime(u.last_login, locale)}</span> },
+  ];
 
-      <div style={card}>
-        <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
-          Подтвердить созданную клиентом заявку после поступления оплаты
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
-          <input
-            style={{ ...input, width: '380px', maxWidth: '100%' }}
-            placeholder="UUID заявки из кабинета клиента"
-            value={checkoutId}
-            onChange={(e) => setCheckoutId(e.target.value)}
-          />
-          <button
-            onClick={settleCheckout}
-            disabled={!checkoutId.trim()}
-            style={{
-              ...input,
-              background: '#dc2626',
-              border: 'none',
-              cursor: checkoutId.trim() ? 'pointer' : 'not-allowed',
-              opacity: checkoutId.trim() ? 1 : 0.5,
-            }}
-          >
-            Подтвердить оплату
-          </button>
-        </div>
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
-        <div style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: '0.6rem' }}>
-          Резервный режим без заявки (для старых счетов)
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
-          <input
-            style={{ ...input, width: '260px' }}
-            placeholder="email клиента"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <select style={input} value={plan} onChange={(e) => setPlan(e.target.value as 'pro' | 'business')}>
-            <option value="pro" style={option}>Pro</option>
-            <option value="business" style={option}>Business</option>
-          </select>
-          <select style={input} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-            {[1, 3, 6, 12].map((m) => (
-              <option key={m} value={m} style={option}>{m} мес</option>
-            ))}
-          </select>
-          <button
-            onClick={activate}
-            disabled={!email.trim()}
-            style={{
-              ...input,
-              background: '#2563eb',
-              border: 'none',
-              cursor: email.trim() ? 'pointer' : 'not-allowed',
-              opacity: email.trim() ? 1 : 0.5,
-            }}
-          >
-            Активировать
-          </button>
-        </div>
-        {message && <div style={{ marginTop: '0.7rem', fontSize: '0.85rem', opacity: 0.85 }}>{message}</div>}
+  return <div className={styles.page}>
+    <PageHeader title={`${c.users.title} (${formatNumber(total, locale)})`} />
+
+    <section className={`liquid-glass ${styles.panel}`}>
+      <h2 className={styles.panelTitle}>{c.users.settleTitle}</h2>
+      <div className={styles.toolbar}>
+        <input className={styles.input} aria-label={c.users.checkoutPlaceholder} placeholder={c.users.checkoutPlaceholder}
+          value={checkoutId} onChange={(e) => setCheckoutId(e.target.value)} />
+        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={!checkoutId.trim()}
+          onClick={() => setPending({ kind: 'settle', checkoutId: checkoutId.trim() })}>{c.users.settle}</button>
       </div>
-
-      <div style={{ ...card, padding: 0, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', opacity: 0.7 }}>
-              {['Логин', 'Email', 'Роль', 'Тариф', 'Подписка до', 'Последний вход'].map((h) => (
-                <th key={h} style={{ padding: '0.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <td style={{ padding: '0.6rem 1rem', fontWeight: 600 }}>{u.username}</td>
-                <td style={{ padding: '0.6rem 1rem' }}>{u.email}</td>
-                <td style={{ padding: '0.6rem 1rem' }}>
-                  <select style={input} value={u.role} onChange={(e) => setRole(u, e.target.value)}>
-                    <option value="user" style={option}>user</option>
-                    <option value="admin" style={option}>admin</option>
-                  </select>
-                </td>
-                <td style={{ padding: '0.6rem 1rem' }}>{u.plan}</td>
-                <td style={{ padding: '0.6rem 1rem' }}>
-                  {u.period_end ? new Date(u.period_end).toLocaleDateString('ru-RU') : '—'}
-                </td>
-                <td style={{ padding: '0.6rem 1rem', opacity: 0.7 }}>
-                  {u.last_login ? new Date(u.last_login).toLocaleString('ru-RU') : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <hr className={styles.divider} />
+      <h2 className={styles.panelTitle}>{c.users.legacyTitle}</h2>
+      <div className={styles.toolbar}>
+        <input className={styles.input} type="email" aria-label={c.users.emailPlaceholder} placeholder={c.users.emailPlaceholder}
+          value={email} onChange={(e) => setEmail(e.target.value)} />
+        <select className={styles.select} aria-label={c.users.plan} value={plan} onChange={(e) => setPlan(e.target.value as 'pro' | 'business')}>
+          <option value="pro">Pro</option><option value="business">Business</option>
+        </select>
+        <select className={styles.select} aria-label={c.users.period} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+          {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{c.users.months(m)}</option>)}
+        </select>
+        <button type="button" className={styles.button} disabled={!email.trim()}
+          onClick={() => setPending({ kind: 'activate', email: email.trim(), plan, months })}>{c.users.activate}</button>
       </div>
-    </div>
-  );
+      {message && <p className={styles.notice} role="status">{message}</p>}
+    </section>
+
+    <DataTable columns={columns} rows={users} rowKey={(u) => u.id} loading={loading} error={error} onRetry={retry} />
+    <Pagination offset={offset} limit={LIMIT} total={total} onChange={goTo} />
+
+    <ConfirmDialog open={pending !== null} onOpenChange={(open) => { if (!open) setPending(null); }}
+      title={dialogTitle} onConfirm={confirm} />
+  </div>;
 }
