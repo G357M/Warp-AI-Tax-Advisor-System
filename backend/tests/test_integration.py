@@ -1196,3 +1196,57 @@ def test_answer_signals_are_stored_and_message_id_returned(client, monkeypatch):
     detail = client.get(f"/api/v1/query/conversations/{answer.json()['conversation_id']}").json()
     assistant = [m for m in detail["messages"] if m["role"] == "assistant"][0]
     assert assistant["rating"] is None
+
+
+def _ask(client, monkeypatch, username):
+    register_and_login(client, username)
+    db = TestingSessionLocal()
+    user = db.query(User).filter(User.username == username).one()
+    db.add(Subscription(
+        user_id=user.id, plan="pro", status="active",
+        period_start=utc_now(), period_end=utc_now() + timedelta(days=30),
+    ))
+    db.commit()
+    db.close()
+    monkeypatch.setattr(query_routes, "rating_rate_limited", lambda _uid: False)
+    monkeypatch.setattr(query_routes, "check_and_count_question", lambda *_args: None)
+    monkeypatch.setattr(query_routes.rag_pipeline, "process_query", lambda **_kwargs: {
+        "response": "Answer.", "sources": [], "retrieved_count": 0})
+    payload = client.post("/api/v1/query", json={"query": "Question?", "language": "en"}).json()
+    return payload["message_id"], payload["conversation_id"]
+
+
+def test_rating_lifecycle(client, monkeypatch):
+    message_id, conversation_id = _ask(client, monkeypatch, "rater")
+    url = f"/api/v1/query/messages/{message_id}/rating"
+    assert client.put(url, json={"value": 1}).json() == {"value": 1, "comment": None}
+    assert client.put(url, json={"value": -1, "comment": "  wrong article  "}).json() == {
+        "value": -1, "comment": "wrong article"}
+    assert client.put(url, json={"value": -1, "comment": "   "}).json()["comment"] is None
+    detail = client.get(f"/api/v1/query/conversations/{conversation_id}").json()
+    assert [m["rating"] for m in detail["messages"] if m["role"] == "assistant"] == [{"value": -1, "comment": None}]
+    assert client.delete(url).status_code == 204
+    assert client.delete(url).status_code == 204
+    assert client.put(url, json={"value": 2}).status_code == 422
+    assert client.put(url, json={"value": 1, "comment": "x" * 1001}).status_code == 422
+
+
+def test_rating_guards(client, monkeypatch):
+    message_id, conversation_id = _ask(client, monkeypatch, "owner-user")
+    detail = client.get(f"/api/v1/query/conversations/{conversation_id}").json()
+    user_message_id = [m["id"] for m in detail["messages"] if m["role"] == "user"][0]
+    response = client.put(f"/api/v1/query/messages/{user_message_id}/rating", json={"value": 1})
+    assert response.status_code == 409 and response.json()["detail"]["code"] == "not_assistant_message"
+    missing = client.put(f"/api/v1/query/messages/{uuid4()}/rating", json={"value": 1})
+    assert missing.status_code == 404 and missing.json()["detail"]["code"] == "message_not_found"
+    client.post("/api/v1/auth/logout")
+    register_and_login(client, "intruder-user")
+    foreign = client.put(f"/api/v1/query/messages/{message_id}/rating", json={"value": -1})
+    assert foreign.status_code == 404
+    monkeypatch.setattr(query_routes, "rating_rate_limited", lambda _uid: True)
+    limited = client.delete(f"/api/v1/query/messages/{message_id}/rating")
+    assert limited.status_code == 429 and limited.json()["detail"]["code"] == "rating_rate_limited"
+
+
+def test_guest_cannot_rate(client):
+    assert client.put(f"/api/v1/query/messages/{uuid4()}/rating", json={"value": 1}).status_code == 401
