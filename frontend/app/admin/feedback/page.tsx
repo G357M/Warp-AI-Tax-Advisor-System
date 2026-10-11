@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { adminSend, errorText } from '@/lib/admin-api';
 import { authFetch } from '@/lib/auth';
 import { formatDateTime, useAdminCopy } from '@/lib/admin-i18n';
 import { PageHeader } from '@/components/admin/PageHeader';
@@ -31,12 +32,10 @@ export default function AdminFeedback() {
 
   const confirm = async (reason: string) => {
     if (!pending) return;
-    const res = await authFetch(`/api/v1/admin/feedback/${pending.item.id}`, {
-      method: 'PATCH', body: JSON.stringify({ status: pending.status, reason }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(typeof body.detail === 'string' ? body.detail : c.common.saveError);
+    try {
+      await adminSend(`/api/v1/admin/feedback/${pending.item.id}`, 'PATCH', { status: pending.status, reason });
+    } catch (e) {
+      throw new Error(errorText(c, e));
     }
     load();
   };

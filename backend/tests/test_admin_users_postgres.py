@@ -507,6 +507,84 @@ def test_record_payment_creates_settled_checkout_and_payment(database):
     assert (entry.action, entry.target_type, entry.reason) == ("subscription.activated", "user", "bank transfer #42")
 
 
+def test_record_payment_over_other_active_plan_needs_replace_flag(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "payswitch")
+        _sub(db, user, "business", days=20)
+        db.commit()
+        user_id = user.id
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, routes.record_payment, user_id,
+             routes.PaymentRequest(plan="pro", months=1, reason="cash"), ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "active_plan_differs")
+    with sessions() as db:
+        assert db.query(BillingCheckout).count() == 0 and db.query(Payment).count() == 0
+    assert _entries(sessions) == []
+    _act(sessions, routes.record_payment, user_id,
+         routes.PaymentRequest(plan="pro", months=1, replace_active=True, reason="cash"), ids.admin_id)
+    with sessions() as db:
+        assert db.query(Subscription).filter_by(user_id=user_id).one().plan == "pro"
+        assert db.query(Payment).count() == 1
+    assert len(_entries(sessions)) == 1
+
+
+def test_record_payment_same_unlimited_plan_is_rejected(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "paid-forever")
+        _sub(db, user, "pro", days=None)
+        db.commit()
+        user_id = user.id
+    with pytest.raises(HTTPException) as exc:
+        _act(sessions, routes.record_payment, user_id,
+             routes.PaymentRequest(plan="pro", months=1, replace_active=True, reason="cash"), ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "plan_unlimited")
+    with sessions() as db:
+        assert db.query(BillingCheckout).count() == 0 and db.query(Payment).count() == 0
+        assert db.query(Subscription).filter_by(user_id=user_id).one().period_end is None
+    assert _entries(sessions) == []
+
+
+def test_record_payment_same_plan_with_end_date_extends(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "paid-extend")
+        sub = _sub(db, user, "pro", days=10)
+        db.commit()
+        user_id, old_end = user.id, sub.period_end
+    _act(sessions, routes.record_payment, user_id,
+         routes.PaymentRequest(plan="pro", months=1, reason="cash"), ids.admin_id)
+    with sessions() as db:
+        assert db.query(Subscription).filter_by(user_id=user_id).one().period_end == old_end + timedelta(days=30)
+
+
+def test_grant_journals_only_changed_fields(database):
+    sessions, ids = database
+    with sessions() as db:
+        user = _user(db, "journal-grant")
+        _sub(db, user, "pro", days=10)
+        db.commit()
+        user_id = user.id
+    _act(sessions, routes.grant_plan, user_id, routes.GrantRequest(plan="pro", days=30, reason="compensation"),
+         ids.admin_id)
+    [entry] = _entries(sessions)
+    assert set(entry.before) == {"period_end", "source"} and set(entry.after) == {"period_end", "source", "days"}
+    assert entry.after["source"] == "grant" and entry.before["source"] == "payment"
+
+
+def test_grant_without_subscription_journals_full_after(database):
+    sessions, ids = database
+    with sessions() as db:
+        user_id = _user(db, "journal-new").id
+        db.commit()
+    _act(sessions, routes.grant_plan, user_id, routes.GrantRequest(plan="pro", days=7, reason="partner"),
+         ids.admin_id)
+    [entry] = _entries(sessions)
+    assert entry.before is None
+    assert set(entry.after) == {"plan", "status", "period_end", "source", "days"}
+
+
 def test_cancel_ends_access_now_and_records_category(database):
     sessions, ids = database
     with sessions() as db:
@@ -522,7 +600,8 @@ def test_cancel_ends_access_now_and_records_category(database):
         assert sub.period_end <= utc_now()
     [entry] = _entries(sessions)
     assert entry.action == "subscription.canceled" and entry.after["category"] == "refund"
-    assert entry.before["status"] == "active"
+    assert set(entry.before) == {"plan", "status", "period_end"} and entry.before["status"] == "active"
+    assert set(entry.after) == {"status", "period_end", "category"} and entry.after["status"] == "canceled"
 
 
 def test_cancel_without_active_paid_plan_is_409(database):

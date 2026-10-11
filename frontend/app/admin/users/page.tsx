@@ -53,13 +53,16 @@ function UsersList() {
     router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
   }, [params, pathname, router]);
 
-  // The box follows the URL (back/forward, reset) without clobbering what the user is typing.
+  // The box follows external URL changes (back/forward, reset) but never our own pushes, which would
+  // otherwise overwrite a character typed while the debounced replace was landing.
   const [draft, setDraft] = useState(q);
   const [seenQ, setSeenQ] = useState(q);
-  if (q !== seenQ) { setSeenQ(q); if (draft.trim() !== q) setDraft(q); }
+  const [pushedQ, setPushedQ] = useState(q);
+  if (q !== seenQ) { setSeenQ(q); if (q !== pushedQ) { setPushedQ(q); setDraft(q); } }
   useEffect(() => {
-    if (draft.trim().slice(0, 100) === q) return;
-    const t = setTimeout(() => update({ q: draft.trim().slice(0, 100) }), 300);
+    const next = draft.trim().slice(0, 100);
+    if (next === q) return;
+    const t = setTimeout(() => { setPushedQ(next); update({ q: next }); }, 300);
     return () => clearTimeout(t);
   }, [draft, q, update]);
 
@@ -74,7 +77,7 @@ function UsersList() {
   const filtered = Boolean(q || plan || status || sort);
   const listQuery = params.toString();
   const cardHref = (id: string) => `/admin/users/${id}${listQuery ? `?back=${encodeURIComponent(`?${listQuery}`)}` : ''}`;
-  const reset = () => { setDraft(''); router.replace(pathname, { scroll: false }); };
+  const reset = () => { setDraft(''); setPushedQ(''); router.replace(pathname, { scroll: false }); };
 
   const [checkoutId, setCheckoutId] = useState('');
   const [settling, setSettling] = useState<string | null>(null);

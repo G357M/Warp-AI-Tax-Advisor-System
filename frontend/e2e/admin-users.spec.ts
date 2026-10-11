@@ -165,6 +165,26 @@ test('grant over another active plan requires the replace checkbox', async ({ pa
   }]);
 });
 
+test('recording a payment over another active plan requires the replace checkbox', async ({ page }) => {
+  const business = {
+    ...card,
+    profile: { ...card.profile, effective_plan: 'business' },
+    subscription: { ...card.subscription, plan: 'business' },
+  };
+  const { writes } = await setup(page, { card: business });
+  const { dialog, reason, confirm } = await openCardDialog(page, 'Записать оплату');
+  await dialog.getByRole('combobox', { name: 'Тариф' }).selectOption('pro');
+  await reason.fill('bank transfer #7');
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole('checkbox', { name: 'Заменить текущий тариф' }).check();
+  await confirm.click();
+  await expect(dialog).toBeHidden();
+  expect(writes).toEqual([{
+    method: 'POST', path: `/api/v1/admin/users/${ID}/record-payment`,
+    body: { plan: 'pro', months: 1, replace_active: true, reason: 'bank transfer #7' },
+  }]);
+});
+
 test('blocking requires a reason of at least 3 characters', async ({ page }) => {
   const { writes } = await setup(page);
   const { reason, confirm } = await openCardDialog(page, 'Заблокировать');

@@ -172,13 +172,20 @@ def user_card(db: Session, user) -> dict:
     }
 
 
+def guard_active_plan(sub, plan: str, now, replace_active: bool) -> None:
+    """Raise coded 409s when an admin plan action would cut short or flatten paid access."""
+    if not paid_subscription_active(sub, now):
+        return
+    if sub.plan == plan:
+        if sub.period_end is None:
+            raise admin_error(409, "plan_unlimited", "The active plan has no end date")
+    elif not replace_active:
+        raise admin_error(409, "active_plan_differs", "Another paid plan is active")
+
+
 def grant_window(sub, plan: str, days: int, now, replace_active: bool) -> tuple:
     """(period_start, period_end) for a free grant; raises coded 409s instead of losing paid time."""
-    if paid_subscription_active(sub, now):
-        if sub.plan == plan:
-            if sub.period_end is None:
-                raise admin_error(409, "plan_unlimited", "The active plan has no end date")
-            return sub.period_start or now, sub.period_end + timedelta(days=days)
-        if not replace_active:
-            raise admin_error(409, "active_plan_differs", "Another paid plan is active")
+    guard_active_plan(sub, plan, now, replace_active)
+    if paid_subscription_active(sub, now) and sub.plan == plan:
+        return sub.period_start or now, sub.period_end + timedelta(days=days)
     return now, now + timedelta(days=days)

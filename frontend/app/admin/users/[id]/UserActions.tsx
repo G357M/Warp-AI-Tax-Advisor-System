@@ -15,8 +15,8 @@ type Simple = 'block' | 'unblock' | 'role' | 'grant' | 'payment' | 'cancel' | 'r
 type Dialog = Simple | { settle: string } | null;
 const DAY = 86_400_000;
 
-/** Client-side preview of core.admin_users.grant_window (the server stays authoritative). */
-function grantUntil(card: UserCard, plan: Paid, days: number): Date {
+/** Client-side preview of grant_window / _settle_checkout: same active plan extends, otherwise starts now. */
+function accessUntil(card: UserCard, plan: Paid, days: number): Date {
   const sub = card.subscription;
   const sameActive = sub && card.profile.effective_plan === plan && sub.plan === plan && sub.period_end;
   const base = sameActive ? new Date(`${sub.period_end}Z`).getTime() : Date.now();
@@ -40,7 +40,7 @@ export function UserActions({ card, onUpdated, onReload }: {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [role, setRole] = useState<'user' | 'admin'>(profile.role);
   const [plan, setPlan] = useState<Paid>('pro');
-  const [days, setDays] = useState(30);
+  const [daysText, setDaysText] = useState('30');
   const [replace, setReplace] = useState(false);
   const [months, setMonths] = useState(1);
   const [category, setCategory] = useState<Category>('refund');
@@ -57,11 +57,13 @@ export function UserActions({ card, onUpdated, onReload }: {
   const paidActive = !isAdmin && profile.effective_plan !== 'free';
   const otherPlanActive = paidActive && profile.effective_plan !== plan;
   const [now] = useState(() => Date.now());
+  const daysValue = /^\d+$/.test(daysText.trim()) ? Number(daysText) : NaN;
+  const daysValid = daysValue >= 1 && daysValue <= 366;
   const settleable = card.checkouts.filter((o) => o.provider === 'manual' && o.status === 'pending'
     && o.expires_at !== null && new Date(`${o.expires_at}Z`).getTime() > now);
 
   const open = (next: Dialog) => {
-    setRole(profile.role); setPlan('pro'); setDays(30); setReplace(false); setMonths(1); setCategory('refund');
+    setRole(profile.role); setPlan('pro'); setDaysText('30'); setReplace(false); setMonths(1); setCategory('refund');
     setDialog(next);
   };
 
@@ -91,8 +93,8 @@ export function UserActions({ card, onUpdated, onReload }: {
     }
     const bodies: Record<Simple, [string, object, ('POST' | 'PATCH')?]> = {
       block: ['block', { reason }], unblock: ['unblock', { reason }], role: ['role', { role, reason }, 'PATCH'],
-      grant: ['grant', { plan, days, replace_active: replace, reason }],
-      payment: ['record-payment', { plan, months, reason }],
+      grant: ['grant', { plan, days: daysValue, replace_active: replace, reason }],
+      payment: ['record-payment', { plan, months, replace_active: replace, reason }],
       cancel: ['cancel-subscription', { category, reason }],
       reset: ['send-password-reset', { reason }], verify: ['resend-verification', { reason }],
     };
@@ -110,6 +112,13 @@ export function UserActions({ card, onUpdated, onReload }: {
   if (typeof dialog === 'object' && dialog !== null) title = c.users.confirmSettle;
   else if (dialog !== null) title = titles[dialog];
   const price = prices[plan];
+  const untilNote = (days: number) => <p className={styles.muted}>
+    {c.card.activeUntil(formatDate(accessUntil(card, plan, days).toISOString().slice(0, 19), locale))}</p>;
+  const replaceBlock = otherPlanActive && <>
+    <p className={styles.warning}>{c.card.replaceWarning(c.users.plans[profile.effective_plan])}</p>
+    <label className={styles.checkbox}><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
+      {c.card.replaceConfirm}</label>
+  </>;
 
   return <section className={`liquid-glass ${styles.panel}`}>
     <h2 className={styles.panelTitle}>{c.card.actions}</h2>
@@ -136,7 +145,8 @@ export function UserActions({ card, onUpdated, onReload }: {
 
     <ConfirmDialog open={dialog !== null} onOpenChange={(o) => { if (!o) setDialog(null); }} title={title}
       reasonRequired={typeof dialog !== 'object'}
-      canConfirm={!(dialog === 'grant' && otherPlanActive && !replace) && !(dialog === 'role' && role === profile.role)}
+      canConfirm={!((dialog === 'grant' || dialog === 'payment') && otherPlanActive && !replace)
+        && !(dialog === 'grant' && !daysValid) && !(dialog === 'role' && role === profile.role)}
       onConfirm={confirm}>
       {dialog === 'role' && <label className={styles.field}>{c.card.newRole}
         <select className={styles.select} value={role} onChange={(e) => setRole(e.target.value as 'user' | 'admin')}>
@@ -148,22 +158,21 @@ export function UserActions({ card, onUpdated, onReload }: {
         </select></label>}
       {dialog === 'grant' && <>
         <label className={styles.field}>{c.card.daysLabel}
-          <input className={styles.input} type="number" min={1} max={366} value={days}
-            onChange={(e) => setDays(Math.min(366, Math.max(1, Math.floor(Number(e.target.value) || 1))))} /></label>
+          <input className={styles.input} type="number" min={1} max={366} value={daysText}
+            onChange={(e) => setDaysText(e.target.value)}
+            onBlur={() => setDaysText(String(daysValid ? daysValue : Math.min(366, Math.max(1, Math.floor(Number(daysText)) || 1))))} /></label>
         <div className={styles.pills}>{[7, 30, 90].map((d) => <button key={d} type="button" className={styles.chip}
-          aria-pressed={days === d} onClick={() => setDays(d)}>{c.users.days(d)}</button>)}</div>
-        <p className={styles.muted}>{c.card.activeUntil(formatDate(grantUntil(card, plan, days).toISOString().slice(0, 19), locale))}</p>
-        {otherPlanActive && <>
-          <p className={styles.warning}>{c.card.replaceWarning(c.users.plans[profile.effective_plan])}</p>
-          <label className={styles.checkbox}><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
-            {c.card.replaceConfirm}</label>
-        </>}
+          aria-pressed={daysValue === d} onClick={() => setDaysText(String(d))}>{c.users.days(d)}</button>)}</div>
+        {daysValid && untilNote(daysValue)}
+        {replaceBlock}
       </>}
       {dialog === 'payment' && <>
         <label className={styles.field}>{c.card.monthsLabel}
           <select className={styles.select} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
             {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{c.users.months(m)}</option>)}
           </select></label>
+        {untilNote(months * 30)}
+        {replaceBlock}
         {price && <p>{c.card.amountLabel}: <strong>{new Intl.NumberFormat(locale, { style: 'currency', currency: price.currency })
           .format(price.price_minor * months / 100)}</strong></p>}
       </>}
@@ -172,7 +181,8 @@ export function UserActions({ card, onUpdated, onReload }: {
           <select className={styles.select} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {(['refund', 'mistaken_activation', 'fraud', 'other'] as const).map((k) => <option key={k} value={k}>{c.card.categories[k]}</option>)}
           </select></label>
-        <p className={styles.warning}>{c.card.cancelWarning(subscription?.days_left ?? 0)}</p>
+        <p className={styles.warning}>{subscription?.source === 'payment' && subscription.days_left !== null
+          ? c.card.cancelWarning(subscription.days_left) : c.card.cancelWarningGeneric}</p>
       </>}
     </ConfirmDialog>
   </section>;

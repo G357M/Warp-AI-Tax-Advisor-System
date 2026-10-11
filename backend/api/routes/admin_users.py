@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from api.routes.billing import settle_manual_payment
 from core.admin_audit import record_admin_action
-from core.admin_users import (Reason, admin_error, grant_window, list_users_page, paid_subscription_active,
+from core.admin_users import (Reason, admin_error, grant_window, guard_active_plan, list_users_page, paid_subscription_active,
                               subscription_snapshot, user_card)
 from core.auth_tokens import EMAIL_VERIFICATION, PASSWORD_RESET, issue_action_token
 from core.config import settings
@@ -140,6 +140,7 @@ class GrantRequest(BaseModel):
 class PaymentRequest(BaseModel):
     plan: Literal["pro", "business"]
     months: int = Field(ge=1, le=24)
+    replace_active: bool = False
     reason: Reason
 
 
@@ -177,8 +178,12 @@ def grant_plan(user_id: UUID, body: GrantRequest, admin: User = Depends(require_
     sub.plan, sub.status, sub.period_start, sub.period_end = body.plan, "active", start, end
     sub.payment_provider, sub.auto_renew = "grant", False
     db.flush()
+    after = subscription_snapshot(sub)
+    if before is not None:
+        changed = {k for k in after if before.get(k) != after[k]}
+        before, after = {k: before[k] for k in changed}, {k: after[k] for k in changed}
     record_admin_action(db, actor=admin, action="subscription.granted", target_type="user", target_id=user.id,
-                        before=before, after={**subscription_snapshot(sub), "days": body.days}, reason=body.reason)
+                        before=before, after={**after, "days": body.days}, reason=body.reason)
     return finish(db, user, True)
 
 
@@ -186,13 +191,14 @@ def grant_plan(user_id: UUID, body: GrantRequest, admin: User = Depends(require_
     "/{user_id}/record-payment",
     responses={
         404: {"description": "User not found"},
-        409: {"description": "Administrators already have the business plan"},
+        409: {"description": "Administrator, another active plan or an unlimited plan"},
     },
 )
 def record_payment(user_id: UUID, body: PaymentRequest, admin: User = Depends(require_admin),
                    db: Session = Depends(get_db)):
     user = locked_user(db, user_id)
     _not_admin(user)
+    guard_active_plan(_locked_subscription(db, user), body.plan, utc_now(), body.replace_active)
     settle_manual_payment(db, admin=admin, user=user, plan_id=body.plan, months=body.months, reason=body.reason)
     return finish(db, user, True)
 
@@ -211,12 +217,14 @@ def cancel_subscription(user_id: UUID, body: CancelRequest, admin: User = Depend
     now = utc_now()
     if user.role == "admin" or not paid_subscription_active(sub, now):
         raise admin_error(409, "no_active_subscription", "No active paid subscription")
-    before = subscription_snapshot(sub)
+    snapshot = subscription_snapshot(sub)
+    before = {k: snapshot[k] for k in ("plan", "status", "period_end")}
     sub.status, sub.period_end = "canceled", now
     db.flush()
+    after = subscription_snapshot(sub)
     record_admin_action(db, actor=admin, action="subscription.canceled", target_type="user", target_id=user.id,
-                        before=before, after={**subscription_snapshot(sub), "category": body.category},
-                        reason=body.reason)
+                        before=before, after={"status": after["status"], "period_end": after["period_end"],
+                                              "category": body.category}, reason=body.reason)
     return finish(db, user, True)
 
 

@@ -27,7 +27,7 @@ function Card() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const backLink = <Link href={backHref} className={styles.back}>{c.card.back}</Link>;
-  if (error && status === 404) return <div className={styles.page}>{backLink}<AdminState kind="empty" message={c.card.notFound} /></div>;
+  if (error && (status === 404 || status === 422)) return <div className={styles.page}>{backLink}<AdminState kind="empty" message={c.card.notFound} /></div>;
   if (error) return <div className={styles.page}>{backLink}<AdminState kind="error" onRetry={reload} /></div>;
   if (!data || (loading && data.profile.id !== id)) return <div className={styles.page}>{backLink}<AdminState kind="loading" /></div>;
 
