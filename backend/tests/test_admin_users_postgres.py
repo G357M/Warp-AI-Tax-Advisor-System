@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from pydantic import ValidationError
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -569,3 +569,59 @@ def test_journal_failure_rolls_back_plan_actions(database, monkeypatch, action, 
             assert subs == []
         assert db.query(Payment).count() == 0 and db.query(BillingCheckout).count() == 0
     assert _entries(sessions) == []
+
+
+def _email(sessions, func, user_id, admin_id):
+    tasks = BackgroundTasks()
+    with sessions() as db:
+        result = func(user_id, routes.ReasonBody(reason="customer asked"), tasks,
+                      admin=db.get(User, admin_id), db=db)
+    return result, tasks
+
+
+def test_password_reset_is_sent_once_then_cooldown(database, monkeypatch):
+    sessions, ids = database
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    with sessions() as db:
+        user = _user(db, "forgetful")
+        db.commit()
+        user_id = user.id
+    first, tasks = _email(sessions, routes.send_password_reset, user_id, ids.admin_id)
+    assert first["sent"] is True and first["changed"] is True and len(tasks.tasks) == 1
+    second, tasks = _email(sessions, routes.send_password_reset, user_id, ids.admin_id)
+    assert second["sent"] is False and second["changed"] is False and tasks.tasks == []
+    [entry] = _entries(sessions)
+    assert entry.action == "user.password_reset_sent" and entry.before is None and entry.after is None
+
+
+def test_email_guards(database, monkeypatch):
+    sessions, ids = database
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    with sessions() as db:
+        blocked = _user(db, "blocked-mail", active=False)
+        verified = _user(db, "verified-mail")
+        db.commit()
+        blocked_id, verified_id = blocked.id, verified.id
+    with pytest.raises(HTTPException) as exc:
+        _email(sessions, routes.send_password_reset, blocked_id, ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "user_blocked")
+    with pytest.raises(HTTPException) as exc:
+        _email(sessions, routes.resend_verification, verified_id, ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (409, "email_already_verified")
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", False)
+    with pytest.raises(HTTPException) as exc:
+        _email(sessions, routes.send_password_reset, verified_id, ids.admin_id)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (503, "email_unavailable")
+    assert _entries(sessions) == []
+
+
+def test_verification_email_for_unverified_user(database, monkeypatch):
+    sessions, ids = database
+    monkeypatch.setattr(settings, "EMAIL_DELIVERY_ENABLED", True)
+    with sessions() as db:
+        user = _user(db, "unverified-mail", verified=False)
+        db.commit()
+        user_id = user.id
+    result, tasks = _email(sessions, routes.resend_verification, user_id, ids.admin_id)
+    assert result["sent"] is True and len(tasks.tasks) == 1
+    assert [e.action for e in _entries(sessions)] == ["user.verification_sent"]

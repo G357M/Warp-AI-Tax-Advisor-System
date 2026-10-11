@@ -1,9 +1,10 @@
 """Admin client management: search, the user card and journaled account actions.
 All endpoints require the admin role."""
+from datetime import timedelta
 from typing import Literal, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,10 @@ from api.routes.billing import settle_manual_payment
 from core.admin_audit import record_admin_action
 from core.admin_users import (Reason, admin_error, grant_window, list_users_page, paid_subscription_active,
                               subscription_snapshot, user_card)
+from core.auth_tokens import EMAIL_VERIFICATION, PASSWORD_RESET, issue_action_token
+from core.config import settings
 from core.database import get_db
+from core.email_delivery import send_auth_email
 from core.security import require_admin
 from core.time_utils import utc_now
 from models import Subscription, User
@@ -214,3 +218,52 @@ def cancel_subscription(user_id: UUID, body: CancelRequest, admin: User = Depend
                         before=before, after={**subscription_snapshot(sub), "category": body.category},
                         reason=body.reason)
     return finish(db, user, True)
+
+
+def _send_action_email(db: Session, background_tasks: BackgroundTasks, *, admin: User, user: User,
+                       purpose: str, lifetime: timedelta, action: str, reason: str) -> dict:
+    if not settings.EMAIL_DELIVERY_ENABLED:
+        raise admin_error(503, "email_unavailable", "Email delivery is not configured")
+    raw_token = issue_action_token(db, user=user, purpose=purpose, lifetime=lifetime,
+                                   cooldown_seconds=settings.AUTH_EMAIL_RESEND_COOLDOWN_SECONDS)
+    if raw_token:
+        record_admin_action(db, actor=admin, action=action, target_type="user", target_id=user.id, reason=reason)
+        db.commit()
+        background_tasks.add_task(send_auth_email, purpose, user.email, raw_token)
+    return finish(db, user, bool(raw_token), sent=bool(raw_token))
+
+
+@router.post(
+    "/{user_id}/send-password-reset",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "User is blocked"},
+        503: {"description": "Email delivery is not configured"},
+    },
+)
+def send_password_reset(user_id: UUID, body: ReasonBody, background_tasks: BackgroundTasks,
+                        admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    if not user.is_active:
+        raise admin_error(409, "user_blocked", "User is blocked")
+    return _send_action_email(db, background_tasks, admin=admin, user=user, purpose=PASSWORD_RESET,
+                              lifetime=timedelta(minutes=settings.AUTH_PASSWORD_RESET_MINUTES),
+                              action="user.password_reset_sent", reason=body.reason)
+
+
+@router.post(
+    "/{user_id}/resend-verification",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Email is already verified"},
+        503: {"description": "Email delivery is not configured"},
+    },
+)
+def resend_verification(user_id: UUID, body: ReasonBody, background_tasks: BackgroundTasks,
+                        admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    if user.email_verified:
+        raise admin_error(409, "email_already_verified", "Email is already verified")
+    return _send_action_email(db, background_tasks, admin=admin, user=user, purpose=EMAIL_VERIFICATION,
+                              lifetime=timedelta(hours=settings.AUTH_EMAIL_VERIFICATION_HOURS),
+                              action="user.verification_sent", reason=body.reason)

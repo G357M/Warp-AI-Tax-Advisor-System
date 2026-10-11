@@ -1147,3 +1147,18 @@ def test_operator_preview_does_not_mutate_evidence(client, review_checkout):
     with TestingSessionLocal() as db:
         assert billing.snapshot(db, db.get(BillingCheckout, UUID(checkout.id))) == before
         assert db.query(BillingReviewDecision).filter_by(checkout_id=UUID(checkout.id)).count() == 0
+
+
+def test_non_admin_is_forbidden_from_user_management(client):
+    register_and_login(client, "plain-user-2")
+    some_id = "00000000-0000-0000-0000-000000000001"
+    assert client.get("/api/v1/admin/users").status_code == 403
+    assert client.get(f"/api/v1/admin/users/{some_id}").status_code == 403
+    assert client.patch(f"/api/v1/admin/users/{some_id}/role",
+                        json={"role": "admin", "reason": "self-promotion"}).status_code == 403
+    for action, body in (("block", {}), ("unblock", {}), ("grant", {"plan": "pro", "days": 5}),
+                         ("record-payment", {"plan": "pro", "months": 1}),
+                         ("cancel-subscription", {"category": "other"}),
+                         ("send-password-reset", {}), ("resend-verification", {})):
+        response = client.post(f"/api/v1/admin/users/{some_id}/{action}", json={**body, "reason": "trying"})
+        assert response.status_code == 403, action
