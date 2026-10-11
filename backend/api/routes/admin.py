@@ -9,13 +9,14 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from billing.reconciliation import reconciliation_queue_filter
 from core.admin_audit import record_admin_action
+from core.admin_users import admin_error
 from core.database import get_db
 from core.public_config import public_config
 from core.security import require_admin
@@ -141,71 +142,6 @@ def list_documents(
     }
 
 
-@router.get("/users")
-def list_users(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-):
-    total = db.execute(text("SELECT count(*) FROM users")).scalar()
-    rows = db.execute(text("""
-        SELECT u.id::text, u.username, u.email, u.role, u.created_at, u.last_login,
-               s.plan, s.status, s.period_end
-        FROM users u
-        LEFT JOIN subscriptions s ON s.user_id = u.id
-        ORDER BY u.created_at DESC
-        LIMIT :limit OFFSET :offset
-    """), {"limit": limit, "offset": offset}).all()
-    now = utc_now()
-    items = []
-    for r in rows:
-        plan = "free"
-        if r[3] == "admin":
-            plan = "business"
-        elif r[6] and r[7] == "active" and (r[8] is None or r[8] >= now):
-            plan = r[6]
-        items.append({
-            "id": r[0], "username": r[1], "email": r[2], "role": r[3],
-            "created_at": r[4].isoformat() if r[4] else None,
-            "last_login": r[5].isoformat() if r[5] else None,
-            "plan": plan,
-            "period_end": r[8].isoformat() if r[8] else None,
-        })
-    return {"total": total, "items": items}
-
-
-class RoleUpdate(BaseModel):
-    role: str = Field(pattern="^(user|admin)$")
-    reason: Optional[str] = Field(default=None, max_length=1000)
-
-
-@router.patch(
-    "/users/{user_id}/role",
-    responses={
-        400: {"description": "Admin cannot remove their own admin role"},
-        404: {"description": "User not found"},
-    },
-)
-def update_user_role(
-    user_id: UUID,
-    body: RoleUpdate,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    if user_id == admin.id and body.role != "admin":
-        raise HTTPException(status_code=400, detail="Нельзя снять права администратора с самого себя.")
-    user = db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.role != body.role:
-        before = {"role": user.role}
-        user.role = body.role
-        record_admin_action(db, actor=admin, action="user.role_changed", target_type="user",
-                            target_id=user.id, before=before, after={"role": user.role}, reason=body.reason)
-        db.commit()
-    return {"id": str(user.id), "username": user.username, "role": user.role}
-
-
 def _tail(path: str, lines: int = 12) -> list:
     try:
         content = Path(path).read_text(encoding="utf-8", errors="replace").strip().splitlines()
@@ -289,7 +225,7 @@ def update_feedback_status(
 ):
     item = db.get(Feedback, feedback_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise admin_error(404, "feedback_not_found", "Feedback not found")
     if item.status != body.status:
         before = {"status": item.status}
         item.status = body.status

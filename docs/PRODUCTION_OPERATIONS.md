@@ -1204,6 +1204,11 @@ applying.
   script applies it with the pinned `ADMIN_AUDIT_SCHEMA_CONTRACT_SHA256` before starting the backend.
   The table is additive; rolling back the code leaves it unused and harmless. Rows cannot be updated
   or deleted (statement trigger `admin_audit_immutable`).
+- Admin stage 2 (clients, `backend/api/routes/admin_users.py`): the user card at `/admin/users/<id>` offers
+  role change, block/unblock, grant or extend a plan (`payment_provider='grant'`, no payment row), record a
+  manual payment, early cancel (immediate), password-reset and verification emails. Every action is
+  journaled in `admin_audit_log` with a reason. No schema step; normal `deploy.sh`. Blocking ends the
+  user's sessions immediately. Refunds stay outside the system (done with the bank/provider by hand).
 
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 

@@ -890,6 +890,33 @@ def _subscription_snapshot(db: Session, user_id) -> Optional[dict]:
     }
 
 
+def settle_manual_payment(db: Session, *, admin: User, user: User, plan_id: str, months: int,
+                          reason: Optional[str]) -> tuple[BillingCheckout, Payment]:
+    """Record an off-platform payment as a manual checkout settled at once; the caller commits."""
+    before = _subscription_snapshot(db, user.id)
+    plan = PLAN_CATALOG[plan_id]
+    now = utc_now()
+    checkout = BillingCheckout(
+        user_id=user.id,
+        plan=plan.id,
+        months=months,
+        amount_minor=plan.price_minor * months,
+        currency=plan.currency,
+        provider="manual",
+        status="pending",
+        idempotency_key=f"legacy-admin:{now.timestamp()}:{user.id}",
+        expires_at=now + timedelta(hours=1),
+    )
+    db.add(checkout)
+    db.flush()
+    payment = _settle_checkout(db, user, checkout, "manual", None)
+    db.flush()
+    record_admin_action(db, actor=admin, action="subscription.activated", target_type="user",
+                        target_id=user.id, before=before,
+                        after=_subscription_snapshot(db, user.id), reason=reason)
+    return checkout, payment
+
+
 @router.post(
     "/admin/activate",
     responses={
@@ -966,27 +993,8 @@ def activate_subscription(
     user = db.query(User).filter_by(email=email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User with this email not found")
-    before = _subscription_snapshot(db, user.id)
-    plan = PLAN_CATALOG[body.plan or ""]
-    now = utc_now()
-    legacy_checkout = BillingCheckout(
-        user_id=user.id,
-        plan=plan.id,
-        months=body.months,
-        amount_minor=plan.price_minor * body.months,
-        currency=plan.currency,
-        provider="manual",
-        status="pending",
-        idempotency_key=f"legacy-admin:{now.timestamp()}:{user.id}",
-        expires_at=now + timedelta(hours=1),
-    )
-    db.add(legacy_checkout)
-    db.flush()
-    payment = _settle_checkout(db, user, legacy_checkout, "manual", None)
-    db.flush()
-    record_admin_action(db, actor=admin, action="subscription.activated", target_type="user",
-                        target_id=user.id, before=before,
-                        after=_subscription_snapshot(db, user.id), reason=body.reason)
+    legacy_checkout, payment = settle_manual_payment(db, admin=admin, user=user, plan_id=body.plan or "",
+                                                     months=body.months, reason=body.reason)
     db.commit()
     sub = db.query(Subscription).filter_by(user_id=user.id).one()
     return {

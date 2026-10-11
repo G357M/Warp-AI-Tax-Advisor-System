@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { authFetch } from '@/lib/auth';
-import { formatDateTime, formatNumber, useAdminCopy, type AdminCopy, type AdminLocale } from '@/lib/admin-i18n';
+import { actionLabel, formatDateTime, formatNumber, useAdminCopy, type AdminCopy, type AdminLocale } from '@/lib/admin-i18n';
 import { summarizeChange, type AdminStats, type AuditPage } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { StatTile } from '@/components/admin/StatTile';
@@ -39,7 +39,7 @@ function RecentBody({ audit, error, onRetry, c, locale }: {
   if (!audit) return <AdminState kind="loading" />;
   if (audit.items.length === 0) return <AdminState kind="empty" />;
   return <ul className={styles.list}>{audit.items.map((entry) => <li key={entry.id}>
-    <span>{c.audit.actions[entry.action] ?? entry.action}<br /><span className={styles.muted}>{summarizeChange(entry)}</span></span>
+    <span>{actionLabel(c, entry.action)}<br /><span className={styles.muted}>{summarizeChange(entry)}</span></span>
     <span className={styles.muted}>{formatDateTime(entry.created_at, locale)}</span>
   </li>)}</ul>;
 }

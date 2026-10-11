@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { GlassDialog } from '@/components/ui/Dialog';
 import styles from '@/app/admin/admin.module.css';
 import { useAdminCopy } from '@/lib/admin-i18n';
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, withReason = true, onConfirm }: {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, withReason = true,
+  reasonRequired = false, canConfirm = true, children, onConfirm }: {
   open: boolean; onOpenChange: (open: boolean) => void; title: string; description?: string;
-  confirmLabel?: string; withReason?: boolean; onConfirm: (reason: string) => Promise<void>;
+  confirmLabel?: string; withReason?: boolean; reasonRequired?: boolean; canConfirm?: boolean;
+  children?: ReactNode; onConfirm: (reason: string) => Promise<void>;
 }) {
   const { c } = useAdminCopy();
   const [reason, setReason] = useState('');
@@ -37,16 +39,19 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
   return <GlassDialog open={open} onOpenChange={change} title={title} closeLabel={c.common.cancel}>
     <div className={styles.dialogBody}>
       {description && <p>{description}</p>}
+      {children}
       {withReason && <label className={styles.field}>
-        {c.common.reason}
+        {reasonRequired ? c.common.reasonRequired : c.common.reason}
         <textarea className={styles.textarea} maxLength={1000} value={reason}
+          required={reasonRequired} minLength={reasonRequired ? 3 : undefined}
           onChange={(e) => setReason(e.target.value)} />
         <span className={styles.muted}>{c.common.reasonHint}</span>
       </label>}
       {error && <p className={styles.noticeError} role="alert">{error}</p>}
       <div className={styles.dialogActions}>
         <button type="button" className={styles.button} onClick={() => change(false)} disabled={busy}>{c.common.cancel}</button>
-        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={submit} disabled={busy}>
+        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={submit}
+          disabled={busy || !canConfirm || (reasonRequired && reason.trim().length < 3)}>
           {confirmLabel ?? c.common.confirm}
         </button>
       </div>

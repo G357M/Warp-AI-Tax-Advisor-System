@@ -1,0 +1,277 @@
+"""Admin client management: search, the user card and journaled account actions.
+All endpoints require the admin role."""
+from datetime import timedelta
+from typing import Literal, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from api.routes.billing import settle_manual_payment
+from core.admin_audit import record_admin_action
+from core.admin_users import (Reason, admin_error, grant_window, guard_active_plan, list_users_page, paid_subscription_active,
+                              subscription_snapshot, user_card)
+from core.auth_tokens import EMAIL_VERIFICATION, PASSWORD_RESET, issue_action_token
+from core.config import settings
+from core.database import get_db
+from core.email_delivery import send_auth_email
+from core.security import require_admin
+from core.time_utils import utc_now
+from models import Subscription, User
+
+router = APIRouter(prefix="/admin/users", tags=["Admin"], dependencies=[Depends(require_admin)])
+
+PlanFilter = Literal["free", "pro", "business", "expiring"]
+StatusFilter = Literal["active", "blocked", "unverified", "admin"]
+UserSort = Literal["created_desc", "last_login_desc", "period_end_asc"]
+
+
+@router.get("")
+def list_users(
+    q: Optional[str] = Query(default=None, max_length=100),
+    plan: Optional[PlanFilter] = None,
+    status: Optional[StatusFilter] = None,
+    sort: UserSort = "created_desc",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return list_users_page(db, q=q, plan=plan, status=status, sort=sort, limit=limit, offset=offset)
+
+
+def locked_user(db: Session, user_id: UUID) -> User:
+    user = db.query(User).filter(User.id == user_id).with_for_update().first()
+    if not user:
+        raise admin_error(404, "user_not_found", "User not found")
+    return user
+
+
+@router.get("/{user_id}", responses={404: {"description": "User not found"}})
+def get_user_card(user_id: UUID, db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+    if not user:
+        raise admin_error(404, "user_not_found", "User not found")
+    return user_card(db, user)
+
+
+class ReasonBody(BaseModel):
+    reason: Reason
+
+
+class RoleUpdate(BaseModel):
+    role: str = Field(pattern="^(user|admin)$")
+    reason: Reason
+
+
+def finish(db: Session, user: User, changed: bool, **extra) -> dict:
+    db.commit()
+    db.refresh(user)
+    return {"changed": changed, **extra, **user_card(db, user)}
+
+
+@router.patch(
+    "/{user_id}/role",
+    responses={
+        400: {"description": "Admin cannot remove their own admin role"},
+        404: {"description": "User not found"},
+        409: {"description": "Blocked users cannot be promoted"},
+    },
+)
+def update_user_role(user_id: UUID, body: RoleUpdate, admin: User = Depends(require_admin),
+                     db: Session = Depends(get_db)):
+    if user_id == admin.id and body.role != "admin":
+        raise admin_error(400, "cannot_demote_self", "Administrators cannot remove their own admin role")
+    user = locked_user(db, user_id)
+    if body.role == "admin" and user.role != "admin" and not user.is_active:
+        raise admin_error(409, "user_blocked", "Blocked users cannot be promoted")
+    changed = user.role != body.role
+    if changed:
+        before = {"role": user.role}
+        user.role = body.role
+        record_admin_action(db, actor=admin, action="user.role_changed", target_type="user", target_id=user.id,
+                            before=before, after={"role": user.role}, reason=body.reason)
+    return finish(db, user, changed)
+
+
+@router.post(
+    "/{user_id}/block",
+    responses={
+        400: {"description": "Administrators cannot block themselves"},
+        404: {"description": "User not found"},
+        409: {"description": "Administrators must be demoted before blocking"},
+    },
+)
+def block_user(user_id: UUID, body: ReasonBody, admin: User = Depends(require_admin),
+               db: Session = Depends(get_db)):
+    if user_id == admin.id:
+        raise admin_error(400, "cannot_block_self", "Administrators cannot block themselves")
+    user = locked_user(db, user_id)
+    if user.role == "admin":
+        raise admin_error(409, "cannot_block_admin", "Remove the admin role before blocking")
+    changed = user.is_active
+    if changed:
+        user.is_active = False
+        user.session_version = (user.session_version or 0) + 1
+        record_admin_action(db, actor=admin, action="user.blocked", target_type="user", target_id=user.id,
+                            before={"is_active": True}, after={"is_active": False}, reason=body.reason)
+    return finish(db, user, changed)
+
+
+@router.post("/{user_id}/unblock", responses={404: {"description": "User not found"}})
+def unblock_user(user_id: UUID, body: ReasonBody, admin: User = Depends(require_admin),
+                 db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    changed = not user.is_active
+    if changed:
+        user.is_active = True
+        record_admin_action(db, actor=admin, action="user.unblocked", target_type="user", target_id=user.id,
+                            before={"is_active": False}, after={"is_active": True}, reason=body.reason)
+    return finish(db, user, changed)
+
+
+class GrantRequest(BaseModel):
+    plan: Literal["pro", "business"]
+    days: int = Field(ge=1, le=366)
+    replace_active: bool = False
+    reason: Reason
+
+
+class PaymentRequest(BaseModel):
+    plan: Literal["pro", "business"]
+    months: int = Field(ge=1, le=24)
+    replace_active: bool = False
+    reason: Reason
+
+
+class CancelRequest(BaseModel):
+    category: Literal["refund", "mistaken_activation", "fraud", "other"]
+    reason: Reason
+
+
+def _locked_subscription(db: Session, user: User):
+    return db.query(Subscription).filter_by(user_id=user.id).with_for_update().first()
+
+
+def _not_admin(user: User) -> None:
+    if user.role == "admin":
+        raise admin_error(409, "admin_has_business", "Administrators already have the business plan")
+
+
+@router.post(
+    "/{user_id}/grant",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Administrator, another active plan or an unlimited plan"},
+    },
+)
+def grant_plan(user_id: UUID, body: GrantRequest, admin: User = Depends(require_admin),
+               db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    _not_admin(user)
+    sub = _locked_subscription(db, user)
+    start, end = grant_window(sub, body.plan, body.days, utc_now(), body.replace_active)
+    before = subscription_snapshot(sub)
+    if sub is None:
+        sub = Subscription(user_id=user.id)
+        db.add(sub)
+    sub.plan, sub.status, sub.period_start, sub.period_end = body.plan, "active", start, end
+    sub.payment_provider, sub.auto_renew = "grant", False
+    db.flush()
+    after = subscription_snapshot(sub)
+    if before is not None:
+        changed = {k for k in after if before.get(k) != after[k]}
+        before, after = {k: before[k] for k in changed}, {k: after[k] for k in changed}
+    record_admin_action(db, actor=admin, action="subscription.granted", target_type="user", target_id=user.id,
+                        before=before, after={**after, "days": body.days}, reason=body.reason)
+    return finish(db, user, True)
+
+
+@router.post(
+    "/{user_id}/record-payment",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Administrator, another active plan or an unlimited plan"},
+    },
+)
+def record_payment(user_id: UUID, body: PaymentRequest, admin: User = Depends(require_admin),
+                   db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    _not_admin(user)
+    guard_active_plan(_locked_subscription(db, user), body.plan, utc_now(), body.replace_active)
+    settle_manual_payment(db, admin=admin, user=user, plan_id=body.plan, months=body.months, reason=body.reason)
+    return finish(db, user, True)
+
+
+@router.post(
+    "/{user_id}/cancel-subscription",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "No active paid subscription"},
+    },
+)
+def cancel_subscription(user_id: UUID, body: CancelRequest, admin: User = Depends(require_admin),
+                        db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    sub = _locked_subscription(db, user)
+    now = utc_now()
+    if user.role == "admin" or not paid_subscription_active(sub, now):
+        raise admin_error(409, "no_active_subscription", "No active paid subscription")
+    snapshot = subscription_snapshot(sub)
+    before = {k: snapshot[k] for k in ("plan", "status", "period_end")}
+    sub.status, sub.period_end = "canceled", now
+    db.flush()
+    after = subscription_snapshot(sub)
+    record_admin_action(db, actor=admin, action="subscription.canceled", target_type="user", target_id=user.id,
+                        before=before, after={"status": after["status"], "period_end": after["period_end"],
+                                              "category": body.category}, reason=body.reason)
+    return finish(db, user, True)
+
+
+def _send_action_email(db: Session, background_tasks: BackgroundTasks, *, admin: User, user: User,
+                       purpose: str, lifetime: timedelta, action: str, reason: str) -> dict:
+    if not settings.EMAIL_DELIVERY_ENABLED:
+        raise admin_error(503, "email_unavailable", "Email delivery is not configured")
+    raw_token = issue_action_token(db, user=user, purpose=purpose, lifetime=lifetime,
+                                   cooldown_seconds=settings.AUTH_EMAIL_RESEND_COOLDOWN_SECONDS)
+    if raw_token:
+        record_admin_action(db, actor=admin, action=action, target_type="user", target_id=user.id, reason=reason)
+        db.commit()
+        background_tasks.add_task(send_auth_email, purpose, user.email, raw_token)
+    return finish(db, user, bool(raw_token), sent=bool(raw_token))
+
+
+@router.post(
+    "/{user_id}/send-password-reset",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "User is blocked"},
+        503: {"description": "Email delivery is not configured"},
+    },
+)
+def send_password_reset(user_id: UUID, body: ReasonBody, background_tasks: BackgroundTasks,
+                        admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    if not user.is_active:
+        raise admin_error(409, "user_blocked", "User is blocked")
+    return _send_action_email(db, background_tasks, admin=admin, user=user, purpose=PASSWORD_RESET,
+                              lifetime=timedelta(minutes=settings.AUTH_PASSWORD_RESET_MINUTES),
+                              action="user.password_reset_sent", reason=body.reason)
+
+
+@router.post(
+    "/{user_id}/resend-verification",
+    responses={
+        404: {"description": "User not found"},
+        409: {"description": "Email is already verified"},
+        503: {"description": "Email delivery is not configured"},
+    },
+)
+def resend_verification(user_id: UUID, body: ReasonBody, background_tasks: BackgroundTasks,
+                        admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = locked_user(db, user_id)
+    if user.email_verified:
+        raise admin_error(409, "email_already_verified", "Email is already verified")
+    return _send_action_email(db, background_tasks, admin=admin, user=user, purpose=EMAIL_VERIFICATION,
+                              lifetime=timedelta(hours=settings.AUTH_EMAIL_VERIFICATION_HOURS),
+                              action="user.verification_sent", reason=body.reason)

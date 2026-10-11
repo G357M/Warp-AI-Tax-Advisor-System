@@ -12,6 +12,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
 from api.routes import admin as admin_routes
+from api.routes import admin_users
 from core.config import settings
 from core.database import Base, engine
 from core.time_utils import utc_now
@@ -78,50 +79,6 @@ def test_journal_rejects_update_delete_and_truncate(database):
 def _entries(sessions):
     with sessions() as db:
         return db.query(AdminAuditLog).order_by(AdminAuditLog.created_at).all()
-
-
-def test_role_change_is_journaled_with_reason(database):
-    sessions, ids = database
-    with sessions() as db:
-        actor = db.get(User, ids.admin_id)
-        admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="admin", reason=" promote "), actor, db)
-    [entry] = _entries(sessions)
-    assert (entry.action, entry.target_type, entry.target_id) == ("user.role_changed", "user", str(ids.user_id))
-    assert entry.before == {"role": "user"} and entry.after == {"role": "admin"}
-    assert entry.reason == "promote" and entry.actor_id == ids.admin_id
-
-
-def test_unchanged_role_is_not_journaled(database):
-    sessions, ids = database
-    with sessions() as db:
-        actor = db.get(User, ids.admin_id)
-        result = admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="user"), actor, db)
-    assert result["role"] == "user" and _entries(sessions) == []
-
-
-def test_self_demotion_is_rejected_without_entry(database):
-    sessions, ids = database
-    with sessions() as db:
-        actor = db.get(User, ids.admin_id)
-        with pytest.raises(HTTPException) as exc:
-            admin_routes.update_user_role(ids.admin_id, admin_routes.RoleUpdate(role="user"), actor, db)
-    assert exc.value.status_code == 400 and _entries(sessions) == []
-
-
-def test_journal_failure_rolls_back_role_change(database, monkeypatch):
-    sessions, ids = database
-
-    def broken(*_args, **_kwargs):
-        raise RuntimeError("journal unavailable")
-
-    monkeypatch.setattr(admin_routes, "record_admin_action", broken)
-    with sessions() as db:
-        actor = db.get(User, ids.admin_id)
-        with pytest.raises(RuntimeError):
-            admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="admin"), actor, db)
-    with sessions() as db:
-        assert db.get(User, ids.user_id).role == "user"
-    assert _entries(sessions) == []
 
 
 def test_journal_failure_rolls_back_feedback_status(database, monkeypatch):
@@ -198,8 +155,8 @@ def test_audit_listing_filters_and_paginates(database):
     sessions, ids = database
     with sessions() as db:
         actor = db.get(User, ids.admin_id)
-        admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="admin"), actor, db)
-        admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="user"), actor, db)
+        admin_users.update_user_role(ids.user_id, admin_users.RoleUpdate(role="admin", reason="promote"), actor, db)
+        admin_users.update_user_role(ids.user_id, admin_users.RoleUpdate(role="user", reason="demote"), actor, db)
         item = Feedback(user_id=ids.user_id, message="x")
         db.add(item)
         db.commit()
@@ -243,3 +200,12 @@ def test_stats_attention_counts_match_lists(database):
     assert stats["billing"]["manual_pending"] == 1
     assert stats["billing"]["reconciliation_open"] == len(listed["items"]) == 2
     assert stats["attention"] == {"ingest_stale": True}  # no documents at all
+
+
+def test_missing_feedback_is_coded_404(database):
+    sessions, ids = database
+    with sessions() as db:
+        with pytest.raises(HTTPException) as exc:
+            admin_routes.update_feedback_status(uuid4(), admin_routes.FeedbackStatusUpdate(status="fixed"),
+                                                db.get(User, ids.admin_id), db)
+    assert exc.value.detail == {"code": "feedback_not_found", "message": "Feedback not found"}

@@ -66,14 +66,19 @@ def quota_key(user_id) -> str:
     return f"quota:questions:{user_id}:{date.today().isoformat()}"
 
 
-def questions_used_today(user_id) -> int:
+def questions_used_today_or_none(user_id) -> Optional[int]:
+    """Today's question count, or None when Redis is unavailable (unknown, not zero)."""
     client = _redis()
     if client is None:
-        return 0
+        return None
     try:
         return int(client.get(quota_key(user_id)) or 0)
     except Exception:
-        return 0
+        return None
+
+
+def questions_used_today(user_id) -> int:
+    return questions_used_today_or_none(user_id) or 0
 
 
 def check_and_count_question(user: User, plan: str) -> None:
