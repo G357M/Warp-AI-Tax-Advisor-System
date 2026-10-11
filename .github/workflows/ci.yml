@@ -253,6 +253,7 @@ jobs:
           tests/test_billing_provider_postgres.py
           tests/test_billing_review_postgres.py
           tests/test_admin_postgres.py
+          tests/test_admin_users_postgres.py
           tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning

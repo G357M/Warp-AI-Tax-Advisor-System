@@ -141,39 +141,6 @@ def list_documents(
     }
 
 
-@router.get("/users")
-def list_users(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-):
-    total = db.execute(text("SELECT count(*) FROM users")).scalar()
-    rows = db.execute(text("""
-        SELECT u.id::text, u.username, u.email, u.role, u.created_at, u.last_login,
-               s.plan, s.status, s.period_end
-        FROM users u
-        LEFT JOIN subscriptions s ON s.user_id = u.id
-        ORDER BY u.created_at DESC
-        LIMIT :limit OFFSET :offset
-    """), {"limit": limit, "offset": offset}).all()
-    now = utc_now()
-    items = []
-    for r in rows:
-        plan = "free"
-        if r[3] == "admin":
-            plan = "business"
-        elif r[6] and r[7] == "active" and (r[8] is None or r[8] >= now):
-            plan = r[6]
-        items.append({
-            "id": r[0], "username": r[1], "email": r[2], "role": r[3],
-            "created_at": r[4].isoformat() if r[4] else None,
-            "last_login": r[5].isoformat() if r[5] else None,
-            "plan": plan,
-            "period_end": r[8].isoformat() if r[8] else None,
-        })
-    return {"total": total, "items": items}
-
-
 class RoleUpdate(BaseModel):
     role: str = Field(pattern="^(user|admin)$")
     reason: Optional[str] = Field(default=None, max_length=1000)
