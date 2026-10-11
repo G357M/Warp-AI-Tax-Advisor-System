@@ -39,10 +39,12 @@ from models import BillingCheckout, BillingProviderEvent, BillingReviewDecision,
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
 CHECKOUT_NOT_FOUND = "Checkout not found"
+_D409 = "Checkout or decision state conflict"
+_D422 = "Invalid Idempotency-Key"
+_D502 = "Payment provider did not confirm the order"
+_D503 = "Payment provider or bank verification unavailable"
 _R404 = {404: {"description": CHECKOUT_NOT_FOUND}}
-_R409 = {409: {"description": "Checkout or decision state conflict"}}
-_R502 = {502: {"description": "Payment provider did not confirm the order"}}
-_R503 = {503: {"description": "Payment provider or bank verification unavailable"}}
+_R503 = {503: {"description": _D503}}
 
 IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 
@@ -318,7 +320,14 @@ def review_history(
             "next_offset": offset + limit if len(rows) > limit else None}
 
 
-@router.post("/admin/reconciliation/{checkout_id}/preview", responses={**_R404, **_R409, **_R503})
+@router.post(
+    "/admin/reconciliation/{checkout_id}/preview",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def review_preview(
     checkout_id: UUID, verify_provider: bool = Query(default=False),
     admin: User = Depends(require_admin), db: Session = Depends(get_db),
@@ -335,7 +344,14 @@ def review_preview(
     }
 
 
-@router.post("/admin/reconciliation/{checkout_id}/decisions", responses={**_R404, **_R409, **_R503})
+@router.post(
+    "/admin/reconciliation/{checkout_id}/decisions",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def record_review_decision(
     checkout_id: UUID, body: ReviewDecisionRequest,
     idempotency_key: str = Header(alias="Idempotency-Key"),
@@ -443,7 +459,15 @@ def billing_overview(
     }
 
 
-@router.post("/checkout", responses={**_R409, **_R502, **_R503})
+@router.post(
+    "/checkout",
+    responses={
+        422: {"description": _D422},
+        409: {"description": _D409},
+        502: {"description": _D502},
+        503: {"description": _D503},
+    },
+)
 def create_checkout(
     body: CheckoutRequest,
     idempotency_key: str = Header(alias="Idempotency-Key"),
@@ -813,7 +837,14 @@ def tbc_callback(body: ProviderCallback, db: Session = Depends(get_db)):
     return _reconcile_tbc_payment(db, checkout, payment)
 
 
-@router.post("/checkout/{checkout_id}/refresh", responses={**_R404, **_R409, **_R503})
+@router.post(
+    "/checkout/{checkout_id}/refresh",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+        503: {"description": _D503},
+    },
+)
 def refresh_checkout(
     checkout_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -859,7 +890,13 @@ def _subscription_snapshot(db: Session, user_id) -> Optional[dict]:
     }
 
 
-@router.post("/admin/activate", responses={**_R404, **_R409})
+@router.post(
+    "/admin/activate",
+    responses={
+        404: {"description": CHECKOUT_NOT_FOUND},
+        409: {"description": _D409},
+    },
+)
 def activate_subscription(
     body: ActivateRequest,
     admin: User = Depends(require_admin),
