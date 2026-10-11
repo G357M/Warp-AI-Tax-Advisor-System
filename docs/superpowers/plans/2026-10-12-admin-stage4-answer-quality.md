@@ -758,9 +758,6 @@ def test_summary(database):
     assert s["reviewed"] == 1 and s["verdicts"] == {"correct": 1, "partial": 0, "wrong": 0}
     assert s["no_precise_citation_share"] == 0.5 and s["median_processing_ms"] == 2000
     assert s["down_unreviewed"] == 1
-    with sessions() as db:
-        empty = routes.get_summary(period="7d", db=db) if False else None
-    assert empty is None
 
 
 def test_summary_empty_period_returns_nulls(database):
@@ -770,7 +767,7 @@ def test_summary_empty_period_returns_nulls(database):
     assert s["answers"] == 0 and s["down_share"] is None and s["median_processing_ms"] is None
 ```
 
-Delete the meaningless three lines starting `with sessions() as db:\n        empty = ...` in `test_summary` when writing it (the empty case is covered by the next test). Also add `from fastapi import HTTPException` to the imports.
+Also add `from fastapi import HTTPException` to the imports.
 
 - [ ] **Step 2: Run** `-k "pseudonym or feed or detail or summary"` → import errors.
 
@@ -1039,7 +1036,7 @@ def list_answers(
 @router.get("/answers/{message_id}", responses={404: {"description": "Message not found"}})
 def get_answer(
     message_id: UUID,
-    period: Period = "all",
+    period: Period = "7d",
     rating: Optional[RatingFilter] = None,
     verdict: Optional[VerdictFilter] = None,
     flags: List[Flag] = Query(default=[]),
@@ -1242,6 +1239,8 @@ def reveal_user(message_id: UUID, body: RevealRequest, admin: User = Depends(req
     return {"user_id": str(user_id)}
 ```
 
+If any `tests/test_integration.py` test calls `/api/v1/admin/stats` (SQLite), add `AnswerRating, AnswerReview` to its `TEST_TABLES` too.
+
 `api/routes/admin.py` `system_stats`: import `from core.admin_quality import down_unreviewed` and add `"quality": {"down_unreviewed": down_unreviewed(db)}` to the returned dict. In `test_admin_postgres.py` the existing stats test fixture must have `answer_ratings`/`answer_reviews` tables — add `AnswerRating, AnswerReview` to its `TABLES` (and apply nothing else; plain `create_all` is enough there).
 
 - [ ] **Step 4: Run** PG: `rtk python -m pytest tests/test_billing_provider_postgres.py tests/test_admin_postgres.py tests/test_admin_users_postgres.py tests/test_admin_quality_postgres.py tests/test_billing_review_postgres.py -q`; non-PG: `rtk python -m pytest tests/test_admin_audit.py tests/test_public_config.py tests/test_integration.py tests/test_plan_quotas.py -q` → all pass.
@@ -1443,7 +1442,8 @@ Layout:
 - `useAdminFetch<QualityDetail>(url)`. Treat `status` 404 or 422 as not found (`AdminState kind="empty"` + back link). Show error/retry otherwise. Guard against stale data with `data.message.id !== id` while loading.
 - Header: back link (`/admin/quality${backQuery}`), prev/next links built as `/admin/quality/${neighbors.prev_id}${backQuery ? `?back=${encodeURIComponent(backQuery)}` : ''}`.
 - Left column: `.thread` with one `.bubble` per message (`.bubbleFocus` on the reviewed one, role label `c.quality.you` / `c.quality.assistant`), then the sources list (title + article_ref, link when url).
-- Right column: `<ReviewPanel detail={data} onUpdated={setData} />`.
+- Right column: `<ReviewPanel detail={data} onUpdated={(next) => setData({ ...next, neighbors: data.neighbors })} />` — the review endpoint returns neighbors for the unfiltered feed, so keep the ones computed for the current selection.
+- The detail endpoint defaults `period` to `7d`, the same as the feed, so a forwarded `back` query without `period` (the feed omits the default) gives the same selection.
 
 - [ ] **Step 3: `ReviewPanel.tsx`**
 
