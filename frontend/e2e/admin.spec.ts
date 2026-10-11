@@ -74,17 +74,39 @@ async function setup(page: Page, lang: 'ru' | 'ka' | 'en' = 'ru') {
   return writes;
 }
 
-const PAGES = ['/admin', '/admin/users', '/admin/billing', '/admin/feedback', '/admin/documents',
-  '/admin/analytics', '/admin/scraper', '/admin/audit', '/admin/settings'];
+const LOADING = /Загружаем|იტვირთება|Loading/;
+
+// `ready` proves fixture data (not a loading or error frame) is on screen before we measure.
+type Ready = (page: Page) => Promise<void>;
+const text = (value: string, exact = false): Ready => (page) =>
+  expect(page.getByText(value, { exact }).first()).toBeVisible();
+const loaded: Ready = async (page) => {
+  const status = page.getByRole('status').first();
+  await expect(status).toBeVisible();
+  await expect(status).not.toHaveText(LOADING);
+};
+const PAGES: { path: string; ready: Ready }[] = [
+  { path: '/admin', ready: text('guideline') },
+  { path: '/admin/users', ready: text(longEmail) },
+  { path: '/admin/billing', ready: loaded },
+  { path: '/admin/feedback', ready: text(longEmail) },
+  { path: '/admin/documents', ready: loaded },
+  { path: '/admin/analytics', ready: text('168', true) },
+  { path: '/admin/scraper', ready: text('2026-10-11 02:10 done: +14 new') },
+  { path: '/admin/audit', ready: text(users[0].id) },
+  { path: '/admin/settings', ready: text('gpt-4o-mini') },
+];
 
 for (const lang of ['ru', 'ka'] as const) {
   for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
     test(`every admin page renders without horizontal scroll (${lang}, ${viewport.width}px)`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await setup(page, lang);
-      for (const path of PAGES) {
+      for (const { path, ready } of PAGES) {
         await page.goto(path);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        await ready(page);
+        await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow, `${path} overflows by ${overflow}px`).toBeLessThanOrEqual(0);
       }
@@ -142,10 +164,12 @@ test('admin visual baseline', async ({ page }) => {
   await page.evaluate(async () => { await document.fonts.ready; });
   await expect(page).toHaveScreenshot('admin-dashboard-ru-desktop.png', { fullPage: true });
 
-  await setup(page, 'ka');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/users');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.evaluate(async () => { await document.fonts.ready; });
-  await expect(page).toHaveScreenshot('admin-users-ka-mobile.png', { fullPage: true });
+  const mobile = await page.context().newPage();
+  await setup(mobile, 'ka');
+  await mobile.setViewportSize({ width: 390, height: 844 });
+  await mobile.goto('/admin/users');
+  await expect(mobile.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(mobile.getByText(longEmail).first()).toBeVisible();
+  await mobile.evaluate(async () => { await document.fonts.ready; });
+  await expect(mobile).toHaveScreenshot('admin-users-ka-mobile.png', { fullPage: true });
 });
