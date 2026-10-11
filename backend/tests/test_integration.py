@@ -45,7 +45,7 @@ _original_rag_modules = {
 }
 sys.modules.update(_stubbed_rag_modules)
 
-from api.routes import account, admin, admin_users, auth, billing, query as query_routes
+from api.routes import account, admin, admin_quality, admin_users, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
 from models import (
@@ -84,6 +84,7 @@ app.include_router(billing.router, prefix=settings.API_PREFIX)
 app.include_router(account.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(admin_users.router, prefix=settings.API_PREFIX)
+app.include_router(admin_quality.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
