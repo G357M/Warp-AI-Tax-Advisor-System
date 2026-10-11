@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test:admin-styles": "node --test scripts/check-admin-inline-styles.test.mjs",
     "check:admin-styles": "node scripts/check-admin-inline-styles.mjs",
     "type-check": "next typegen && tsc --noEmit",
     "test:visual": "playwright test",
