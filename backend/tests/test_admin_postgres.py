@@ -33,7 +33,10 @@ def database():
     with engine.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA "{schema}"'))
     # public stays on the path so the pgvector type resolves for documents.
-    local = create_engine(settings.DATABASE_URL, connect_args={"options": f"-csearch_path={schema},public"})
+    # schema_translate_map forces every ORM table into the schema even when a
+    # same-named table is visible in public (has_table follows the search_path).
+    local = create_engine(settings.DATABASE_URL, connect_args={"options": f"-csearch_path={schema},public"},
+                          execution_options={"schema_translate_map": {None: schema}})
     Base.metadata.create_all(local, tables=[m.__table__ for m in TABLES])
     with local.begin() as conn:
         assert apply_schema(conn) == apply_schema(conn)
@@ -118,6 +121,53 @@ def test_journal_failure_rolls_back_role_change(database, monkeypatch):
             admin_routes.update_user_role(ids.user_id, admin_routes.RoleUpdate(role="admin"), actor, db)
     with sessions() as db:
         assert db.get(User, ids.user_id).role == "user"
+    assert _entries(sessions) == []
+
+
+def test_journal_failure_rolls_back_feedback_status(database, monkeypatch):
+    sessions, ids = database
+    with sessions() as db:
+        item = Feedback(user_id=ids.user_id, message="Broken link", page="/laws")
+        db.add(item)
+        db.commit()
+        feedback_id = item.id
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("journal unavailable")
+
+    monkeypatch.setattr(admin_routes, "record_admin_action", broken)
+    with sessions() as db:
+        body = admin_routes.FeedbackStatusUpdate(status="fixed", reason="link repaired")
+        with pytest.raises(RuntimeError):
+            admin_routes.update_feedback_status(feedback_id, body, db.get(User, ids.admin_id), db)
+        db.rollback()
+    with sessions() as db:
+        assert db.get(Feedback, feedback_id).status == "new"
+    assert _entries(sessions) == []
+
+
+def test_journal_failure_rolls_back_activation(database, monkeypatch):
+    from api.routes import billing as billing_routes
+    sessions, ids = database
+    with sessions() as db:
+        checkout = _checkout(ids.user_id)
+        db.add(checkout)
+        db.commit()
+        checkout_id = checkout.id
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("journal unavailable")
+
+    monkeypatch.setattr(billing_routes, "record_admin_action", broken)
+    with sessions() as db:
+        body = billing_routes.ActivateRequest(checkout_id=checkout_id, reason="paid by transfer")
+        with pytest.raises(RuntimeError):
+            billing_routes.activate_subscription(body, db.get(User, ids.admin_id), db)
+        db.rollback()
+    with sessions() as db:
+        assert db.get(BillingCheckout, checkout_id).status == "pending"
+        assert db.query(Subscription).filter_by(user_id=ids.user_id).count() == 0
+        assert db.query(Payment).count() == 0
     assert _entries(sessions) == []
 
 

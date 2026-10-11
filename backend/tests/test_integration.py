@@ -45,7 +45,7 @@ _original_rag_modules = {
 }
 sys.modules.update(_stubbed_rag_modules)
 
-from api.routes import account, auth, billing, query as query_routes
+from api.routes import account, admin, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
 from models import (
@@ -81,6 +81,7 @@ app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(query_routes.router, prefix=settings.API_PREFIX)
 app.include_router(billing.router, prefix=settings.API_PREFIX)
 app.include_router(account.router, prefix=settings.API_PREFIX)
+app.include_router(admin.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
@@ -359,6 +360,12 @@ def test_legacy_email_activation_is_journaled(client):
         [entry] = db.query(AdminAuditLog).filter_by(target_id=str(customer_id)).all()
         assert (entry.action, entry.target_type) == ("subscription.activated", "user")
         assert entry.after["plan"] == "business" and entry.reason is None
+
+
+def test_non_admin_is_forbidden_from_audit_and_config(client):
+    register_and_login(client, "plain-user")
+    for url in ("/api/v1/admin/audit", "/api/v1/admin/config"):
+        assert client.get(url).status_code == 403
 
 
 def test_tbc_checkout_is_unavailable_without_explicit_merchant_activation(client):

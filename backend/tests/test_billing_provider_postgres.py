@@ -18,6 +18,15 @@ LEGACY_PAYMENT_ID = UUID("10000000-0000-0000-0000-000000000001")
 LEGACY_CHECKOUT_ID = UUID("20000000-0000-0000-0000-000000000001")
 
 
+@pytest.fixture(autouse=True)
+def drop_legacy_public_tables():
+    """Leave no legacy-shaped billing tables in public for later PostgreSQL tests."""
+    yield
+    with engine.begin() as connection:
+        for table in ("billing_provider_events", "billing_checkouts", "payments"):
+            connection.execute(text(f"DROP TABLE IF EXISTS public.{table} CASCADE"))
+
+
 def test_additive_billing_provider_schema_is_idempotent_and_backfills_money():
     assert contract_sha256() == "9ea51e942ab67aaf8d215b26df554d40c088b0f4a50d41026ea3622c33559bee"
     with engine.begin() as connection:
