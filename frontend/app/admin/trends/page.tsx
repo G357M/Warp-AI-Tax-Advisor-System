@@ -58,7 +58,7 @@ function TrendsView({ data, c, locale }: Readonly<{ data: Trends; c: AdminCopy; 
   const median = data.median_processing_ms;
 
   return <>
-    <div className={styles.tiles}>
+    <div className={`${styles.tiles} ${styles.tiles3}`}>
       <StatTile label={c.trends.revenue} value={money(current.revenue_minor)}
         detail={deltaText(current.revenue_minor, previous.revenue_minor, c, locale)} />
       <StatTile label={c.trends.payments} value={n(current.payments)} detail={deltaText(current.payments, previous.payments, c, locale)} />

@@ -334,3 +334,18 @@ merge или production deployment.
   panel). Dashboard attention line counts `quality.down_unreviewed`.
 - E2E: `admin-quality.spec.ts`, `answer-rating.spec.ts`; baselines `admin-quality-ru-desktop.png`,
   `admin-quality-review-ka-mobile.png` and the regenerated dashboard, all from the pinned container.
+
+## 2026-10-12 — Admin stage 3 (trends)
+
+- `/admin/trends` is read-only: `GET /api/v1/admin/trends?period=30d|90d|12m` (`core/admin_trends.py`), no
+  schema step. Buckets are Tbilisi days / Monday weeks / months (`created_at + 4h`, Georgia has no DST);
+  the last bucket is `partial`. Users with `role = 'admin'` are excluded from every metric.
+- Revenue counts `payments.status = 'succeeded'` only; gift certificates create no payment, refunds happen
+  outside the system. The previous window lasts as long as the elapsed part of the current one, so a
+  running day/week/month is not compared with a full one.
+- There is no subscription history (one current row per user), so active-plan counts over time are not
+  shown; guests are not stored, so there is no visitor funnel.
+- Charts are CSS columns (`components/admin/TrendChart.tsx`), one measure per chart (no dual axes),
+  hover tooltip plus a "show data" table. Colours `#3b82f6` / `#d97706` passed the dataviz palette
+  validator on the dark surface.
+- New Playwright specs must be added to `testMatch` in `frontend/playwright.config.ts`, otherwise they never run.
