@@ -1209,6 +1209,14 @@ applying.
   manual payment, early cancel (immediate), password-reset and verification emails. Every action is
   journaled in `admin_audit_log` with a reason. No schema step; normal `deploy.sh`. Blocking ends the
   user's sessions immediately. Refunds stay outside the system (done with the bank/provider by hand).
+- `backend/scripts/add_answer_quality.py` (admin stage 4) adds `messages.evidence`, `messages.processing_ms`
+  and the `answer_ratings` / `answer_reviews` tables. The deploy script applies it automatically right after
+  the admin-audit step, pinned by `ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256`; it is additive and idempotent, so
+  rolling back the code leaves the schema unused and harmless. `answer_reviews` rows cannot be updated or
+  deleted (except by cascade when the message or user is deleted). The quality feed lives at
+  `/admin/quality` (review page `/admin/quality/<message id>`). "Open client" there reveals the user behind a
+  pseudonym; it needs a reason and is journaled as `user.identity_revealed` in `/admin/audit`. The privacy
+  policy text now covers review of answers, so publish the frontend together with the backend.
 
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 
