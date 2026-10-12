@@ -14,10 +14,12 @@ type AttentionItem = { href: string; text: string };
 type Fmt = (value: number) => string;
 
 function buildAttention(stats: AdminStats, c: AdminCopy, n: Fmt): AttentionItem[] {
+  const downUnreviewed = stats.quality?.down_unreviewed ?? 0;
   return [
     stats.feedback.new > 0 && { href: '/admin/feedback', text: c.dashboard.feedbackNew(n(stats.feedback.new)) },
     stats.billing.reconciliation_open > 0 && { href: '/admin/billing', text: c.dashboard.reconciliation(n(stats.billing.reconciliation_open)) },
     stats.billing.manual_pending > 0 && { href: '/admin/users', text: c.dashboard.manualPending(n(stats.billing.manual_pending)) },
+    downUnreviewed > 0 && { href: '/admin/quality?rating=down&verdict=unreviewed', text: c.dashboard.qualityDown(n(downUnreviewed)) },
     stats.attention.ingest_stale && { href: '/admin/scraper', text: c.dashboard.ingestStale },
     stats.decisions.pending > 0 && { href: '/admin/scraper', text: c.dashboard.decisionsQueue(n(stats.decisions.pending)) },
   ].filter((item): item is AttentionItem => Boolean(item));
