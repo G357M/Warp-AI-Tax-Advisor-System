@@ -180,7 +180,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       label: 'Защита данных',
       title: 'Политика конфиденциальности',
       summary: 'Какие данные использует Tax Advisor, зачем они нужны и как реализовать свои права.',
-      updated: 'Версия 2026-10-12 · действует с даты публикации',
+      updated: 'Версия 2026-10-12 · действует с 12 октября 2026 года',
       sections: [
         {
           id: 'controller',
@@ -299,7 +299,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       ], sources: [{ label: 'საქართველოს კანონი „მომხმარებლის უფლებების დაცვის შესახებ“, მუხლები 13–15', href: commonSources.consumer }],
     },
     privacy: {
-      label: 'მონაცემთა დაცვა', title: 'კონფიდენციალურობის პოლიტიკა', summary: 'რა მონაცემებს იყენებს Tax Advisor, რატომ გვჭირდება ისინი და როგორ გამოიყენოთ თქვენი უფლებები.', updated: 'ვერსია 2026-10-12 · მოქმედებს გამოქვეყნების დღიდან',
+      label: 'მონაცემთა დაცვა', title: 'კონფიდენციალურობის პოლიტიკა', summary: 'რა მონაცემებს იყენებს Tax Advisor, რატომ გვჭირდება ისინი და როგორ გამოიყენოთ თქვენი უფლებები.', updated: 'ვერსია 2026-10-12 · მოქმედებს 2026 წლის 12 ოქტომბრიდან',
       sections: [
         { id: 'controller', title: 'მონაცემთა დამუშავებისთვის პასუხისმგებელი პირი', body: ['პერსონალურ მონაცემთა დამუშავებისთვის პასუხისმგებელი პირია Modern LLC, კოდი 431177120. კითხვები და მოთხოვნები: info@tax-advisor.ge, +995 550 052 050.'] },
         { id: 'data', title: 'რა მონაცემები მუშავდება', bullets: ['ანგარიშისა და საკონტაქტო მონაცემები: ელფოსტა, მომხმარებლის სახელი, მითითებული სახელი, პაროლის დაცული ჰეში და ელფოსტის დადასტურების სტატუსი.', 'კითხვების, დიალოგებისა და უკუკავშირის შინაარსი, პასუხების შეფასებები და მათზე კომენტარები, თუ მომხმარებელი მათ აგზავნის ან ინახავს.', 'გადახდის მონაცემები: პაკეტი, თანხა, ვალუტა, სტატუსი, განაცხადისა და ოპერაციის იდენტიფიკატორები. Tax Advisor ბარათის მონაცემებს არ იღებს.', 'ტექნიკური ჟურნალები, IP-მისამართი და უსაფრთხოების სიგნალები, რომლებიც საჭიროა სერვისის დაცვის, დიაგნოსტიკისა და ბოროტად გამოყენების შეზღუდვისთვის.'] },
@@ -352,7 +352,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       ], sources: [{ label: 'Law of Georgia on the Protection of Consumer Rights, Articles 13–15', href: commonSources.consumer }],
     },
     privacy: {
-      label: 'Data protection', title: 'Privacy policy', summary: 'What data Tax Advisor uses, why it is needed, and how to exercise your rights.', updated: 'Version 2026-10-12 · effective on publication',
+      label: 'Data protection', title: 'Privacy policy', summary: 'What data Tax Advisor uses, why it is needed, and how to exercise your rights.', updated: 'Version 2026-10-12 · effective 12 October 2026',
       sections: [
         { id: 'controller', title: 'Data controller', body: ['The personal-data controller is Modern LLC, code 431177120. Questions and requests: info@tax-advisor.ge, +995 550 052 050.'] },
         { id: 'data', title: 'Data we process', bullets: ['Account and contact data: email, username, supplied name, protected password hash, and email-verification status.', 'Questions, conversations, feedback, and answer ratings with their comments, when submitted or saved by the user.', 'Payment records: plan, amount, currency, status, checkout and transaction identifiers. Tax Advisor does not receive card details.', 'Technical logs, IP address, and security signals required to protect and diagnose the service and limit abuse.'] },

@@ -244,7 +244,7 @@ const ka: AdminCopy = {
       'user.blocked': 'დაბლოკვა', 'user.unblocked': 'განბლოკვა', 'subscription.granted': 'სასაჩუქრე სერტიფიკატი',
       'subscription.canceled': 'ვადაზე ადრე შეწყვეტა', 'user.password_reset_sent': 'პაროლის აღდგენის წერილი',
       'user.verification_sent': 'დადასტურების წერილი',
-      'answer.reviewed': 'პასუხის შემოწმება', 'user.identity_revealed': 'მომხმარებლის გახსნა',
+      'answer.reviewed': 'პასუხის შემოწმება', 'user.identity_revealed': 'მომხმარებლის ვინაობის გამჟღავნება',
     },
     targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა', message: 'პასუხი' },
   },

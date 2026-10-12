@@ -150,7 +150,7 @@ const DICT: Record<string, Entry> = {
     ka: 'გმადლობთ, ეს პასუხების გაუმჯობესებაში დაგვეხმარება',
     en: 'Thank you, this helps us improve answers',
   },
-  'rating.comment_label': { ru: 'Что не так?', ka: 'რა არის არასწორი?', en: 'What was wrong?' },
+  'rating.comment_label': { ru: 'Что не так?', ka: 'რა იყო არასწორი?', en: 'What was wrong?' },
   'rating.comment_send': { ru: 'Отправить', ka: 'გაგზავნა', en: 'Send' },
   'rating.error': {
     ru: 'Не удалось сохранить оценку. Попробуйте ещё раз.',
