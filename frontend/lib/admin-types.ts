@@ -112,3 +112,25 @@ export interface QualitySummary {
   reviewed_share: number | null; verdicts: Record<Verdict, number>; reasons: Record<ReviewReason, number>;
   no_precise_citation_share: number | null; median_processing_ms: number | null; down_unreviewed: number;
 }
+
+export const TREND_PERIODS = ['30d', '90d', '12m'] as const;
+export type TrendPeriod = (typeof TREND_PERIODS)[number];
+export type TrendTotalKey = 'signups' | 'askers' | 'questions' | 'payments' | 'revenue_minor' | 'up' | 'down';
+export type TrendTotals = Record<TrendTotalKey, number>;
+export interface TrendBucket extends TrendTotals {
+  start: string;
+  partial: boolean;
+  answers: number;
+  answers_with_evidence: number;
+  flagged: number;
+  median_processing_ms: number | null;
+}
+export interface Trends {
+  period: TrendPeriod;
+  bucket: 'day' | 'week' | 'month';
+  timezone: string;
+  quality_since: string | null;
+  median_processing_ms: number | null;
+  buckets: TrendBucket[];
+  totals: { current: TrendTotals; previous: TrendTotals };
+}

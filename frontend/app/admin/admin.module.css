@@ -152,3 +152,38 @@ a.tile:hover { box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.6); }
 .bubble { padding: 0.75rem 1rem; border-radius: var(--radius); border: 1px solid hsl(var(--border)); overflow-wrap: anywhere; white-space: pre-wrap; }
 .bubbleFocus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 1px hsl(var(--primary)); }
 .bubbleRole { display: block; font-size: 0.75rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem; }
+
+/* Trends: segmented period control and CSS column charts */
+.segmented { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid hsl(var(--input)); border-radius: 9999px; background: hsl(var(--secondary) / 0.5); }
+.segmented button { min-height: 36px; padding: 6px 16px; border: 0; border-radius: 9999px; background: transparent; color: hsl(var(--muted-foreground)); font: inherit; font-size: 13px; cursor: pointer; }
+.segmented button[aria-pressed='true'] { background: hsl(var(--primary) / 0.22); color: hsl(var(--foreground)); font-weight: 600; box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.6); }
+.chartGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.chart { margin: 0; min-width: 0; }
+.chartNote { margin: 8px 0 0; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.chartBody { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.chartAxis { display: flex; flex-direction: column; justify-content: space-between; height: 160px; font-size: 11px; color: hsl(var(--muted-foreground)); text-align: right; font-variant-numeric: tabular-nums; }
+.chartPlot { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); align-items: end; gap: 2px; height: 160px; border-bottom: 1px solid hsl(var(--border)); }
+.chartPlot::before, .chartPlot::after { content: ''; position: absolute; left: 0; right: 0; border-top: 1px dashed hsl(var(--border) / 0.6); pointer-events: none; }
+.chartPlot::before { top: 0; }
+.chartPlot::after { top: 50%; }
+.chartCol { position: relative; z-index: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%; min-width: 0; padding: 0; border: 0; background: transparent; cursor: default; }
+.chartCol:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 1px; }
+.chartCol[data-active='true'] { background: hsl(var(--foreground) / 0.06); border-radius: 4px 4px 0 0; }
+.chartCol[data-partial='true'] .chartSeg { opacity: 0.45; }
+.chartSeg { flex: none; height: var(--h); min-height: 2px; background: var(--c); }
+.chartSeg:last-child { border-radius: 4px 4px 0 0; }
+.chartX { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); margin-top: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.chartX span { overflow: visible; white-space: nowrap; text-align: center; }
+.chartEmpty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; color: hsl(var(--muted-foreground)); pointer-events: none; }
+.chartTip { position: absolute; z-index: 2; top: 0; left: var(--x); transform: translate(-50%, calc(-100% - 6px)); min-width: 120px; padding: 8px 10px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background) / 0.95); font-size: 12px; pointer-events: none; white-space: nowrap; }
+.chartTip strong { display: block; margin-bottom: 4px; }
+.chartTip span { display: flex; align-items: center; gap: 6px; }
+.chartData { margin-top: 12px; font-size: 13px; }
+.chartData summary { cursor: pointer; color: hsl(var(--muted-foreground)); }
+.chartData table { width: 100%; margin-top: 8px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.chartData th, .chartData td { padding: 4px 8px; border-bottom: 1px solid hsl(var(--border) / 0.6); text-align: right; }
+.chartData th:first-child, .chartData td:first-child { text-align: left; }
+
+@media (max-width: 1023px) {
+  .chartGrid { grid-template-columns: minmax(0, 1fr); }
+}
