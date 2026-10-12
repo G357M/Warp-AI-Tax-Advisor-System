@@ -92,16 +92,16 @@
 - `log_tail` — последние 40 строк лога задачи, каждая обрезана до 300
   символов.
 
-### Запись: `ops/write_job_status.sh`
+### Запись: `ops/write_job_status.py`
 
-`write_job_status.sh <job> <started_at> <exit_code> <summary> <log_file> [trigger]`
+`write_job_status.py JOB STARTED_AT EXIT_CODE SUMMARY LOG_FILE` (trigger и признак пропуска приходят из окружения: `INFOHUB_JOB_TRIGGER`, `INFOHUB_JOB_SKIPPED=1`)
 
 - Проверяет `job` по фиксированному списку, иначе выход 2.
 - Хвост лога пропускает через фильтр, который заменяет на `[redacted]`
   значения после `token`, `key`, `secret`, `password`, `Authorization`
   (регистр не важен) и всё, похожее на `bot<digits>:<...>`. Логи уже
   агрегатные; фильтр — вторая страховка.
-- Пишет атомарно: JSON собирается `python3 -c` (экранирование), во временный
+- Пишет атомарно: JSON собирается на stdlib Python, во временный
   файл в той же папке, затем `mv`. Права: папка `0755`, файл `0644`.
 - Никогда не меняет код выхода вызывающего скрипта: ошибки записи статуса
   логируются и проглатываются.
@@ -115,9 +115,8 @@
   не трогается.
 - `ops/backup-infohub-db.sh` и `ops/restore-drill-infohub-db.sh`: в
   существующую EXIT-ловушку (там уже вызывается `ops_alert.sh`) добавляется
-  вызов `write_job_status.sh`. Пропуск из-за занятой блокировки (exit 75)
-  записывается как есть.
-- Скрипты вызывают `write_job_status.sh` по пути рядом с собой, так же как
+  вызов `write_job_status.py`. Пропуск из-за занятой блокировки записывается с `skipped: true` (бэкап выходит с 0, drill с 75).
+- Скрипты вызывают `write_job_status.py` по пути рядом с собой, так же как
   сейчас вызывают `*_alert.sh`.
 
 ### Монтирование и деплой
@@ -159,8 +158,8 @@ HTTP).
 
 | state | условие |
 |---|---|
-| `failed` | `exit_code != 0` (кроме `75` у бэкапа и drill) |
-| `skipped` | `exit_code == 75` у бэкапа или drill (блокировка занята) |
+| `failed` | `exit_code != 0` и не `skipped` |
+| `skipped` | `skipped: true` в файле (бэкап выходит с 0, drill с 75 при занятой блокировке) |
 | `stale` | код 0, но `finished_at` старше порога |
 | `ok` | код 0 и в пределах порога |
 | `unknown` | файла нет, он не читается или не проходит валидацию |
@@ -224,7 +223,7 @@ SQL-чтение.
 (`/admin/system`) и «Корпус» (`/admin/corpus`). Страница
 `app/admin/scraper/page.tsx` удаляется; `/admin/scraper` отдаёт 404
 (отдельный редирект не нужен — единственный пользователь узнает о переезде
-из меню).
+из меню). Ссылки на дашборде теперь ведут на `/admin/system` и `/admin/corpus`.
 
 ### `/admin/system` — «Состояние системы»
 
@@ -265,7 +264,7 @@ SQL-чтение.
   отсутствие папки → четыре `unknown`, 403 для не-админа.
 - `test_admin_corpus_postgres.py`: счётчики по типам, `without_chunks`,
   недели по Тбилиси на границе понедельника, `pending`.
-- `ops/tests/test_write_job_status.sh` (запускается в CI на bash): валидный
+- `backend/tests/test_ops_job_status.py` (запускается в CI через pytest): валидный
   JSON, атомарность (нет `.tmp` после записи), редактирование секретов,
   неизвестный `job` → 2, ошибка записи не меняет код выхода вызывающего.
 - e2e `admin-system.spec.ts`, `admin-corpus.spec.ts` на замоканных ответах:
@@ -351,12 +350,12 @@ SQL-чтение.
      `ops/run_canary.sh`, ночной `run_scraper.sh` вызывает его же)
    - `backup` → `INFOHUB_JOB_TRIGGER=manual ops/backup-infohub-db.sh`
 5. Итог в `<job>.request.json`: `done` (код 0), `skipped` (скрапер вышел с
-   «Another scraper run is active» или бэкап с 75), `failed` (иное);
+   «Another scraper run is active» или `skipped: true`), `failed` (иное);
    `finished_at`, `exit_code`. Файл из `processing/` удаляется.
 6. Если диспетчер упал посреди задачи, при следующем запуске файл в
    `processing/` старше 6 ч помечается `failed` с `reason: "interrupted"`.
 
-`INFOHUB_JOB_TRIGGER` прокидывается в `write_job_status.sh` как `trigger`.
+`INFOHUB_JOB_TRIGGER` прокидывается в `write_job_status.py` как `trigger`.
 
 ## 8. Защита задач
 
@@ -416,7 +415,7 @@ SQL-чтение.
 - **Скрипты хоста не деплоятся образом.** `run_scraper.sh`, `*_alert.sh` и
   `ops/` лежат в репозитории и обновляются `git reset --hard` в
   `/root/infohub` при `deploy.sh`; cron вызывает именно
-  `/root/infohub/run_scraper.sh`. Новый диспетчер и `write_job_status.sh`
+  `/root/infohub/run_scraper.sh`. Новый диспетчер и `write_job_status.py`
   доставляются тем же путём.
 - **Ночной прогон во время деплоя.** `git reset` может заменить
   `run_scraper.sh`, пока он выполняется; bash читает скрипт по ходу. Риск

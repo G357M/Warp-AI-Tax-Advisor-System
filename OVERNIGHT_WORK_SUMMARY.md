@@ -76,17 +76,7 @@
 8. Store chunks in database
 9. Index in ChromaDB vector store
 
-**API Endpoints:**
-- `POST /api/v1/scraper/start` - Start scraping task
-- `GET /api/v1/scraper/status/{task_id}` - Check task status
-- `GET /api/v1/scraper/tasks` - List all tasks
-- `DELETE /api/v1/scraper/tasks/{task_id}` - Delete task
-
-**Background Processing:**
-- Tasks run in background using FastAPI BackgroundTasks
-- Non-blocking - API returns immediately with task_id
-- Progress tracking available
-- In-memory task storage (can be moved to Redis in production)
+**Running it:** historical note. The `/api/v1/scraper/*` endpoints described here were removed; ingestion now runs via cron `run_scraper.sh`, status at `/admin/system`.
 
 ---
 
@@ -177,24 +167,9 @@ curl -X POST http://localhost:8000/api/v1/public/query \
   -d '{"query": "Какой размер НДС в Грузии?", "language": "ru"}'
 ```
 
-### 4. Start Scraping (Optional)
+### 4. Scraping
 
-```bash
-# Via API
-curl -X POST http://localhost:8000/api/v1/scraper/start \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://infohub.ge", "max_depth": 2, "max_pages": 50}'
-
-# Check status
-curl http://localhost:8000/api/v1/scraper/status/{task_id}
-```
-
-**Or via Swagger UI:**
-1. Go to http://localhost:8000/docs
-2. Find `/scraper/start` endpoint
-3. Click "Try it out"
-4. Enter URL and parameters
-5. Execute
+The `/api/v1/scraper/*` API was removed. Ingestion runs via cron `run_scraper.sh`; see `/admin/system` and `/admin/corpus`.
 
 ---
 

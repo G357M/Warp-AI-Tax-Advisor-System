@@ -349,3 +349,18 @@ merge или production deployment.
   hover tooltip plus a "show data" table. Colours `#3b82f6` / `#d97706` passed the dataviz palette
   validator on the dark surface.
 - New Playwright specs must be added to `testMatch` in `frontend/playwright.config.ts`, otherwise they never run.
+
+## 2026-10-12 — Admin stage 5a (system health and corpus)
+
+- Shipped: `/admin/system` (latest run of scraper, canary, backup, restore drill) and `/admin/corpus`
+  (totals, per-type gaps, weekly ingest, pending queues); read-only, no schema step. Removed: `/admin/scraper`,
+  `GET /api/v1/admin/ops`, the legacy `/api/v1/scraper/*` router. Dashboard attention links now point to
+  `/admin/system` (ingest stale) and `/admin/corpus` (decisions queue).
+- Channel decision (spec option A): host cron jobs write `/root/infohub/ops-status/<job>.json`; the backend
+  mounts the folder read-only at `/app/ops-status`. No Docker socket, no DB table for job runs.
+- Deviations from the spec: the writer is `ops/write_job_status.py` (stdlib Python, unit-testable) instead of
+  a bash script; `ops/backup-infohub-db.sh` exits 0 on a busy lock, so "skipped" is an explicit
+  `skipped: true` field (`INFOHUB_JOB_SKIPPED=1`), the drill exits 75 with the same field; relative "N h ago"
+  text is computed on the client from `finished_at`.
+- Cards show "Нет данных" until each job's next run after the first deploy; do not deploy around 03:00-04:00 UTC.
+- Next: stage 5b (manual launch of jobs from the admin).

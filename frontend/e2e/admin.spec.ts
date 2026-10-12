@@ -44,8 +44,15 @@ const feedback = { total: 1, counts: { new: 1, in_progress: 0, fixed: 0 }, items
   id: 'f1', message: 'Ссылка на статью 168 не открывается', page: '/laws', status: 'new',
   created_at: '2026-10-10T12:00:00', email: longEmail, username: 'customer',
 }] };
-const ops = { last_ingest: '2026-10-11T02:10:00', documents_today: 14, pending: { decision_facts: 249, law_amendments: 0 },
-  logs: { scraper: ['2026-10-11 02:10 done: +14 new'], law_amendments_backfill: [], decision_facts_backfill: [] } };
+const system = { generated_at: '2026-10-12T10:00:00', jobs: ['scraper', 'canary', 'backup', 'restore_drill'].map((job) => ({
+  job, state: 'ok', started_at: '2026-10-12T03:00:00Z', finished_at: '2026-10-12T03:40:00Z', exit_code: 0,
+  summary: job === 'scraper' ? '+14 new docs (full)' : 'ok', trigger: 'cron', skipped: false, log_tail: [] })) };
+const corpusFixture = {
+  totals: { documents: 48211, chunks: 269218, added_7d: 12, added_30d: 61, last_ingest: '2026-10-11T02:10:00' },
+  by_type: [{ document_type: 'law', documents: 1204, added_30d: 3, without_date: 0, without_chunks: 0 }],
+  weekly: Array.from({ length: 12 }, (_, i) => ({ week_start: `2026-${i < 6 ? '08' : '09'}-0${(i % 6) + 1}`, added: i, partial: i === 11 })),
+  pending: { decision_facts: 249, law_amendments: 0 },
+};
 const row = { total: 100, satisfied: 1, partially_satisfied: 27, rejected: 72, unclear: 0, taxpayer_relief_rate: 0.28 };
 const analytics = { coverage: { decisions_in_corpus: 11249, decisions_extracted: 11000 }, overall: row,
   by_year: [{ ...row, year: 2025 }], by_body: [{ ...row, body: 'revenue_service_council' }], by_dispute_type: [],
@@ -78,7 +85,8 @@ async function setup(page: Page, lang: 'ru' | 'ka' | 'en' = 'ru') {
       '/api/v1/admin/quality/answers': { total: 1, items: [qualityRow] },
       '/api/v1/admin/quality/summary': qualitySummary,
       '/api/v1/admin/documents': { total: 0, items: [] },
-      '/api/v1/admin/ops': ops,
+      '/api/v1/admin/system': system,
+      '/api/v1/admin/corpus': corpusFixture,
       '/api/v1/analytics/decisions': analytics,
       '/api/v1/billing/admin/reconciliation': { items: [], next_offset: null },
     };
@@ -106,7 +114,8 @@ const PAGES: { path: string; ready: Ready }[] = [
   { path: '/admin/feedback', ready: text(longEmail) },
   { path: '/admin/documents', ready: loaded },
   { path: '/admin/analytics', ready: text('168', true) },
-  { path: '/admin/scraper', ready: text('2026-10-11 02:10 done: +14 new') },
+  { path: '/admin/corpus', ready: text('law', true) },
+  { path: '/admin/system', ready: text('+14 new docs (full)') },
   { path: '/admin/audit', ready: text(users[0].id) },
   { path: '/admin/settings', ready: text('gpt-4o-mini') },
 ];

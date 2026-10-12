@@ -135,11 +135,7 @@
 - [ ] **Blue-Green Deployment** or Rolling updates
 
 #### 7. Real Data Collection
-- [ ] **Run Scraper** on infohub.ge
-  ```bash
-  curl -X POST http://localhost:8000/api/v1/scraper/start \
-    -d '{"url": "https://infohub.ge", "max_pages": 200}'
-  ```
+- [ ] **Run Scraper** on infohub.rs.ge: ingestion runs via cron `run_scraper.sh` (the `/api/v1/scraper/*` API was removed)
 - [ ] **Verify Data Quality** - Check extracted content
 - [ ] **Set Up Cron Job** - Daily/weekly updates
 - [ ] **Monitor Scraping** - Success rate, errors
