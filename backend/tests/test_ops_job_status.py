@@ -92,3 +92,32 @@ def test_write_failure_never_fails_caller(tmp_path, monkeypatch):
     blocker.write_text("x", encoding="utf-8")
     monkeypatch.setenv("INFOHUB_OPS_STATUS_DIR", str(blocker / "sub"))
     assert writer.main(["w", "scraper", "", "0", "", "/dev/null"]) == 0
+
+
+def _text(rel):
+    return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def test_scraper_writes_scraper_and_canary_status():
+    text = _text("run_scraper.sh")
+    assert 'STATUS_WRITER="$SCRIPT_DIR/ops/write_job_status.py"' in text
+    assert "trap write_scraper_status EXIT" in text
+    assert 'python3 "$STATUS_WRITER" canary "$CANARY_STARTED_AT" "$CANARY_EXIT"' in text
+    # The trap is installed only after the lock: a skipped overlapping run must not overwrite the status.
+    assert text.index("flock -n 9") < text.index("trap write_scraper_status EXIT")
+
+
+def test_backup_and_drill_write_status_from_exit_trap():
+    for rel, job in (("ops/backup-infohub-db.sh", "backup"), ("ops/restore-drill-infohub-db.sh", "restore_drill")):
+        text = _text(rel)
+        finish = text[text.index("finish() {"):text.index("trap finish EXIT")]
+        assert f'"$STATUS_WRITER" {job} "$started_at" "$rc"' in finish, rel
+        assert 'INFOHUB_JOB_SKIPPED="$skipped"' in finish, rel
+        assert "|| true" in finish, rel
+
+
+def test_status_dir_is_mounted_read_only_and_created_on_deploy():
+    assert "- ./ops-status:/app/ops-status:ro" in _text("docker-compose.yml")
+    deploy = _text("scripts/deploy_production.sh")
+    assert "install -d -m 0755 ops-status" in deploy
+    assert deploy.index("install -d -m 0755 ops-status") < deploy.index("docker compose config --quiet")

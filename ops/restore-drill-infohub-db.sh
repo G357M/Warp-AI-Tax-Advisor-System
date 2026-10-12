@@ -36,6 +36,12 @@ READY_TIMEOUT="${INFOHUB_RESTORE_DRILL_READY_TIMEOUT:-120}"
 CORE_TABLES=(documents document_chunks users decision_facts)
 ALERT="${INFOHUB_OPS_ALERT:-$(dirname "${BASH_SOURCE[0]}")/ops_alert.sh}"
 
+STATUS_WRITER="${INFOHUB_OPS_STATUS_WRITER:-$(dirname "${BASH_SOURCE[0]}")/write_job_status.py}"
+STATUS_LOG="${INFOHUB_RESTORE_DRILL_LOG:-/root/infohub/logs/restore-drill.log}"
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+skipped=0
+summary=""
+
 log() { echo "[restore-drill $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 
 # Any non-zero exit (a failed check, a skipped drill, set -e) sends one
@@ -58,6 +64,8 @@ finish() {
         bash "$ALERT" "monthly restore drill" "exit $rc: ${reason:-unknown error}
 Log: /root/infohub/logs/restore-drill.log" || true
     fi
+    INFOHUB_JOB_SKIPPED="$skipped" python3 "$STATUS_WRITER" restore_drill "$started_at" "$rc" \
+        "${summary:-${reason:-}}" "$STATUS_LOG" || true
 }
 trap finish EXIT
 
@@ -89,6 +97,8 @@ exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     reason="skipped: a backup or another drill holds the lock"
     log "$reason; try again later" >&2
+    skipped=1
+    summary="skipped: lock held by the backup"
     exit 75
 fi
 
@@ -208,3 +218,4 @@ duration=$(( SECONDS - started ))
 
 printf 'ok %s %s %ss\n' "$dump_name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$duration" > "$BACKUP_DIR/restore-drill-last.txt"
 log "ok $dump_name restored and verified in ${duration}s"
+summary="ok $dump_name in ${duration}s"
