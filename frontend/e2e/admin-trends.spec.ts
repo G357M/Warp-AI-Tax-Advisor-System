@@ -19,21 +19,21 @@ function months(count: number, last: string): string[] {
   });
 }
 
-function bucket(start: string, i: number, partial: boolean, zero: boolean): Bucket {
+function bucket(start: string, i: number, partial: boolean, zero: boolean, clean = false): Bucket {
   const v = (n: number) => (zero ? 0 : n);
   const withEvidence = zero || i < 25 ? 0 : 4;
   return {
     start, partial, signups: v(i % 3), askers: v(2 + (i % 4)), questions: v(5 + ((i * 7) % 11)),
     payments: v(i % 5 === 0 ? 1 : 0), revenue_minor: v(i % 5 === 0 ? 4900 : 0),
     up: v(i >= 25 ? 2 : 0), down: v(i >= 27 ? 1 : 0), answers: v(5 + ((i * 7) % 11)),
-    answers_with_evidence: withEvidence, flagged: withEvidence ? 1 : 0,
+    answers_with_evidence: withEvidence, flagged: withEvidence && !clean ? 1 : 0,
     median_processing_ms: withEvidence ? 8400 : null,
   };
 }
 
-function trends(period: '30d' | '12m', zero = false) {
+function trends(period: '30d' | '12m', zero = false, clean = false) {
   const starts = period === '30d' ? days(30, '2026-10-12') : months(12, '2026-10-01');
-  const buckets = starts.map((s, i) => bucket(s, i, i === starts.length - 1, zero));
+  const buckets = starts.map((s, i) => bucket(s, i, i === starts.length - 1, zero, clean));
   const sum = (key: string) => buckets.reduce((acc, b) => acc + Number(b[key]), 0);
   const current = {
     signups: sum('signups'), askers: zero ? 0 : 9, questions: sum('questions'), payments: sum('payments'),
@@ -47,7 +47,7 @@ function trends(period: '30d' | '12m', zero = false) {
   };
 }
 
-type Options = { lang?: 'ru' | 'ka'; zero?: boolean; failFirst?: boolean };
+type Options = { lang?: 'ru' | 'ka'; zero?: boolean; clean?: boolean; failFirst?: boolean };
 
 async function json(route: Route, data: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
@@ -69,7 +69,7 @@ async function setup(page: Page, options: Options = {}) {
         failures -= 1;
         return json(route, { detail: 'boom' }, 500);
       }
-      return json(route, trends(url.searchParams.get('period') === '12m' ? '12m' : '30d', options.zero));
+      return json(route, trends(url.searchParams.get('period') === '12m' ? '12m' : '30d', options.zero, options.clean));
     }
     return json(route, { detail: 'No fixture' }, 404);
   });
@@ -152,6 +152,26 @@ test('empty period shows no NaN and says there is no data', async ({ page }) => 
   await expect(page.getByText('Данных о качестве пока нет.')).toBeVisible();
   const body = await page.locator('main').innerText();
   expect(body).not.toMatch(/NaN|Infinity/);
+});
+
+test('a real 0% flagged share is shown as 0%, not as missing data', async ({ page }) => {
+  await setup(page, { clean: true });
+  await page.goto('/admin/trends');
+  const flagged = page.getByRole('figure').filter({ hasText: 'Доля ответов с признаками проблем' });
+  await expect(flagged.getByText('Данные о качестве собираются с 07.10.')).toBeVisible();
+  await expect(flagged.getByText('За период данных нет')).toHaveCount(0);
+  await flagged.getByText('Показать данные').click();
+  await expect(flagged.locator('tbody tr').last()).toContainText('0%');
+});
+
+test('12-month axis does not put the last two month labels side by side', async ({ page }) => {
+  await setup(page);
+  await page.goto('/admin/trends?period=12m');
+  await expect(page.getByRole('button', { name: '12 месяцев' })).toHaveAttribute('aria-pressed', 'true');
+  const axis = page.getByRole('figure').filter({ hasText: 'Выручка' }).first().locator('[data-axis="x"] > span');
+  await expect(axis).toHaveCount(12);
+  const shown = (await axis.allInnerTexts()).map((t) => t.trim() !== '');
+  expect(shown.slice(-2)).toEqual([false, true]);
 });
 
 test('trends visual baseline', async ({ page }) => {

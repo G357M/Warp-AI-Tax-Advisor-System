@@ -18,6 +18,8 @@ interface TrendChartProps {
   readonly partialLabel: string;
   readonly dash: string;
   readonly note?: string;
+  /** Shares: a real 0 is data, so only all-null means "no data". Counts: all-zero means "no data". */
+  readonly zeroIsData?: boolean;
 }
 
 const MAX_X_LABELS = 8;
@@ -33,16 +35,18 @@ export function niceMax(v: number): number {
 
 function shownLabel(i: number, n: number): boolean {
   const step = Math.ceil(n / MAX_X_LABELS);
-  return i === n - 1 || (i % step === 0 && n - 1 - i >= step / 2);
+  return i === n - 1 || (i % step === 0 && n - 1 - i > step / 2);
 }
 
 export function TrendChart(props: TrendChartProps) {
-  const { title, labels, series, format, partialLast, emptyText, dataLabel, periodLabel, partialLabel, dash, note } = props;
+  const { title, labels, series, format, partialLast, emptyText, dataLabel, periodLabel, partialLabel, dash, note, zeroIsData } = props;
   const [active, setActive] = useState<number | null>(null);
   const n = labels.length;
   const totals = labels.map((_, i) => series.reduce((sum, s) => sum + (s.values[i] ?? 0), 0));
   const max = niceMax(Math.max(0, ...totals));
-  const empty = totals.every((t) => t === 0);
+  const empty = zeroIsData
+    ? series.every((s) => s.values.every((v) => v === null))
+    : totals.every((t) => t === 0);
   const value = (v: number | null) => (v === null ? dash : format(v));
   const last = n - 1;
   const summary = `${title}: ${labels[0] ?? ''} – ${labels[last] ?? ''}, max ${format(Math.max(0, ...totals))}`;
@@ -77,7 +81,7 @@ export function TrendChart(props: TrendChartProps) {
         </div>}
       </div>
       <span />
-      <div className={styles.chartX} style={vars({ '--n': String(n) })} aria-hidden="true">
+      <div className={styles.chartX} style={vars({ '--n': String(n) })} aria-hidden="true" data-axis="x">
         {labels.map((label, i) => <span key={label}>{shownLabel(i, n) ? label : ''}</span>)}
       </div>
     </div>

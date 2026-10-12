@@ -90,7 +90,7 @@ function TrendsView({ data, c, locale }: Readonly<{ data: Trends; c: AdminCopy; 
           series('up', c.trends.up, (b) => b.up),
           series('down', c.trends.down, (b) => b.down, AMBER),
         ]} />
-        <TrendChart {...common} title={c.trends.flaggedShare} format={percent} note={qualityNote}
+        <TrendChart {...common} title={c.trends.flaggedShare} format={percent} note={qualityNote} zeroIsData
           series={[series('flagged', c.trends.flaggedShare, (b) => share(b.flagged, b.answers_with_evidence))]} />
       </div>
       <p className={styles.chartNote}>
