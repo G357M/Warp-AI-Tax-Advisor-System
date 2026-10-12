@@ -54,6 +54,7 @@ jobs:
           scripts/add_auth_recovery.py
           scripts/add_billing_provider_foundation.py
           scripts/add_billing_review_journal.py
+          scripts/add_answer_quality.py
           scripts/schema_contract_cli.py
           scripts/audit_production_readiness.py
           scripts/audit_legal_answer_contracts.py
@@ -134,6 +135,7 @@ jobs:
           tests/test_plan_quotas.py
           tests/test_evidence_contract.py
           tests/test_integration.py
+          tests/test_rating_limit.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
           tests/test_legal_temporal_backfill.py
@@ -254,6 +256,7 @@ jobs:
           tests/test_billing_review_postgres.py
           tests/test_admin_postgres.py
           tests/test_admin_users_postgres.py
+          tests/test_admin_quality_postgres.py
           tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning

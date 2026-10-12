@@ -5,6 +5,7 @@
  * Payments keep their own dictionary in lib/billing-reconciliation.ts.
  */
 import { useLang, type Lang } from './i18n';
+import type { QualityFlag, ReviewReason, Verdict } from './admin-types';
 
 export type AdminLocale = string | string[];
 // Chromium ICU ships no `ka` data, so ka-GE would fall back to en-US (11/1/2026).
@@ -14,20 +15,21 @@ export const ADMIN_LOCALE: Record<Lang, AdminLocale> = { ru: 'ru-RU', ka: ['ka-G
 export const ADMIN_ACTIONS = [
   'user.role_changed', 'subscription.activated', 'feedback.status_changed', 'user.blocked', 'user.unblocked',
   'subscription.granted', 'subscription.canceled', 'user.password_reset_sent', 'user.verification_sent',
+  'answer.reviewed', 'user.identity_revealed',
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 
 export const ADMIN_ERROR_CODES = [
   'user_not_found', 'feedback_not_found', 'cannot_block_self', 'cannot_block_admin', 'cannot_demote_self',
   'user_blocked', 'admin_has_business', 'active_plan_differs', 'plan_unlimited', 'no_active_subscription',
-  'email_already_verified', 'email_unavailable',
+  'email_already_verified', 'email_unavailable', 'message_not_found',
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 
 const ru = {
   nav: {
     menu: 'Меню администратора', checking: 'Проверяем доступ…', admin: 'Администрирование', back: 'На сайт',
-    dashboard: 'Обзор', documents: 'Документы', analytics: 'Аналитика споров', users: 'Пользователи',
+    dashboard: 'Обзор', documents: 'Документы', analytics: 'Аналитика споров', users: 'Пользователи', quality: 'Качество ответов',
     feedback: 'Обращения', scraper: 'Ингест', audit: 'Журнал действий', config: 'Конфигурация',
   },
   common: {
@@ -53,6 +55,7 @@ const ru = {
     subscriptions: 'Активные подписки', noSubscriptions: 'пока нет',
     messages7d: 'Сообщений за 7 дней', conversations: (n: string) => `всего диалогов: ${n}`,
     corpus: 'Корпус по типам', recent: 'Последние действия', openAudit: 'Весь журнал',
+    qualityDown: (n: string) => `Ответы с 👎 без разметки: ${n}`,
   },
   audit: {
     title: 'Журнал действий', subtitle: 'Каждое изменение, сделанное администратором. Записи нельзя изменить или удалить.',
@@ -63,8 +66,9 @@ const ru = {
       'user.blocked': 'Блокировка', 'user.unblocked': 'Разблокировка', 'subscription.granted': 'Подарочный сертификат',
       'subscription.canceled': 'Досрочное прекращение', 'user.password_reset_sent': 'Письмо сброса пароля',
       'user.verification_sent': 'Письмо подтверждения',
+      'answer.reviewed': 'Разметка ответа', 'user.identity_revealed': 'Раскрытие пользователя',
     } satisfies Record<AdminAction, string>,
-    targets: { user: 'Пользователь', checkout: 'Заявка', feedback: 'Обращение' } as Record<string, string>,
+    targets: { user: 'Пользователь', checkout: 'Заявка', feedback: 'Обращение', message: 'Ответ' } as Record<string, string>,
   },
   config: {
     title: 'Конфигурация', subtitle: 'Текущие настройки сервера, только для чтения.',
@@ -129,6 +133,7 @@ const ru = {
     active_plan_differs: 'Активен другой тариф — подтвердите замену.',
     plan_unlimited: 'У текущего тарифа нет даты окончания.', no_active_subscription: 'Нет активной платной подписки.',
     email_already_verified: 'Email уже подтверждён.', email_unavailable: 'Отправка почты не настроена.',
+    message_not_found: 'Ответ не найден.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Обращения', date: 'Дата', user: 'Пользователь', page: 'Страница', message: 'Сообщение', status: 'Статус',
@@ -158,6 +163,43 @@ const ru = {
     } as Record<string, string>,
     reliefShort: 'удовл.',
   },
+  quality: {
+    title: 'Качество ответов', subtitle: 'Ответы пользователям, их оценки и разметка. Пользователи скрыты под псевдонимами.',
+    periods: { '7d': '7 дней', '30d': '30 дней', '90d': '90 дней', all: 'Всё время' },
+    period: 'Период', ratingFilter: 'Оценка', verdictFilter: 'Вердикт', search: 'Поиск по вопросу',
+    ratings: { up: '👍', down: '👎', none: 'Без оценки' },
+    verdictFilters: { unreviewed: 'Без разметки', correct: 'Верно', partial: 'Частично', wrong: 'Неверно' },
+    verdicts: { correct: 'Верно', partial: 'Частично', wrong: 'Неверно' } satisfies Record<Verdict, string>,
+    flags: {
+      no_precise_citation: 'Нет точной ссылки', no_sources: 'Нет источников', not_grounded: 'Не подтверждён',
+      slow: 'Долгий ответ', no_evidence: 'Нет данных',
+    } satisfies Record<QualityFlag, string>,
+    reasons: {
+      not_in_corpus: 'Нет в корпусе', wrong_version: 'Не та редакция закона', wrong_citation: 'Ошибка ссылки',
+      fabricated: 'Выдумано', incomplete: 'Неполно', language: 'Язык', other: 'Другое',
+    } satisfies Record<ReviewReason, string>,
+    queues: { downUnreviewed: '👎 без разметки', noCitation: 'Без точной ссылки', wrong: 'Неверные' },
+    reset: 'Сбросить фильтры', notFound: 'Ничего не найдено.',
+    when: 'Когда', user: 'Пользователь', question: 'Вопрос', signals: 'Признаки', rating: 'Оценка', verdict: 'Вердикт',
+    summary: {
+      downShare: 'Доля 👎', reviewed: 'Размечено', wrongShare: 'Неверных среди размеченных',
+      noCitation: 'Без точной ссылки', median: 'Медианное время ответа',
+      ofRated: (n: string) => `из ${n} оценённых`, ofAnswers: (n: string) => `из ${n} ответов`,
+    },
+    seconds: (s: string) => `${s} с`,
+    back: '← К ленте', prev: '← Предыдущий', next: 'Следующий →', reviewing: 'Разбираемый ответ',
+    sources: 'Источники', evidence: 'Признаки', noEvidence: 'Нет данных: ответ старше этапа сохранения признаков.',
+    ev: {
+      status: 'Статус', coverage: 'Покрытие', questionClass: 'Класс вопроса', sourceCount: 'Источников',
+      precise: 'Точная ссылка', time: 'Время ответа', retrieved: 'Найдено фрагментов',
+    },
+    userRating: 'Оценка пользователя', noRating: 'Пользователь не оценивал ответ.',
+    review: 'Разметка', reviewReasons: 'Причины', note: 'Заметка', saveReview: 'Сохранить разметку',
+    reviewSaved: 'Разметка сохранена.', history: 'История разметки', noReviews: 'Ответ ещё не размечен.',
+    revealUser: 'Открыть клиента', revealTitle: 'Открыть данные клиента?',
+    revealDescription: 'Действие попадёт в журнал: кто, когда и по какому ответу раскрыл пользователя.',
+    you: 'Пользователь', assistant: 'Ответ',
+  },
 };
 
 export type AdminCopy = typeof ru;
@@ -165,7 +207,7 @@ export type AdminCopy = typeof ru;
 const ka: AdminCopy = {
   nav: {
     menu: 'ადმინისტრატორის მენიუ', checking: 'წვდომა მოწმდება…', admin: 'ადმინისტრირება', back: 'საიტზე დაბრუნება',
-    dashboard: 'მიმოხილვა', documents: 'დოკუმენტები', analytics: 'დავების ანალიტიკა', users: 'მომხმარებლები',
+    dashboard: 'მიმოხილვა', documents: 'დოკუმენტები', analytics: 'დავების ანალიტიკა', users: 'მომხმარებლები', quality: 'პასუხების ხარისხი',
     feedback: 'მიმართვები', scraper: 'მონაცემების შეგროვება', audit: 'მოქმედებების ჟურნალი', config: 'კონფიგურაცია',
   },
   common: {
@@ -191,6 +233,7 @@ const ka: AdminCopy = {
     subscriptions: 'აქტიური გამოწერები', noSubscriptions: 'ჯერ არ არის',
     messages7d: 'შეტყობინებები ბოლო 7 დღეში', conversations: (n: string) => `სულ დიალოგები: ${n}`,
     corpus: 'კორპუსი ტიპების მიხედვით', recent: 'ბოლო მოქმედებები', openAudit: 'მთელი ჟურნალი',
+    qualityDown: (n: string) => `👎-იანი პასუხები შემოწმების გარეშე: ${n}`,
   },
   audit: {
     title: 'მოქმედებების ჟურნალი', subtitle: 'ადმინისტრატორის ყველა ცვლილება. ჩანაწერის შეცვლა ან წაშლა შეუძლებელია.',
@@ -201,8 +244,9 @@ const ka: AdminCopy = {
       'user.blocked': 'დაბლოკვა', 'user.unblocked': 'განბლოკვა', 'subscription.granted': 'სასაჩუქრე სერტიფიკატი',
       'subscription.canceled': 'ვადაზე ადრე შეწყვეტა', 'user.password_reset_sent': 'პაროლის აღდგენის წერილი',
       'user.verification_sent': 'დადასტურების წერილი',
+      'answer.reviewed': 'პასუხის შემოწმება', 'user.identity_revealed': 'მომხმარებლის ვინაობის გამჟღავნება',
     },
-    targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა' },
+    targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა', message: 'პასუხი' },
   },
   config: {
     title: 'კონფიგურაცია', subtitle: 'სერვერის მიმდინარე პარამეტრები, მხოლოდ სანახავად.',
@@ -267,6 +311,7 @@ const ka: AdminCopy = {
     active_plan_differs: 'აქტიურია სხვა ტარიფი, დაადასტურეთ ჩანაცვლება.',
     plan_unlimited: 'მიმდინარე ტარიფს დასრულების თარიღი არ აქვს.', no_active_subscription: 'აქტიური ფასიანი გამოწერა არ არის.',
     email_already_verified: 'ელფოსტა უკვე დადასტურებულია.', email_unavailable: 'ფოსტის გაგზავნა არ არის გამართული.',
+    message_not_found: 'პასუხი ვერ მოიძებნა.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'მიმართვები', date: 'თარიღი', user: 'მომხმარებელი', page: 'გვერდი', message: 'შეტყობინება', status: 'სტატუსი',
@@ -296,12 +341,49 @@ const ka: AdminCopy = {
     },
     reliefShort: 'დაკმ.',
   },
+  quality: {
+    title: 'პასუხების ხარისხი', subtitle: 'პასუხები მომხმარებლებისთვის, მათი შეფასებები და შემოწმება. მომხმარებლები ფსევდონიმებით ჩანს.',
+    periods: { '7d': '7 დღე', '30d': '30 დღე', '90d': '90 დღე', all: 'მთელი დრო' },
+    period: 'პერიოდი', ratingFilter: 'შეფასება', verdictFilter: 'დასკვნა', search: 'ძიება კითხვის მიხედვით',
+    ratings: { up: '👍', down: '👎', none: 'შეფასების გარეშე' },
+    verdictFilters: { unreviewed: 'შეუმოწმებელი', correct: 'სწორია', partial: 'ნაწილობრივ', wrong: 'არასწორია' },
+    verdicts: { correct: 'სწორია', partial: 'ნაწილობრივ', wrong: 'არასწორია' } satisfies Record<Verdict, string>,
+    flags: {
+      no_precise_citation: 'ზუსტი მითითება არ არის', no_sources: 'წყაროები არ არის', not_grounded: 'დაუსაბუთებელია',
+      slow: 'ნელი პასუხი', no_evidence: 'მონაცემები არ არის',
+    } satisfies Record<QualityFlag, string>,
+    reasons: {
+      not_in_corpus: 'კორპუსში არ არის', wrong_version: 'კანონის არასწორი რედაქცია', wrong_citation: 'მითითების შეცდომა',
+      fabricated: 'გამოგონილია', incomplete: 'არასრულია', language: 'ენა', other: 'სხვა',
+    } satisfies Record<ReviewReason, string>,
+    queues: { downUnreviewed: '👎 შეუმოწმებელი', noCitation: 'ზუსტი მითითების გარეშე', wrong: 'არასწორი' },
+    reset: 'ფილტრების გასუფთავება', notFound: 'ვერაფერი მოიძებნა.',
+    when: 'როდის', user: 'მომხმარებელი', question: 'კითხვა', signals: 'ნიშნები', rating: 'შეფასება', verdict: 'დასკვნა',
+    summary: {
+      downShare: '👎-ის წილი', reviewed: 'შემოწმებულია', wrongShare: 'არასწორი შემოწმებულებს შორის',
+      noCitation: 'ზუსტი მითითების გარეშე', median: 'პასუხის მედიანური დრო',
+      ofRated: (n: string) => `შეფასებული ${n}-დან`, ofAnswers: (n: string) => `${n} პასუხიდან`,
+    },
+    seconds: (s: string) => `${s} წმ`,
+    back: '← ლენტაში დაბრუნება', prev: '← წინა', next: 'შემდეგი →', reviewing: 'შესამოწმებელი პასუხი',
+    sources: 'წყაროები', evidence: 'ნიშნები', noEvidence: 'მონაცემები არ არის: პასუხი ნიშნების შენახვის ეტაპზე ადრეულია.',
+    ev: {
+      status: 'სტატუსი', coverage: 'დაფარვა', questionClass: 'კითხვის კლასი', sourceCount: 'წყაროები',
+      precise: 'ზუსტი მითითება', time: 'პასუხის დრო', retrieved: 'ნაპოვნი ფრაგმენტები',
+    },
+    userRating: 'მომხმარებლის შეფასება', noRating: 'მომხმარებელს პასუხი არ შეუფასებია.',
+    review: 'შემოწმება', reviewReasons: 'მიზეზები', note: 'შენიშვნა', saveReview: 'შემოწმების შენახვა',
+    reviewSaved: 'შემოწმება შეინახა.', history: 'შემოწმების ისტორია', noReviews: 'პასუხი ჯერ არ შემოწმებულა.',
+    revealUser: 'კლიენტის გახსნა', revealTitle: 'გაიხსნას კლიენტის მონაცემები?',
+    revealDescription: 'მოქმედება ჟურნალში ჩაიწერება: ვინ, როდის და რომელი პასუხის მიხედვით გახსნა მომხმარებელი.',
+    you: 'მომხმარებელი', assistant: 'პასუხი',
+  },
 };
 
 const en: AdminCopy = {
   nav: {
     menu: 'Administrator menu', checking: 'Checking access…', admin: 'Administration', back: 'Back to site',
-    dashboard: 'Overview', documents: 'Documents', analytics: 'Dispute analytics', users: 'Users',
+    dashboard: 'Overview', documents: 'Documents', analytics: 'Dispute analytics', users: 'Users', quality: 'Answer quality',
     feedback: 'Feedback', scraper: 'Ingest', audit: 'Action log', config: 'Configuration',
   },
   common: {
@@ -327,6 +409,7 @@ const en: AdminCopy = {
     subscriptions: 'Active subscriptions', noSubscriptions: 'none yet',
     messages7d: 'Messages in 7 days', conversations: (n: string) => `conversations in total: ${n}`,
     corpus: 'Corpus by type', recent: 'Recent actions', openAudit: 'Full log',
+    qualityDown: (n: string) => `Thumbs-down answers awaiting review: ${n}`,
   },
   audit: {
     title: 'Action log', subtitle: 'Every change made by an administrator. Entries cannot be edited or deleted.',
@@ -337,8 +420,9 @@ const en: AdminCopy = {
       'user.blocked': 'Block', 'user.unblocked': 'Unblock', 'subscription.granted': 'Gift certificate',
       'subscription.canceled': 'Early cancellation', 'user.password_reset_sent': 'Password reset email',
       'user.verification_sent': 'Verification email',
+      'answer.reviewed': 'Answer review', 'user.identity_revealed': 'User revealed',
     },
-    targets: { user: 'User', checkout: 'Order', feedback: 'Feedback' },
+    targets: { user: 'User', checkout: 'Order', feedback: 'Feedback', message: 'Answer' },
   },
   config: {
     title: 'Configuration', subtitle: 'Current server settings, read-only.',
@@ -403,6 +487,7 @@ const en: AdminCopy = {
     active_plan_differs: 'Another plan is active — confirm the replacement.',
     plan_unlimited: 'The current plan has no end date.', no_active_subscription: 'No active paid subscription.',
     email_already_verified: 'Email is already verified.', email_unavailable: 'Email delivery is not configured.',
+    message_not_found: 'Answer not found.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Feedback', date: 'Date', user: 'User', page: 'Page', message: 'Message', status: 'Status',
@@ -431,6 +516,43 @@ const en: AdminCopy = {
       city_court: 'City court', appeals_court: 'Appeals court', supreme_court: 'Supreme court', other: 'Other',
     },
     reliefShort: 'relief',
+  },
+  quality: {
+    title: 'Answer quality', subtitle: 'Answers to users, their ratings and reviews. Users are shown as pseudonyms.',
+    periods: { '7d': '7 days', '30d': '30 days', '90d': '90 days', all: 'All time' },
+    period: 'Period', ratingFilter: 'Rating', verdictFilter: 'Verdict', search: 'Search questions',
+    ratings: { up: '👍', down: '👎', none: 'Not rated' },
+    verdictFilters: { unreviewed: 'Not reviewed', correct: 'Correct', partial: 'Partial', wrong: 'Wrong' },
+    verdicts: { correct: 'Correct', partial: 'Partial', wrong: 'Wrong' } satisfies Record<Verdict, string>,
+    flags: {
+      no_precise_citation: 'No precise citation', no_sources: 'No sources', not_grounded: 'Not grounded',
+      slow: 'Slow answer', no_evidence: 'No data',
+    } satisfies Record<QualityFlag, string>,
+    reasons: {
+      not_in_corpus: 'Not in corpus', wrong_version: 'Wrong law version', wrong_citation: 'Wrong citation',
+      fabricated: 'Fabricated', incomplete: 'Incomplete', language: 'Language', other: 'Other',
+    } satisfies Record<ReviewReason, string>,
+    queues: { downUnreviewed: '👎 not reviewed', noCitation: 'No precise citation', wrong: 'Wrong' },
+    reset: 'Reset filters', notFound: 'Nothing found.',
+    when: 'When', user: 'User', question: 'Question', signals: 'Signals', rating: 'Rating', verdict: 'Verdict',
+    summary: {
+      downShare: 'Thumbs-down share', reviewed: 'Reviewed', wrongShare: 'Wrong among reviewed',
+      noCitation: 'No precise citation', median: 'Median answer time',
+      ofRated: (n: string) => `of ${n} rated`, ofAnswers: (n: string) => `of ${n} answers`,
+    },
+    seconds: (s: string) => `${s} s`,
+    back: '← Back to feed', prev: '← Previous', next: 'Next →', reviewing: 'Answer under review',
+    sources: 'Sources', evidence: 'Signals', noEvidence: 'No data: the answer predates signal storage.',
+    ev: {
+      status: 'Status', coverage: 'Coverage', questionClass: 'Question class', sourceCount: 'Sources',
+      precise: 'Precise citation', time: 'Answer time', retrieved: 'Retrieved chunks',
+    },
+    userRating: 'User rating', noRating: 'The user has not rated this answer.',
+    review: 'Review', reviewReasons: 'Reasons', note: 'Note', saveReview: 'Save review',
+    reviewSaved: 'Review saved.', history: 'Review history', noReviews: 'Not reviewed yet.',
+    revealUser: 'Open client', revealTitle: 'Open client details?',
+    revealDescription: 'This is logged: who revealed the user, when and from which answer.',
+    you: 'User', assistant: 'Answer',
   },
 };
 

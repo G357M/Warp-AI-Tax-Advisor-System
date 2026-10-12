@@ -2,6 +2,7 @@
 SQLAlchemy models.
 """
 from models.admin_audit import AdminAuditLog
+from models.answer_quality import AnswerRating, AnswerReview
 from models.document import Document, DocumentChunk, DocumentRelation
 from models.user import AuthActionToken, User
 from models.conversation import Conversation, Message
@@ -10,6 +11,8 @@ from models.feedback import Feedback
 
 __all__ = [
     "AdminAuditLog",
+    "AnswerRating",
+    "AnswerReview",
     "Document",
     "DocumentChunk",
     "DocumentRelation",

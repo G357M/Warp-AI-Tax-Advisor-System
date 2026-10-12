@@ -3,16 +3,19 @@ Query processing API routes.
 """
 import logging
 import time
-from uuid import UUID
+from typing import Literal, Optional
+from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from core.admin_users import admin_error
 from core.database import get_db
-from core.plans import get_active_plan, check_and_count_question, refund_question, require_plan
+from core.plans import get_active_plan, check_and_count_question, refund_question, require_plan, _redis
 from core.security import get_current_user
 from core.time_utils import utc_now
-from models import User, Conversation, Message
+from models import User, Conversation, Message, AnswerRating
 from api.schemas import ConversationResponse, QueryRequest, QueryResponse, SourceInfo
 from api.evidence import attach_evidence
 from rag_v2.legal_answer_contracts import ensure_exact_provision_citations
@@ -110,11 +113,15 @@ def process_query(
         result = attach_evidence(result)
         result = ensure_exact_provision_citations(result, query_data.language)
 
+        assistant_id = uuid4()
         db.add(Message(
+            id=assistant_id,
             conversation_id=conversation.id,
             role="assistant",
             content=result["response"],
             sources=result.get("sources", []),
+            evidence={**dict(result["evidence"]), "retrieved_count": int(result.get("retrieved_count") or 0)},
+            processing_ms=max(0, int((time.time() - start_time) * 1000)),
         ))
         conversation.updated_at = utc_now()
         db.commit()
@@ -135,6 +142,7 @@ def process_query(
         "sources": [SourceInfo(**src) for src in result.get("sources", [])],
         "evidence": result["evidence"],
         "conversation_id": conversation.id,
+        "message_id": assistant_id,
         "retrieved_count": result.get("retrieved_count", 0),
         "processing_time": processing_time
     }
@@ -194,7 +202,10 @@ def get_conversation(
     messages = db.query(Message).filter(
         Message.conversation_id == conversation_id
     ).order_by(Message.created_at).all()
-    
+
+    ratings = {r.message_id: r for r in db.query(AnswerRating).filter(
+        AnswerRating.message_id.in_([m.id for m in messages if m.role == "assistant"])).all()}
+
     return {
         "conversation": {
             "id": conversation.id,
@@ -209,6 +220,8 @@ def get_conversation(
                 "content": message.content,
                 "sources": message.sources,
                 "created_at": message.created_at,
+                "rating": ({"value": ratings[message.id].value, "comment": ratings[message.id].comment}
+                           if message.id in ratings else None),
             }
             for message in messages
         ],
@@ -237,3 +250,81 @@ def delete_conversation(
     db.commit()
     
     return None
+
+
+RATING_LIMIT_PER_HOUR = 60
+
+
+class RatingRequest(BaseModel):
+    value: Literal[1, -1]
+    comment: Optional[str] = Field(default=None, max_length=1000)
+
+
+def rating_rate_limited(user_id) -> bool:
+    """True when the user exceeded RATING_LIMIT_PER_HOUR changes; no Redis -> no limit."""
+    client = _redis()
+    if client is None:
+        return False
+    key = f"rating:{user_id}:{utc_now().strftime('%Y%m%d%H')}"
+    try:
+        count = client.incr(key)
+        if count == 1:
+            client.expire(key, 3600)
+        return count > RATING_LIMIT_PER_HOUR
+    except Exception:
+        return False
+
+
+def _owned_assistant_message(db: Session, user: User, message_id: UUID) -> Message:
+    message = (db.query(Message).join(Conversation, Message.conversation_id == Conversation.id)
+               .filter(Message.id == message_id, Conversation.user_id == user.id).first())
+    if message is None:
+        raise admin_error(404, "message_not_found", "Message not found")
+    if message.role != "assistant":
+        raise admin_error(409, "not_assistant_message", "Only assistant answers can be rated")
+    return message
+
+
+def _check_rating_limit(user: User) -> None:
+    if rating_rate_limited(user.id):
+        raise admin_error(429, "rating_rate_limited", "Too many rating changes, try again later")
+
+
+@router.put(
+    "/messages/{message_id}/rating",
+    responses={
+        404: {"description": "Message not found"},
+        409: {"description": "Only assistant answers can be rated"},
+        429: {"description": "Too many rating changes"},
+    },
+)
+def rate_answer(message_id: UUID, body: RatingRequest, current_user: User = Depends(get_current_user),
+                db: Session = Depends(get_db)):
+    _check_rating_limit(current_user)
+    message = _owned_assistant_message(db, current_user, message_id)
+    comment = (body.comment or "").strip() or None
+    rating = db.query(AnswerRating).filter_by(message_id=message.id).first()
+    if rating is None:
+        rating = AnswerRating(message_id=message.id, user_id=current_user.id, value=body.value, comment=comment)
+        db.add(rating)
+    else:
+        rating.value, rating.comment = body.value, comment
+    db.commit()
+    return {"value": rating.value, "comment": rating.comment}
+
+
+@router.delete(
+    "/messages/{message_id}/rating",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Message not found"},
+        409: {"description": "Only assistant answers can be rated"},
+        429: {"description": "Too many rating changes"},
+    },
+)
+def unrate_answer(message_id: UUID, current_user: User = Depends(get_current_user),
+                  db: Session = Depends(get_db)):
+    _check_rating_limit(current_user)
+    message = _owned_assistant_message(db, current_user, message_id)
+    db.query(AnswerRating).filter_by(message_id=message.id).delete()
+    db.commit()

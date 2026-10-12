@@ -21,6 +21,13 @@ re-executes the newly checked-out script before builds or container changes.
 This ensures a new preflight or rollback guard applies on the deployment that
 introduces it, rather than only on the following release.
 
+The answer-quality release (`scripts/add_answer_quality.py`) is the first deploy
+that ALTERs the live `messages` table. In-flight chat requests hold locks during
+LLM generation, so run this deploy in a quiet window. Chat may pause for up to
+the slowest generation (tens of seconds) while the schema step waits for its
+lock; the schema script deliberately sets no `lock_timeout` because that would
+change its pinned contract.
+
 ## Origin TLS renewal
 
 Nginx serves the ACME HTTP-01 path from `/root/infohub/certbot/www`, so Certbot
@@ -1209,6 +1216,14 @@ applying.
   manual payment, early cancel (immediate), password-reset and verification emails. Every action is
   journaled in `admin_audit_log` with a reason. No schema step; normal `deploy.sh`. Blocking ends the
   user's sessions immediately. Refunds stay outside the system (done with the bank/provider by hand).
+- `backend/scripts/add_answer_quality.py` (admin stage 4) adds `messages.evidence`, `messages.processing_ms`
+  and the `answer_ratings` / `answer_reviews` tables. The deploy script applies it automatically right after
+  the admin-audit step, pinned by `ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256`; it is additive and idempotent, so
+  rolling back the code leaves the schema unused and harmless. `answer_reviews` rows cannot be updated or
+  deleted (except by cascade when the message or user is deleted). The quality feed lives at
+  `/admin/quality` (review page `/admin/quality/<message id>`). "Open client" there reveals the user behind a
+  pseudonym; it needs a reason and is journaled as `user.identity_revealed` in `/admin/audit`. The privacy
+  policy text now covers review of answers, so publish the frontend together with the backend.
 
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 

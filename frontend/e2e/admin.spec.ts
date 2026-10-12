@@ -10,6 +10,7 @@ const stats = {
   conversations: { total: 310, messages: 2400, messages_7d: 120 },
   feedback: { new: 2 },
   billing: { reconciliation_open: 1, manual_pending: 1 },
+  quality: { down_unreviewed: 3 },
   attention: { ingest_stale: false },
 };
 const auditItems = [{
@@ -22,6 +23,15 @@ const users = [{
   created_at: '2026-10-01T10:00:00', last_login: '2026-10-10T18:00:00', plan: 'pro', period_end: '2026-11-01T00:00:00',
   is_active: true, email_verified: true,
 }];
+const qualityRow = {
+  message_id: 'q-1', created_at: '2026-10-11T09:30:00', pseudonym: 'U-7F3A2C', question: 'Какой срок подачи декларации по НДС?',
+  answer: 'Не позднее 15 числа.', flags: ['no_precise_citation'], rating: -1, verdict: null, processing_ms: 8400,
+};
+const qualitySummary = {
+  answers: 120, rated: 40, down: 10, down_share: 0.25, reviewed: 12, reviewed_share: 0.1,
+  verdicts: { correct: 7, partial: 3, wrong: 2 }, reasons: {}, no_precise_citation_share: 0.3,
+  median_processing_ms: 8400, down_unreviewed: 3,
+};
 const config = {
   app: { APP_VERSION: '0.1.0', ENVIRONMENT: 'production', DEBUG: false },
   llm: { LLM_PROVIDER: 'openai', LLM_MODEL: 'gpt-4o-mini', EMBEDDING_MODEL: 'paraphrase-multilingual-mpnet-base-v2', RAG_TOP_K: 10, RAG_MIN_SIMILARITY: 0.5, JEV_MODE: 'off' },
@@ -65,6 +75,8 @@ async function setup(page: Page, lang: 'ru' | 'ka' | 'en' = 'ru') {
       '/api/v1/admin/config': config,
       '/api/v1/admin/users': { total: 1, items: users },
       '/api/v1/admin/feedback': feedback,
+      '/api/v1/admin/quality/answers': { total: 1, items: [qualityRow] },
+      '/api/v1/admin/quality/summary': qualitySummary,
       '/api/v1/admin/documents': { total: 0, items: [] },
       '/api/v1/admin/ops': ops,
       '/api/v1/analytics/decisions': analytics,
@@ -89,6 +101,7 @@ const loaded: Ready = async (page) => {
 const PAGES: { path: string; ready: Ready }[] = [
   { path: '/admin', ready: text('guideline') },
   { path: '/admin/users', ready: text(longEmail) },
+  { path: '/admin/quality', ready: text('U-7F3A2C') },
   { path: '/admin/billing', ready: loaded },
   { path: '/admin/feedback', ready: text(longEmail) },
   { path: '/admin/documents', ready: loaded },
@@ -122,6 +135,8 @@ test('dashboard lists what needs attention', async ({ page }) => {
   await expect(attention.getByRole('link', { name: 'New feedback: 2' })).toHaveAttribute('href', '/admin/feedback');
   await expect(attention.getByRole('link', { name: 'Payments to reconcile: 1' })).toHaveAttribute('href', '/admin/billing');
   await expect(attention.getByRole('link', { name: 'Orders awaiting activation: 1' })).toBeVisible();
+  await expect(attention.getByRole('link', { name: 'Thumbs-down answers awaiting review: 3' }))
+    .toHaveAttribute('href', '/admin/quality?period=all&rating=down&verdict=unreviewed');
   await expect(page.getByText('role: user → admin')).toBeVisible();
 });
 
@@ -157,6 +172,7 @@ test('admin visual baseline', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/admin');
   await expect(page.getByText('role: user → admin')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ответы с 👎 без разметки: 3' })).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
   await expect(page).toHaveScreenshot('admin-dashboard-ru-desktop.png', { fullPage: true });
 

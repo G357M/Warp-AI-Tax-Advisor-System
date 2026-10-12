@@ -310,3 +310,27 @@ merge или production deployment.
 - `useAdminFetch` (`lib/use-admin-fetch.ts`) is the pattern for new admin pages: abortable, ignores stale
   responses. Search and filters live in the URL; the card links back with `?back=`.
 - Card role button appears only after `/auth/me` resolves and is hidden on the admin's own card.
+
+## 2026-10-12 — Admin stage 4 (answer quality)
+
+- Schema only through `backend/scripts/add_answer_quality.py` (additive, idempotent, dry plan by default,
+  `--apply --expected-contract-sha256`); the hash is pinned as `ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256` in
+  `scripts/deploy_production.sh` and runs right after the admin-audit step. It adds `messages.evidence`
+  (JSONB) and `messages.processing_ms`, plus `answer_ratings` and `answer_reviews`. ORM models use
+  `sqlalchemy.JSON` so `sqlite://` tests keep working. Changing the script means re-pinning the hash.
+- Admin sees users only as pseudonyms: `U-` + first 6 hex of HMAC-SHA256(`SECRET_KEY`, user id)
+  (`core/admin_quality.py`). Rotating `SECRET_KEY` changes every pseudonym. The user id comes only from
+  `POST /admin/quality/answers/{id}/reveal-user`, which needs a reason and writes `user.identity_revealed`.
+- `answer_reviews` is append-only (row trigger blocks UPDATE and DELETE, statement trigger blocks TRUNCATE).
+  The one exception: DELETE passes when the parent message is already gone, so deleting a conversation or
+  user cascades. The latest review is the current verdict; older ones stay as history. Each review is also
+  journaled as `answer.reviewed`.
+- Ratings exist only for signed-in users (`PUT/DELETE /api/v1/query/messages/{id}/rating`, one per user and
+  message, optional comment on 👎). Guests (`/public/query`) get no `message_id`, no rating UI and nothing
+  stored. The privacy policy (`lib/legal-content.ts`) now says answers may be reviewed to improve quality.
+- Answers created before this stage have no `evidence` and no `processing_ms`: the feed flags them
+  `no_evidence` and the review page says the signals are missing. They are not backfilled.
+- Frontend: `/admin/quality` (feed, URL filters, `?back=` round-trip) and `/admin/quality/[id]` (review
+  panel). Dashboard attention line counts `quality.down_unreviewed`.
+- E2E: `admin-quality.spec.ts`, `answer-rating.spec.ts`; baselines `admin-quality-ru-desktop.png`,
+  `admin-quality-review-ka-mobile.png` and the regenerated dashboard, all from the pinned container.

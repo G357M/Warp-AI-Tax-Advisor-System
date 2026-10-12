@@ -45,11 +45,12 @@ _original_rag_modules = {
 }
 sys.modules.update(_stubbed_rag_modules)
 
-from api.routes import account, admin, admin_users, auth, billing, query as query_routes
+from api.routes import account, admin, admin_quality, admin_users, auth, billing, query as query_routes
 from core.config import settings
 from core.database import Base, get_db
 from models import (
     AdminAuditLog,
+    AnswerRating,
     AuthActionToken,
     BillingCheckout,
     BillingProviderEvent,
@@ -83,6 +84,7 @@ app.include_router(billing.router, prefix=settings.API_PREFIX)
 app.include_router(account.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(admin_users.router, prefix=settings.API_PREFIX)
+app.include_router(admin_quality.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
@@ -106,6 +108,7 @@ TEST_TABLES = [
     AuthActionToken.__table__,
     Conversation.__table__,
     Message.__table__,
+    AnswerRating.__table__,
     Subscription.__table__,
     Payment.__table__,
     BillingCheckout.__table__,
@@ -1162,3 +1165,101 @@ def test_non_admin_is_forbidden_from_user_management(client):
                          ("send-password-reset", {}), ("resend-verification", {})):
         response = client.post(f"/api/v1/admin/users/{some_id}/{action}", json={**body, "reason": "trying"})
         assert response.status_code == 403, action
+
+
+def test_answer_signals_are_stored_and_message_id_returned(client, monkeypatch):
+    username = "signals-user"
+    register_and_login(client, username)
+    db = TestingSessionLocal()
+    user = db.query(User).filter(User.username == username).one()
+    db.add(Subscription(
+        user_id=user.id, plan="pro", status="active",
+        period_start=utc_now(), period_end=utc_now() + timedelta(days=30),
+    ))
+    db.commit()
+    db.close()
+    monkeypatch.setattr(query_routes, "check_and_count_question", lambda *_args: None)
+    monkeypatch.setattr(query_routes.rag_pipeline, "process_query", lambda **_kwargs: {
+        "response": "The VAT rate is grounded in Article 166.",
+        "sources": [{"document_id": None, "title": "Tax Code of Georgia", "document_type": "law",
+                     "url": "https://matsne.gov.ge/", "relevance": 0.99, "article_ref": "166"}],
+        "retrieved_count": 1,
+    })
+    answer = client.post("/api/v1/query", json={"query": "What is the VAT rate?", "language": "en"})
+    assert answer.status_code == 200
+    message_id = answer.json()["message_id"]
+    db = TestingSessionLocal()
+    stored = db.get(Message, UUID(message_id))
+    assert stored.role == "assistant"
+    assert stored.evidence["status"] == "grounded" and stored.evidence["retrieved_count"] == 1
+    assert isinstance(stored.processing_ms, int) and stored.processing_ms >= 0
+    db.close()
+    detail = client.get(f"/api/v1/query/conversations/{answer.json()['conversation_id']}").json()
+    assistant = [m for m in detail["messages"] if m["role"] == "assistant"][0]
+    assert assistant["rating"] is None
+
+
+def _ask(client, monkeypatch, username):
+    register_and_login(client, username)
+    db = TestingSessionLocal()
+    user = db.query(User).filter(User.username == username).one()
+    db.add(Subscription(
+        user_id=user.id, plan="pro", status="active",
+        period_start=utc_now(), period_end=utc_now() + timedelta(days=30),
+    ))
+    db.commit()
+    db.close()
+    monkeypatch.setattr(query_routes, "rating_rate_limited", lambda _uid: False)
+    monkeypatch.setattr(query_routes, "check_and_count_question", lambda *_args: None)
+    monkeypatch.setattr(query_routes.rag_pipeline, "process_query", lambda **_kwargs: {
+        "response": "Answer.", "sources": [], "retrieved_count": 0})
+    payload = client.post("/api/v1/query", json={"query": "Question?", "language": "en"}).json()
+    return payload["message_id"], payload["conversation_id"]
+
+
+def test_rating_lifecycle(client, monkeypatch):
+    message_id, conversation_id = _ask(client, monkeypatch, "rater")
+    url = f"/api/v1/query/messages/{message_id}/rating"
+    assert client.put(url, json={"value": 1}).json() == {"value": 1, "comment": None}
+    assert client.put(url, json={"value": -1, "comment": "  wrong article  "}).json() == {
+        "value": -1, "comment": "wrong article"}
+    assert client.put(url, json={"value": -1, "comment": "   "}).json()["comment"] is None
+    detail = client.get(f"/api/v1/query/conversations/{conversation_id}").json()
+    assert [m["rating"] for m in detail["messages"] if m["role"] == "assistant"] == [{"value": -1, "comment": None}]
+    assert client.delete(url).status_code == 204
+    assert client.delete(url).status_code == 204
+    assert client.put(url, json={"value": 2}).status_code == 422
+    assert client.put(url, json={"value": 1, "comment": "x" * 1001}).status_code == 422
+
+
+def test_rating_guards(client, monkeypatch):
+    message_id, conversation_id = _ask(client, monkeypatch, "owner-user")
+    detail = client.get(f"/api/v1/query/conversations/{conversation_id}").json()
+    user_message_id = [m["id"] for m in detail["messages"] if m["role"] == "user"][0]
+    response = client.put(f"/api/v1/query/messages/{user_message_id}/rating", json={"value": 1})
+    assert response.status_code == 409 and response.json()["detail"]["code"] == "not_assistant_message"
+    missing = client.put(f"/api/v1/query/messages/{uuid4()}/rating", json={"value": 1})
+    assert missing.status_code == 404 and missing.json()["detail"]["code"] == "message_not_found"
+    client.post("/api/v1/auth/logout")
+    register_and_login(client, "intruder-user")
+    foreign = client.put(f"/api/v1/query/messages/{message_id}/rating", json={"value": -1})
+    assert foreign.status_code == 404
+    monkeypatch.setattr(query_routes, "rating_rate_limited", lambda _uid: True)
+    limited = client.delete(f"/api/v1/query/messages/{message_id}/rating")
+    assert limited.status_code == 429 and limited.json()["detail"]["code"] == "rating_rate_limited"
+
+
+def test_guest_cannot_rate(client):
+    assert client.put(f"/api/v1/query/messages/{uuid4()}/rating", json={"value": 1}).status_code == 401
+
+
+def test_non_admin_is_forbidden_from_answer_quality(client):
+    register_and_login(client, "plain-quality-user")
+    some_id = "00000000-0000-0000-0000-000000000001"
+    assert client.get("/api/v1/admin/quality/answers").status_code == 403
+    assert client.get(f"/api/v1/admin/quality/answers/{some_id}").status_code == 403
+    assert client.get("/api/v1/admin/quality/summary").status_code == 403
+    assert client.post(f"/api/v1/admin/quality/answers/{some_id}/review",
+                       json={"verdict": "wrong", "reasons": [], "reason": "trying"}).status_code == 403
+    assert client.post(f"/api/v1/admin/quality/answers/{some_id}/reveal-user",
+                       json={"reason": "trying"}).status_code == 403

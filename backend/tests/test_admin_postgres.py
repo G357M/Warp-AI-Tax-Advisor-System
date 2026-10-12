@@ -18,6 +18,7 @@ from core.database import Base, engine
 from core.time_utils import utc_now
 from models import (AdminAuditLog, BillingCheckout, Conversation, Document, Feedback, Message,
                     Payment, Subscription, User)
+from models.answer_quality import AnswerRating, AnswerReview
 from models.document import DecisionFacts, LawAmendment
 from scripts.add_admin_audit_log import apply_schema, contract_sha256
 
@@ -25,7 +26,7 @@ pytestmark = pytest.mark.skipif(os.getenv("BILLING_PROVIDER_POSTGRES_TESTS") != 
                                 reason="requires dedicated PostgreSQL")
 
 TABLES = [User, Subscription, Payment, BillingCheckout, Feedback, Document, DecisionFacts,
-          LawAmendment, Conversation, Message]
+          LawAmendment, Conversation, Message, AnswerRating, AnswerReview]
 
 
 @pytest.fixture

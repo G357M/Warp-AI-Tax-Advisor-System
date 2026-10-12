@@ -143,6 +143,25 @@ const DICT: Record<string, Entry> = {
   },
   'chat.err.signin': { ru: 'Войти снова', ka: 'ხელახლა შესვლა', en: 'Sign in again' },
   'chat.err.retry_cta': { ru: 'Повторить вопрос', ka: 'კითხვის გამეორება', en: 'Ask again' },
+  'rating.up': { ru: 'Полезный ответ', ka: 'სასარგებლო პასუხი', en: 'Helpful answer' },
+  'rating.down': { ru: 'Неточный ответ', ka: 'არაზუსტი პასუხი', en: 'Inaccurate answer' },
+  'rating.thanks': {
+    ru: 'Спасибо, это поможет улучшить ответы',
+    ka: 'გმადლობთ, ეს პასუხების გაუმჯობესებაში დაგვეხმარება',
+    en: 'Thank you, this helps us improve answers',
+  },
+  'rating.comment_label': { ru: 'Что не так?', ka: 'რა იყო არასწორი?', en: 'What was wrong?' },
+  'rating.comment_send': { ru: 'Отправить', ka: 'გაგზავნა', en: 'Send' },
+  'rating.error': {
+    ru: 'Не удалось сохранить оценку. Попробуйте ещё раз.',
+    ka: 'შეფასების შენახვა ვერ მოხერხდა. სცადეთ ხელახლა.',
+    en: 'Could not save your rating. Please try again.',
+  },
+  'rating.rate_limited': {
+    ru: 'Слишком много оценок подряд. Попробуйте позже.',
+    ka: 'ზედიზედ ძალიან ბევრი შეფასებაა. სცადეთ მოგვიანებით.',
+    en: 'Too many ratings in a row. Try again later.',
+  },
   'chat.sources': { ru: 'Официальные источники', ka: 'ოფიციალური წყაროები', en: 'Official sources' },
   'chat.evidence.exact': {
     ru: 'Основание: точная норма официального документа',

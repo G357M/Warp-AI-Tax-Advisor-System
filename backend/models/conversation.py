@@ -3,7 +3,7 @@ SQLAlchemy models for conversations and messages.
 """
 from uuid import uuid4
 
-from sqlalchemy import Column, String, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, JSON, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -33,6 +33,8 @@ class Message(Base):
     role = Column(String(20), nullable=False)  # user | assistant
     content = Column(Text, nullable=False)
     sources = Column(JSON, nullable=True)  # Links to documents
+    evidence = Column(JSON(none_as_null=True), nullable=True)  # answer-quality signals (assistant messages only)
+    processing_ms = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, default=utc_now, nullable=False)
 

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from billing.reconciliation import reconciliation_queue_filter
 from core.admin_audit import record_admin_action
+from core.admin_quality import down_unreviewed
 from core.admin_users import admin_error
 from core.database import get_db
 from core.public_config import public_config
@@ -74,6 +75,7 @@ def system_stats(db: Session = Depends(get_db)):
     ).scalar()
     ingest_stale = last_ingest is None or last_ingest < utc_now() - timedelta(hours=INGEST_STALE_HOURS)
     return {
+        "quality": {"down_unreviewed": down_unreviewed(db)},
         "documents": {
             "total": sum(r[1] for r in docs),
             "by_type": {r[0]: r[1] for r in docs},

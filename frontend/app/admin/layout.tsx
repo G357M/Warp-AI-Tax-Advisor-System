@@ -8,13 +8,14 @@ import { useAdminCopy } from '@/lib/admin-i18n';
 import { reconciliationCopy } from '@/lib/billing-reconciliation';
 import {
   DashboardIcon, FileTextIcon, PersonIcon, ActivityLogIcon, BarChartIcon, ChatBubbleIcon,
-  GearIcon, ExitIcon, HamburgerMenuIcon, CardStackIcon, ReaderIcon,
+  GearIcon, ExitIcon, CheckCircledIcon, HamburgerMenuIcon, CardStackIcon, ReaderIcon,
 } from '@radix-ui/react-icons';
 import styles from './admin.module.css';
 
 const navigation = [
   { key: 'dashboard', href: '/admin', icon: DashboardIcon },
   { key: 'users', href: '/admin/users', icon: PersonIcon },
+  { key: 'quality', href: '/admin/quality', icon: CheckCircledIcon },
   { key: 'payments', href: '/admin/billing', icon: CardStackIcon },
   { key: 'feedback', href: '/admin/feedback', icon: ChatBubbleIcon },
   { key: 'documents', href: '/admin/documents', icon: FileTextIcon },
@@ -35,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const controller = new AbortController();
     authFetch('/api/v1/auth/me', { signal: controller.signal, cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('auth check failed'))))
       .then((me) => {
         if (controller.signal.aborted) return;
         if (me.role === 'admin') setAdmin({ username: me.username });
@@ -45,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => controller.abort();
   }, [router]);
 
-  if (!admin) return <div className={styles.checking} role="status">{c.nav.checking}</div>;
+  if (!admin) return <output className={styles.checking}>{c.nav.checking}</output>;
 
   return <div className={styles.frame}>
     <header className={styles.header}>

@@ -22,6 +22,7 @@ export interface AdminStats {
   feedback: { new: number };
   billing: { reconciliation_open: number; manual_pending: number };
   attention: { ingest_stale: boolean };
+  quality: { down_unreviewed: number };
 }
 
 export type AdminConfig = Record<string, Record<string, string | number | boolean | null>>;
@@ -29,7 +30,9 @@ export type AdminConfig = Record<string, Record<string, string | number | boolea
 /** "role: user → admin" style summary of an audit entry's change. */
 function show(value: unknown): string {
   if (value == null) return '—';
-  return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return JSON.stringify(value) ?? '—';
 }
 
 export function summarizeChange(entry: AuditEntry): string {
@@ -73,3 +76,39 @@ export interface UserCard {
 }
 
 export type UserCardResponse = UserCard & { changed: boolean; sent?: boolean };
+
+export const QUALITY_FLAGS = ['no_precise_citation', 'no_sources', 'not_grounded', 'slow', 'no_evidence'] as const;
+export type QualityFlag = (typeof QUALITY_FLAGS)[number];
+export const REVIEW_REASONS = ['not_in_corpus', 'wrong_version', 'wrong_citation', 'fabricated', 'incomplete',
+  'language', 'other'] as const;
+export type ReviewReason = (typeof REVIEW_REASONS)[number];
+export const VERDICTS = ['correct', 'partial', 'wrong'] as const;
+export type Verdict = (typeof VERDICTS)[number];
+
+export interface QualityRow {
+  message_id: string; created_at: string | null; pseudonym: string; question: string; answer: string;
+  flags: QualityFlag[]; rating: 1 | -1 | null; verdict: Verdict | null; processing_ms: number | null;
+}
+export interface QualityPage { total: number; items: QualityRow[] }
+
+export interface QualityEvidence {
+  status?: string; basis?: string; coverage?: string; question_class?: string | null; source_count?: number;
+  official_sources_only?: boolean; has_precise_citation?: boolean; has_official_provision_link?: boolean;
+  retrieved_count?: number;
+}
+export interface QualityDetail {
+  message: {
+    id: string; created_at: string | null; content: string;
+    sources: { title?: string; url?: string | null; article_ref?: string | null }[];
+    evidence: QualityEvidence | null; processing_ms: number | null; flags: QualityFlag[];
+  };
+  conversation: { pseudonym: string; messages: { id: string; role: 'user' | 'assistant'; content: string; created_at: string | null }[] };
+  rating: { value: 1 | -1; comment: string | null; updated_at: string | null } | null;
+  reviews: { verdict: Verdict; reasons: ReviewReason[]; note: string | null; created_at: string | null; reviewer: { username: string | null } }[];
+  neighbors: { prev_id: string | null; next_id: string | null };
+}
+export interface QualitySummary {
+  answers: number; rated: number; down: number; down_share: number | null; reviewed: number;
+  reviewed_share: number | null; verdicts: Record<Verdict, number>; reasons: Record<ReviewReason, number>;
+  no_precise_citation_share: number | null; median_processing_ms: number | null; down_unreviewed: number;
+}
