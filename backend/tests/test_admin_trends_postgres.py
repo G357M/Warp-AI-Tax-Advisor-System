@@ -141,3 +141,12 @@ def test_empty_database_returns_zeros_and_nulls(database):
     assert all(b["median_processing_ms"] is None for b in data["buckets"])
     assert all(v == 0 for b in data["buckets"] for k, v in _metrics(b).items() if k != "median_processing_ms")
     assert set(data["totals"]["current"].values()) == {0} and set(data["totals"]["previous"].values()) == {0}
+
+
+def test_quality_since_ignores_admin_answers(seeded):
+    with seeded() as db:
+        boss = db.query(User).filter_by(username="boss").one()
+        _dialog(db, boss, datetime(2026, 10, 1, 8, 0), GROUNDED, 1000)
+        db.commit()
+    with seeded() as db:
+        assert trends(db, "30d", NOW)["quality_since"] == "2026-10-12"

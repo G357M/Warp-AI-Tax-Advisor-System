@@ -120,7 +120,8 @@ def trends(db: Session, period: str, now: datetime) -> dict:
     # partial last bucket is compared fairly rather than against a full one.
     previous_lo = _utc(w.previous_start)
     first_evidence = db.execute(select(func.min(Message.created_at)).where(
-        Message.role == "assistant", has_evidence())).scalar()
+        Message.role == "assistant", has_evidence(), Conversation.id == Message.conversation_id,
+        User.id == Conversation.user_id, User.role != "admin")).scalar()
     return {
         "period": period, "bucket": w.bucket, "timezone": "Asia/Tbilisi",
         "quality_since": (first_evidence + TBILISI_OFFSET).date().isoformat() if first_evidence else None,
