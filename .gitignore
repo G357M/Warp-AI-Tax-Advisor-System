@@ -196,6 +196,7 @@ typings/
 # OpenClaw / local operator artifacts
 .state/
 state/
+ops-status/
 .tmp_*.py
 .venv-*/
 OPENCLAW_VISIBLE_TEST_*.txt
