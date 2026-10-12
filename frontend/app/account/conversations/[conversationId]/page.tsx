@@ -7,6 +7,7 @@ import { authFetch, isLoggedIn } from '@/lib/auth';
 import { useT, DATE_LOCALES } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { SourceChip } from '@/components/ui/SourceChip';
+import { AnswerRating } from '@/components/AnswerRating';
 
 interface ConversationSource {
   title: string;
@@ -24,6 +25,7 @@ interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
   sources?: ConversationSource[] | null;
+  rating?: { value: 1 | -1; comment: string | null } | null;
   created_at: string;
 }
 
@@ -168,6 +170,9 @@ export default function ConversationPage() {
                   />
                 ))}
               </div>
+            )}
+            {message.role === 'assistant' && (
+              <AnswerRating messageId={message.id} initial={message.rating ?? null} />
             )}
           </article>
         ))}

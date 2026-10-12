@@ -26,6 +26,7 @@ export interface QueryResponse {
   sources: Array<SourceInfo | DirectSourceInfo>;
   evidence: EvidenceInfo;
   conversation_id?: string;
+  message_id?: string | null;
   retrieved_count: number;
   processing_time: number;
 }

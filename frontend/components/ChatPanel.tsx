@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useQuery } from '@/hooks/useQuery';
 import { Button } from '@/components/ui/Button';
 import { SourceChip } from '@/components/ui/SourceChip';
+import { AnswerRating } from '@/components/AnswerRating';
+import { isLoggedIn } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 
 export function ChatPanel() {
@@ -182,6 +184,9 @@ export function ChatPanel() {
                     })}
                   </div>
                 </div>
+              )}
+              {data.message_id && isLoggedIn() && (
+                <AnswerRating key={data.message_id} messageId={data.message_id} />
               )}
             </div>
           )}

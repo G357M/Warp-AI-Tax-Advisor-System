@@ -180,7 +180,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       label: 'Защита данных',
       title: 'Политика конфиденциальности',
       summary: 'Какие данные использует Tax Advisor, зачем они нужны и как реализовать свои права.',
-      updated: 'Версия 2026-09-08 · действует с 8 сентября 2026 года',
+      updated: 'Версия 2026-10-12 · действует с даты публикации',
       sections: [
         {
           id: 'controller',
@@ -192,7 +192,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
           title: 'Какие данные обрабатываются',
           bullets: [
             'Данные аккаунта и контакта: email, имя пользователя, указанное имя, защищённый хеш пароля и статус проверки email.',
-            'Содержание вопросов, диалогов и обратной связи, если пользователь их отправляет или сохраняет.',
+            'Содержание вопросов, диалогов и обратной связи, оценки ответов и комментарии к ним, если пользователь их отправляет или сохраняет.',
             'Сведения об оплате: пакет, сумма, валюта, статус, идентификаторы заявки и операции. Данные карты Tax Advisor не получает.',
             'Технические журналы, IP-адрес и сигналы безопасности, необходимые для защиты сервиса, диагностики и ограничения злоупотреблений.',
           ],
@@ -202,6 +202,7 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
           title: 'Цели и основания',
           body: [
             'Данные нужны для исполнения договора, предоставления ответов и истории, активации оплаченного доступа, поддержки, безопасности, выполнения юридических обязанностей и защиты законных требований. Там, где закон требует согласия, оно запрашивается отдельно и может быть отозвано на будущее.',
+            'Мы также проверяем и улучшаем качество и точность ответов: уполномоченный администратор может выборочно просматривать вопросы и ответы. При таком разборе личность пользователя по умолчанию скрыта, а её раскрытие фиксируется в журнале.',
           ],
         },
         {
@@ -298,11 +299,11 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       ], sources: [{ label: 'საქართველოს კანონი „მომხმარებლის უფლებების დაცვის შესახებ“, მუხლები 13–15', href: commonSources.consumer }],
     },
     privacy: {
-      label: 'მონაცემთა დაცვა', title: 'კონფიდენციალურობის პოლიტიკა', summary: 'რა მონაცემებს იყენებს Tax Advisor, რატომ გვჭირდება ისინი და როგორ გამოიყენოთ თქვენი უფლებები.', updated: 'ვერსია 2026-09-08 · მოქმედებს 2026 წლის 8 სექტემბრიდან',
+      label: 'მონაცემთა დაცვა', title: 'კონფიდენციალურობის პოლიტიკა', summary: 'რა მონაცემებს იყენებს Tax Advisor, რატომ გვჭირდება ისინი და როგორ გამოიყენოთ თქვენი უფლებები.', updated: 'ვერსია 2026-10-12 · მოქმედებს გამოქვეყნების დღიდან',
       sections: [
         { id: 'controller', title: 'მონაცემთა დამუშავებისთვის პასუხისმგებელი პირი', body: ['პერსონალურ მონაცემთა დამუშავებისთვის პასუხისმგებელი პირია Modern LLC, კოდი 431177120. კითხვები და მოთხოვნები: info@tax-advisor.ge, +995 550 052 050.'] },
-        { id: 'data', title: 'რა მონაცემები მუშავდება', bullets: ['ანგარიშისა და საკონტაქტო მონაცემები: ელფოსტა, მომხმარებლის სახელი, მითითებული სახელი, პაროლის დაცული ჰეში და ელფოსტის დადასტურების სტატუსი.', 'კითხვების, დიალოგებისა და უკუკავშირის შინაარსი, თუ მომხმარებელი მათ აგზავნის ან ინახავს.', 'გადახდის მონაცემები: პაკეტი, თანხა, ვალუტა, სტატუსი, განაცხადისა და ოპერაციის იდენტიფიკატორები. Tax Advisor ბარათის მონაცემებს არ იღებს.', 'ტექნიკური ჟურნალები, IP-მისამართი და უსაფრთხოების სიგნალები, რომლებიც საჭიროა სერვისის დაცვის, დიაგნოსტიკისა და ბოროტად გამოყენების შეზღუდვისთვის.'] },
-        { id: 'purposes', title: 'მიზნები და საფუძვლები', body: ['მონაცემები საჭიროა ხელშეკრულების შესასრულებლად, პასუხებისა და ისტორიის მისაწოდებლად, ფასიანი წვდომის გასააქტიურებლად, მხარდაჭერისა და უსაფრთხოებისთვის, სამართლებრივი ვალდებულებებისა და კანონიერი მოთხოვნების დასაცავად. სადაც კანონი თანხმობას მოითხოვს, მას ცალკე ვითხოვთ და მომავალზე შეიძლება გაუქმდეს.'] },
+        { id: 'data', title: 'რა მონაცემები მუშავდება', bullets: ['ანგარიშისა და საკონტაქტო მონაცემები: ელფოსტა, მომხმარებლის სახელი, მითითებული სახელი, პაროლის დაცული ჰეში და ელფოსტის დადასტურების სტატუსი.', 'კითხვების, დიალოგებისა და უკუკავშირის შინაარსი, პასუხების შეფასებები და მათზე კომენტარები, თუ მომხმარებელი მათ აგზავნის ან ინახავს.', 'გადახდის მონაცემები: პაკეტი, თანხა, ვალუტა, სტატუსი, განაცხადისა და ოპერაციის იდენტიფიკატორები. Tax Advisor ბარათის მონაცემებს არ იღებს.', 'ტექნიკური ჟურნალები, IP-მისამართი და უსაფრთხოების სიგნალები, რომლებიც საჭიროა სერვისის დაცვის, დიაგნოსტიკისა და ბოროტად გამოყენების შეზღუდვისთვის.'] },
+        { id: 'purposes', title: 'მიზნები და საფუძვლები', body: ['მონაცემები საჭიროა ხელშეკრულების შესასრულებლად, პასუხებისა და ისტორიის მისაწოდებლად, ფასიანი წვდომის გასააქტიურებლად, მხარდაჭერისა და უსაფრთხოებისთვის, სამართლებრივი ვალდებულებებისა და კანონიერი მოთხოვნების დასაცავად. სადაც კანონი თანხმობას მოითხოვს, მას ცალკე ვითხოვთ და მომავალზე შეიძლება გაუქმდეს.', 'ასევე ვამოწმებთ და ვაუმჯობესებთ პასუხების ხარისხსა და სიზუსტეს: უფლებამოსილ ადმინისტრატორს შეუძლია შერჩევით გადახედოს კითხვებსა და პასუხებს. ასეთი განხილვისას მომხმარებლის ვინაობა ნაგულისხმევად დამალულია, მისი გამჟღავნება კი ჟურნალში აღირიცხება.'] },
         { id: 'recipients', title: 'მიმღებები და მომწოდებლები', body: ['საჭირო მოცულობით მონაცემები შეიძლება დაამუშაონ ჰოსტინგის, მონაცემთა ბაზის, AI API-ის, ინფრასტრუქტურის დაცვის, საბანკო გადახდის (მათ შორის TBC) და ჩართვის შემდეგ ელფოსტის მიწოდების მომწოდებლებმა. ისინი მხოლოდ საკუთარი ფუნქციისთვის საჭირო მონაცემებს იღებენ და ვალდებული არიან დაიცვან მოქმედი მოთხოვნები.'] },
         { id: 'retention', title: 'შენახვა და უსაფრთხოება', body: ['მონაცემები ინახება არა უმეტეს შესაბამისი მიზნის, ხელშეკრულების, სავალდებულო ანგარიშგების, დავის გადაწყვეტისა და სარეზერვო აღდგენის საჭირო ვადისა. კონკრეტული ვადა კატეგორიასა და სამართლებრივ საფუძველზეა დამოკიდებული. გამოიყენება წვდომის გამიჯვნა, პაროლების ჰეშირება, ჟურნალირება, სარეზერვო ასლები და მთლიანობის კონტროლი.'] },
         { id: 'rights', title: 'თქვენი უფლებები', body: ['კანონის ფარგლებში შეგიძლიათ მოითხოვოთ ინფორმაცია და წვდომა, გასწორება, განახლება, დამუშავების შეწყვეტა, წაშლა ან განადგურება, დაბლოკვა, გადატანა, დამუშავებაზე შეწინააღმდეგება და გადაწყვეტილების გასაჩივრება. ანგარიშის დასაცავად შეიძლება განმცხადებლის ვინაობა გადავამოწმოთ.', 'მოთხოვნა გამოაგზავნეთ info@tax-advisor.ge-ზე. კანონით დადგენილი წესით შეგიძლიათ ასევე მიმართოთ უფლებამოსილ ორგანოს ან სასამართლოს.'] },
@@ -351,11 +352,11 @@ export const LEGAL_CONTENT: Record<Lang, Record<LegalSlug, LegalDocument>> = {
       ], sources: [{ label: 'Law of Georgia on the Protection of Consumer Rights, Articles 13–15', href: commonSources.consumer }],
     },
     privacy: {
-      label: 'Data protection', title: 'Privacy policy', summary: 'What data Tax Advisor uses, why it is needed, and how to exercise your rights.', updated: 'Version 2026-09-08 · effective 8 September 2026',
+      label: 'Data protection', title: 'Privacy policy', summary: 'What data Tax Advisor uses, why it is needed, and how to exercise your rights.', updated: 'Version 2026-10-12 · effective on publication',
       sections: [
         { id: 'controller', title: 'Data controller', body: ['The personal-data controller is Modern LLC, code 431177120. Questions and requests: info@tax-advisor.ge, +995 550 052 050.'] },
-        { id: 'data', title: 'Data we process', bullets: ['Account and contact data: email, username, supplied name, protected password hash, and email-verification status.', 'Questions, conversations, and feedback when submitted or saved by the user.', 'Payment records: plan, amount, currency, status, checkout and transaction identifiers. Tax Advisor does not receive card details.', 'Technical logs, IP address, and security signals required to protect and diagnose the service and limit abuse.'] },
-        { id: 'purposes', title: 'Purposes and grounds', body: ['Data is needed to perform the contract, provide answers and history, activate paid access, support users, secure the service, comply with legal duties, and defend lawful claims. Where consent is required, it is requested separately and may be withdrawn prospectively.'] },
+        { id: 'data', title: 'Data we process', bullets: ['Account and contact data: email, username, supplied name, protected password hash, and email-verification status.', 'Questions, conversations, and feedback, answer ratings and their comments, when submitted or saved by the user.', 'Payment records: plan, amount, currency, status, checkout and transaction identifiers. Tax Advisor does not receive card details.', 'Technical logs, IP address, and security signals required to protect and diagnose the service and limit abuse.'] },
+        { id: 'purposes', title: 'Purposes and grounds', body: ['Data is needed to perform the contract, provide answers and history, activate paid access, support users, secure the service, comply with legal duties, and defend lawful claims. Where consent is required, it is requested separately and may be withdrawn prospectively.', 'We also check and improve the quality and accuracy of answers: an authorized administrator may review selected questions and answers. During such review the user\'s identity is hidden by default, and revealing it is recorded in a log.'] },
         { id: 'recipients', title: 'Recipients and providers', body: ['As necessary, data may be processed by hosting, database, AI API, infrastructure-security, bank-payment (including TBC), and, once enabled, email-delivery providers. Providers receive only what is needed for their function and must comply with applicable data-protection requirements.'] },
         { id: 'retention', title: 'Retention and security', body: ['Data is kept no longer than needed for its purpose, the contract, mandatory records, dispute resolution, and backup recovery. The exact period depends on data category and legal ground. Controls include access separation, password hashing, logging, backups, and integrity checks.'] },
         { id: 'rights', title: 'Your rights', body: ['Within the law, you may request information and access, rectification, updating, cessation of processing, erasure or destruction, blocking, portability, object to processing, and appeal a decision. We may verify identity to protect the account.', 'Send requests to info@tax-advisor.ge. You may also apply to the competent authority or a court as provided by law.'] },
