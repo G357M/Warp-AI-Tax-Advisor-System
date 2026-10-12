@@ -51,6 +51,35 @@ function sameFlags(a: readonly string[], b: readonly string[]) {
   return a.length === b.length && a.every((f) => b.includes(f));
 }
 
+type FeedFilters = { period: string; rating: string; verdict: string; flags: readonly string[]; q: string; offset: number };
+
+function buildApiQuery({ period, rating, verdict, flags, q, offset }: FeedFilters) {
+  const query = new URLSearchParams({ limit: String(LIMIT), offset: String(offset), period });
+  if (rating) query.set('rating', rating);
+  if (verdict) query.set('verdict', verdict);
+  if (q) query.set('q', q);
+  flags.forEach((f) => query.append('flags', f));
+  return query;
+}
+
+// `back` carries only validated values, so the review page never forwards junk the feed itself ignored.
+function buildBackQuery({ period, rating, verdict, flags, q, offset }: FeedFilters) {
+  const backParams = new URLSearchParams();
+  if (period !== DEFAULT_PERIOD) backParams.set('period', period);
+  if (rating) backParams.set('rating', rating);
+  if (verdict) backParams.set('verdict', verdict);
+  flags.forEach((f) => backParams.append('flags', f));
+  if (q) backParams.set('q', q);
+  if (offset > 0) backParams.set('offset', String(offset));
+  return backParams.toString();
+}
+
+function reviewLink(id: string, listQuery: string) {
+  if (!listQuery) return `/admin/quality/${id}`;
+  const back = encodeURIComponent(`?${listQuery}`);
+  return `/admin/quality/${id}?back=${back}`;
+}
+
 function QualityFeed() {
   const { c, locale } = useAdminCopy();
   const params = useSearchParams();
@@ -89,26 +118,15 @@ function QualityFeed() {
     return () => clearTimeout(t);
   }, [draft, q, update]);
 
-  const query = new URLSearchParams({ limit: String(LIMIT), offset: String(offset), period });
-  if (rating) query.set('rating', rating);
-  if (verdict) query.set('verdict', verdict);
-  if (q) query.set('q', q);
-  flags.forEach((f) => query.append('flags', f));
+  const filters: FeedFilters = { period, rating, verdict, flags, q, offset };
+  const query = buildApiQuery(filters);
   const { data, error, loading, reload } = useAdminFetch<QualityPage>(`/api/v1/admin/quality/answers?${query}`);
   const summary = useAdminFetch<QualitySummary>(`/api/v1/admin/quality/summary?period=${period}`).data;
   const rows = data?.items ?? [];
   const total = data?.total ?? 0;
   const filtered = Boolean(q || rating || verdict || flags.length > 0);
-  // `back` carries only validated values, so the review page never forwards junk the feed itself ignored.
-  const backParams = new URLSearchParams();
-  if (period !== DEFAULT_PERIOD) backParams.set('period', period);
-  if (rating) backParams.set('rating', rating);
-  if (verdict) backParams.set('verdict', verdict);
-  flags.forEach((f) => backParams.append('flags', f));
-  if (q) backParams.set('q', q);
-  if (offset > 0) backParams.set('offset', String(offset));
-  const listQuery = backParams.toString();
-  const reviewHref = (id: string) => `/admin/quality/${id}${listQuery ? `?back=${encodeURIComponent(`?${listQuery}`)}` : ''}`;
+  const listQuery = buildBackQuery(filters);
+  const reviewHref = (id: string) => reviewLink(id, listQuery);
   const reset = () => { setDraft(''); setPushedQ(''); router.replace(pathname, { scroll: false }); };
 
   const toggleFlag = (f: QualityFlag) => update({ flags: flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f] });

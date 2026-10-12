@@ -12,6 +12,40 @@ import styles from '../../admin.module.css';
 
 const VERDICT_TONES = { correct: 'success', partial: 'warning', wrong: 'error' } as const satisfies Record<Verdict, string>;
 
+type PanelCopy = ReturnType<typeof useAdminCopy>['c'];
+type Locale = ReturnType<typeof useAdminCopy>['locale'];
+
+function EvidenceFacts({ ev, processingMs, c, locale }: Readonly<{
+  ev: NonNullable<QualityDetail['message']['evidence']>; processingMs: number | null; c: PanelCopy; locale: Locale;
+}>) {
+  const count = (value: number | undefined) => (value === undefined ? c.common.dash : formatNumber(value, locale));
+  let precise = c.common.dash;
+  if (ev.has_precise_citation !== undefined) precise = ev.has_precise_citation ? c.common.yes : c.common.no;
+  return <dl className={styles.facts}>
+    <dt>{c.quality.ev.status}</dt><dd>{ev.status ?? c.common.dash}</dd>
+    <dt>{c.quality.ev.coverage}</dt><dd>{ev.coverage ?? c.common.dash}</dd>
+    <dt>{c.quality.ev.questionClass}</dt><dd>{ev.question_class ?? c.common.dash}</dd>
+    <dt>{c.quality.ev.sourceCount}</dt><dd>{count(ev.source_count)}</dd>
+    <dt>{c.quality.ev.precise}</dt><dd>{precise}</dd>
+    <dt>{c.quality.ev.time}</dt><dd>{processingMs === null ? c.common.dash : c.quality.seconds((processingMs / 1000).toFixed(1))}</dd>
+    <dt>{c.quality.ev.retrieved}</dt><dd>{count(ev.retrieved_count)}</dd>
+  </dl>;
+}
+
+function ReviewHistory({ reviews, c, locale }: Readonly<{ reviews: QualityDetail['reviews']; c: PanelCopy; locale: Locale }>) {
+  if (reviews.length === 0) return <p className={styles.muted}>{c.quality.noReviews}</p>;
+  return <ul className={styles.actionGroup}>
+    {reviews.map((r, i) => <li key={`${r.created_at ?? ''}-${i}`} className={styles.actionGroup}>
+      <span className={styles.muted}>{formatDateTime(r.created_at, locale)} · {r.reviewer.username ?? c.common.dash}</span>
+      <span className={styles.pills}>
+        <Badge tone={VERDICT_TONES[r.verdict]}>{c.quality.verdicts[r.verdict]}</Badge>
+        {r.reasons.map((x) => <Badge key={x} tone="neutral">{c.quality.reasons[x]}</Badge>)}
+      </span>
+      {r.note && <span className={styles.prewrap}>{r.note}</span>}
+    </li>)}
+  </ul>;
+}
+
 export function ReviewPanel({ detail, onUpdated }: Readonly<{ detail: QualityDetail; onUpdated: (next: QualityDetail) => void }>) {
   const { c, locale } = useAdminCopy();
   const router = useRouter();
@@ -64,15 +98,8 @@ export function ReviewPanel({ detail, onUpdated }: Readonly<{ detail: QualityDet
   return <div className={styles.page}>
     <section className={`liquid-glass ${styles.panel}`}>
       <h2 className={styles.panelTitle}>{c.quality.evidence}</h2>
-      {ev ? <dl className={styles.facts}>
-        <dt>{c.quality.ev.status}</dt><dd>{ev.status ?? c.common.dash}</dd>
-        <dt>{c.quality.ev.coverage}</dt><dd>{ev.coverage ?? c.common.dash}</dd>
-        <dt>{c.quality.ev.questionClass}</dt><dd>{ev.question_class ?? c.common.dash}</dd>
-        <dt>{c.quality.ev.sourceCount}</dt><dd>{ev.source_count === undefined ? c.common.dash : formatNumber(ev.source_count, locale)}</dd>
-        <dt>{c.quality.ev.precise}</dt><dd>{ev.has_precise_citation === undefined ? c.common.dash : (ev.has_precise_citation ? c.common.yes : c.common.no)}</dd>
-        <dt>{c.quality.ev.time}</dt><dd>{message.processing_ms === null ? c.common.dash : c.quality.seconds((message.processing_ms / 1000).toFixed(1))}</dd>
-        <dt>{c.quality.ev.retrieved}</dt><dd>{ev.retrieved_count === undefined ? c.common.dash : formatNumber(ev.retrieved_count, locale)}</dd>
-      </dl> : <p className={styles.muted}>{c.quality.noEvidence}</p>}
+      {ev ? <EvidenceFacts ev={ev} processingMs={message.processing_ms} c={c} locale={locale} />
+        : <p className={styles.muted}>{c.quality.noEvidence}</p>}
       {message.flags.length > 0 && <div className={styles.pills}>
         {message.flags.map((f) => <Badge key={f} tone="warning">{c.quality.flags[f]}</Badge>)}
       </div>}
@@ -108,23 +135,14 @@ export function ReviewPanel({ detail, onUpdated }: Readonly<{ detail: QualityDet
           <span className={styles.muted}>{c.common.reasonHint}</span>
         </label>
         <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`} disabled={!canSave}>{c.quality.saveReview}</button>
-        {notice && <p className={styles.notice} role="status">{notice}</p>}
+        {notice && <output className={styles.notice}>{notice}</output>}
         {formError && <p className={styles.noticeError} role="alert">{formError}</p>}
       </form>
     </section>
 
     <section className={`liquid-glass ${styles.panel}`}>
       <h2 className={styles.panelTitle}>{c.quality.history}</h2>
-      {reviews.length === 0 ? <p className={styles.muted}>{c.quality.noReviews}</p> : <ul className={styles.actionGroup}>
-        {reviews.map((r, i) => <li key={`${r.created_at ?? ''}-${i}`} className={styles.actionGroup}>
-          <span className={styles.muted}>{formatDateTime(r.created_at, locale)} · {r.reviewer.username ?? c.common.dash}</span>
-          <span className={styles.pills}>
-            <Badge tone={VERDICT_TONES[r.verdict]}>{c.quality.verdicts[r.verdict]}</Badge>
-            {r.reasons.map((x) => <Badge key={x} tone="neutral">{c.quality.reasons[x]}</Badge>)}
-          </span>
-          {r.note && <span className={styles.prewrap}>{r.note}</span>}
-        </li>)}
-      </ul>}
+      <ReviewHistory reviews={reviews} c={c} locale={locale} />
     </section>
 
     <div>

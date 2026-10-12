@@ -30,7 +30,9 @@ export type AdminConfig = Record<string, Record<string, string | number | boolea
 /** "role: user → admin" style summary of an audit entry's change. */
 function show(value: unknown): string {
   if (value == null) return '—';
-  return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return JSON.stringify(value) ?? '—';
 }
 
 export function summarizeChange(entry: AuditEntry): string {

@@ -36,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const controller = new AbortController();
     authFetch('/api/v1/auth/me', { signal: controller.signal, cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('auth check failed'))))
       .then((me) => {
         if (controller.signal.aborted) return;
         if (me.role === 'admin') setAdmin({ username: me.username });
@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => controller.abort();
   }, [router]);
 
-  if (!admin) return <div className={styles.checking} role="status">{c.nav.checking}</div>;
+  if (!admin) return <output className={styles.checking}>{c.nav.checking}</output>;
 
   return <div className={styles.frame}>
     <header className={styles.header}>

@@ -9,6 +9,97 @@ import { AnswerRating } from '@/components/AnswerRating';
 import { isLoggedIn } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 
+type QueryData = NonNullable<ReturnType<typeof useQuery>['data']>;
+type QueryError = NonNullable<ReturnType<typeof useQuery>['error']>;
+
+function errorKey(error: QueryError) {
+  if (error === 'rate_limit') return 'chat.err.rate';
+  if (error === 'auth') return 'chat.err.auth';
+  if (error === 'network') return 'chat.err.network';
+  return 'chat.err.service';
+}
+
+function groundedKey(evidence: QueryData['evidence']) {
+  if (!evidence.has_precise_citation) return 'chat.evidence.document';
+  return evidence.has_official_provision_link ? 'chat.evidence.provision' : 'chat.evidence.exact';
+}
+
+function evidenceKey(evidence: QueryData['evidence']) {
+  if (evidence.status === 'grounded') return groundedKey(evidence);
+  if (evidence.status === 'partial') return 'chat.evidence.partial';
+  if (evidence.status === 'out_of_scope') return 'chat.evidence.out_of_scope';
+  return 'chat.evidence.insufficient';
+}
+
+function normalizeSource(s: QueryData['sources'][number]) {
+  if ('text' in s) {
+    return {
+      title: s.metadata?.title || s.text,
+      documentType: s.metadata?.document_type,
+      url: s.metadata?.source_url,
+      articleRef: s.metadata?.article_ref,
+      pointRef: s.metadata?.point_ref,
+      documentNumber: s.metadata?.document_number,
+      datePublished: s.metadata?.date_published,
+      dateEffective: s.metadata?.date_effective,
+      officialActUrl: s.metadata?.official_act_url,
+      provisionLinks: s.metadata?.provision_links,
+    };
+  }
+  return {
+    title: s.title,
+    documentType: s.document_type,
+    url: s.url,
+    articleRef: s.article_ref,
+    pointRef: s.point_ref,
+    documentNumber: s.document_number,
+    datePublished: s.date_published,
+    dateEffective: s.date_effective,
+    officialActUrl: s.official_act_url,
+    provisionLinks: s.provision_links,
+  };
+}
+
+type Translate = ReturnType<typeof useT>['t'];
+
+function ErrorNotice({ error, asked, onRetry, t }: Readonly<{
+  error: QueryError; asked: string | null; onRetry: (q: string) => void; t: Translate;
+}>) {
+  return (
+    <div className="rounded-2xl border border-error-border bg-error px-4 py-3">
+      <p className="text-[13px] leading-relaxed text-error-foreground">{t(errorKey(error))}</p>
+      {error === 'auth' && (
+        <Link
+          href="/login"
+          className="mt-0.5 inline-flex min-h-[44px] items-center text-[13px] font-medium text-error-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
+        >
+          {t('chat.err.signin')}
+        </Link>
+      )}
+      {error !== 'rate_limit' && error !== 'auth' && asked && (
+        <button
+          type="button"
+          onClick={() => onRetry(asked)}
+          className="mt-0.5 inline-flex min-h-[44px] items-center text-[13px] font-medium text-error-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
+        >
+          {t('chat.err.retry_cta')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EvidenceNote({ evidence, t }: Readonly<{ evidence: QueryData['evidence']; t: Translate }>) {
+  return (
+    <div className="mt-4 flex min-w-0 items-start gap-2.5 text-xs leading-5 text-white/60" role="status">
+      {evidence.status === 'grounded' && (
+        <span aria-hidden className="mt-[3px] h-3.5 w-[3px] shrink-0 rounded-full bg-primary" />
+      )}
+      <span className="min-w-0">{t(evidenceKey(evidence))}</span>
+    </div>
+  );
+}
+
 export function ChatPanel() {
   const { data, loading, error, submitQuery } = useQuery();
   const { lang, t } = useT();
@@ -19,7 +110,7 @@ export function ChatPanel() {
     const text = q.trim();
     if (!text || loading) return;
     setAsked(text);
-    submitQuery(text, lang);
+    void submitQuery(text, lang);
     // On mobile the answer area renders below the fold; bring it into view.
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.getElementById('chat')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
@@ -72,38 +163,7 @@ export function ChatPanel() {
               {t('chat.question')} {asked}
             </div>
           )}
-          {error && (
-            <div className="rounded-2xl border border-error-border bg-error px-4 py-3">
-              <p className="text-[13px] leading-relaxed text-error-foreground">
-                {t(
-                  error === 'rate_limit'
-                    ? 'chat.err.rate'
-                    : error === 'auth'
-                      ? 'chat.err.auth'
-                      : error === 'network'
-                        ? 'chat.err.network'
-                        : 'chat.err.service',
-                )}
-              </p>
-              {error === 'auth' && (
-                <Link
-                  href="/login"
-                  className="mt-0.5 inline-flex min-h-[44px] items-center text-[13px] font-medium text-error-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
-                >
-                  {t('chat.err.signin')}
-                </Link>
-              )}
-              {error !== 'rate_limit' && error !== 'auth' && asked && (
-                <button
-                  type="button"
-                  onClick={() => ask(asked)}
-                  className="mt-0.5 inline-flex min-h-[44px] items-center text-[13px] font-medium text-error-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
-                >
-                  {t('chat.err.retry_cta')}
-                </button>
-              )}
-            </div>
-          )}
+          {error && <ErrorNotice error={error} asked={asked} onRetry={ask} t={t} />}
           {loading && (
             <div className="liquid-glass rounded-2xl p-5 text-[14px] font-light text-white/60">
               {t('chat.searching')}
@@ -114,74 +174,16 @@ export function ChatPanel() {
               <p className="whitespace-pre-wrap text-[15px] font-light leading-7 text-white/90">
                 {data.response}
               </p>
-              <div className="mt-4 flex min-w-0 items-start gap-2.5 text-xs leading-5 text-white/60" role="status">
-                {data.evidence.status === 'grounded' && (
-                  <span aria-hidden className="mt-[3px] h-3.5 w-[3px] shrink-0 rounded-full bg-primary" />
-                )}
-                <span className="min-w-0">
-                  {t(
-                    data.evidence.status === 'grounded'
-                      ? data.evidence.has_precise_citation
-                        ? data.evidence.has_official_provision_link
-                          ? 'chat.evidence.provision'
-                          : 'chat.evidence.exact'
-                        : 'chat.evidence.document'
-                      : data.evidence.status === 'partial'
-                        ? 'chat.evidence.partial'
-                        : data.evidence.status === 'out_of_scope'
-                          ? 'chat.evidence.out_of_scope'
-                          : 'chat.evidence.insufficient',
-                  )}
-                </span>
-              </div>
+              <EvidenceNote evidence={data.evidence} t={t} />
               {data.sources?.length > 0 && (
                 <div className="mt-4 border-t border-white/10 pt-4">
                   <div className="mb-2 text-xs font-medium uppercase tracking-wide text-white/50">
                     {t('chat.sources')}
                   </div>
                   <div className="flex flex-col gap-2">
-                    {data.sources.slice(0, 5).map((s, i) => {
-                      const source = 'text' in s
-                        ? {
-                            title: s.metadata?.title || s.text,
-                            documentType: s.metadata?.document_type,
-                            url: s.metadata?.source_url,
-                            articleRef: s.metadata?.article_ref,
-                            pointRef: s.metadata?.point_ref,
-                            documentNumber: s.metadata?.document_number,
-                            datePublished: s.metadata?.date_published,
-                            dateEffective: s.metadata?.date_effective,
-                            officialActUrl: s.metadata?.official_act_url,
-                            provisionLinks: s.metadata?.provision_links,
-                          }
-                        : {
-                            title: s.title,
-                            documentType: s.document_type,
-                            url: s.url,
-                            articleRef: s.article_ref,
-                            pointRef: s.point_ref,
-                            documentNumber: s.document_number,
-                            datePublished: s.date_published,
-                            dateEffective: s.date_effective,
-                            officialActUrl: s.official_act_url,
-                            provisionLinks: s.provision_links,
-                          };
-                      return (
-                        <SourceChip
-                          key={i}
-                          title={source.title}
-                          documentType={source.documentType}
-                          url={source.url}
-                          articleRef={source.articleRef}
-                          pointRef={source.pointRef}
-                          documentNumber={source.documentNumber}
-                          datePublished={source.datePublished}
-                          dateEffective={source.dateEffective}
-                          officialActUrl={source.officialActUrl}
-                          provisionLinks={source.provisionLinks}
-                        />
-                      );
-                    })}
+                    {data.sources.slice(0, 5).map((s, i) => (
+                      <SourceChip key={i} {...normalizeSource(s)} />
+                    ))}
                   </div>
                 </div>
               )}

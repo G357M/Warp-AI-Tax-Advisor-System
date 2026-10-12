@@ -6,7 +6,7 @@ import { useT } from '@/lib/i18n';
 
 type Rating = { value: 1 | -1; comment: string | null } | null;
 
-export function AnswerRating({ messageId, initial = null }: { messageId: string; initial?: Rating }) {
+export function AnswerRating({ messageId, initial = null }: Readonly<{ messageId: string; initial?: Rating }>) {
   const { t } = useT();
   const [rating, setRating] = useState<Rating>(initial);
   const [comment, setComment] = useState(initial?.comment ?? '');
@@ -58,7 +58,7 @@ export function AnswerRating({ messageId, initial = null }: { messageId: string;
             <span aria-hidden>{value === 1 ? '👍' : '👎'}</span>
           </button>
         ))}
-        {rating && <span role="status">{t('rating.thanks')}</span>}
+        {rating && <output>{t('rating.thanks')}</output>}
       </div>
       {rating?.value === -1 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

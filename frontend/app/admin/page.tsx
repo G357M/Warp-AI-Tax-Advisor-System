@@ -34,9 +34,9 @@ function AttentionBody({ stats, error, items, onRetry, c }: {
   return <ul className={styles.list}>{items.map((item) => <li key={item.text}><Link href={item.href}>{item.text}</Link></li>)}</ul>;
 }
 
-function RecentBody({ audit, error, onRetry, c, locale }: {
+function RecentBody({ audit, error, onRetry, c, locale }: Readonly<{
   audit: AuditPage | null; error: boolean; onRetry: () => void; c: AdminCopy; locale: AdminLocale;
-}) {
+}>) {
   if (error) return <AdminState kind="error" onRetry={onRetry} />;
   if (!audit) return <AdminState kind="loading" />;
   if (audit.items.length === 0) return <AdminState kind="empty" />;
@@ -46,7 +46,7 @@ function RecentBody({ audit, error, onRetry, c, locale }: {
   </li>)}</ul>;
 }
 
-function StatTiles({ stats, c, n, locale }: { stats: AdminStats; c: AdminCopy; n: Fmt; locale: AdminLocale }) {
+function StatTiles({ stats, c, n, locale }: Readonly<{ stats: AdminStats; c: AdminCopy; n: Fmt; locale: AdminLocale }>) {
   const subsTotal = Object.values(stats.subscriptions).reduce((a, b) => a + b, 0);
   return <div className={styles.tiles}>
     <StatTile label={c.dashboard.documents} value={n(stats.documents.total)}
@@ -71,11 +71,11 @@ export default function AdminDashboard() {
   const [auditError, setAuditError] = useState(false);
 
   const loadStats = useCallback(() => {
-    authFetch('/api/v1/admin/stats').then((r) => (r.ok ? r.json() : Promise.reject()))
+    authFetch('/api/v1/admin/stats').then((r) => (r.ok ? r.json() : Promise.reject(new Error('request failed'))))
       .then((d) => { setStats(d); setStatsError(false); }).catch(() => setStatsError(true));
   }, []);
   const loadAudit = useCallback(() => {
-    authFetch('/api/v1/admin/audit?limit=5').then((r) => (r.ok ? r.json() : Promise.reject()))
+    authFetch('/api/v1/admin/audit?limit=5').then((r) => (r.ok ? r.json() : Promise.reject(new Error('request failed'))))
       .then((d) => { setAudit(d); setAuditError(false); }).catch(() => setAuditError(true));
   }, []);
   useEffect(() => { loadStats(); loadAudit(); }, [loadStats, loadAudit]);
