@@ -117,7 +117,10 @@ docker compose run --rm --no-deps backend \
 
 # Install answer-quality signals, ratings and append-only reviews before runtime writes to them.
 ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256="9da7afe6803eba82e45004afd7580870cef17202b2dbbff439dfedb99f2ac71c"
-docker compose run --rm --no-deps backend     python scripts/add_answer_quality.py         --apply         --expected-contract-sha256 "$ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256"
+docker compose run --rm --no-deps backend \
+    python scripts/add_answer_quality.py \
+        --apply \
+        --expected-contract-sha256 "$ANSWER_QUALITY_SCHEMA_CONTRACT_SHA256"
 
 # Additive and idempotent. The first run preserves every existing account by
 # marking it verified before the new verification policy can become active.

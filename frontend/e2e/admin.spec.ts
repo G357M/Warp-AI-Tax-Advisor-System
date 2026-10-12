@@ -136,7 +136,7 @@ test('dashboard lists what needs attention', async ({ page }) => {
   await expect(attention.getByRole('link', { name: 'Payments to reconcile: 1' })).toHaveAttribute('href', '/admin/billing');
   await expect(attention.getByRole('link', { name: 'Orders awaiting activation: 1' })).toBeVisible();
   await expect(attention.getByRole('link', { name: 'Thumbs-down answers awaiting review: 3' }))
-    .toHaveAttribute('href', '/admin/quality?rating=down&verdict=unreviewed');
+    .toHaveAttribute('href', '/admin/quality?period=all&rating=down&verdict=unreviewed');
   await expect(page.getByText('role: user → admin')).toBeVisible();
 });
 

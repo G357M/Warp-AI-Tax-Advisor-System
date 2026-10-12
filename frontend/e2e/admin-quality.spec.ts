@@ -64,6 +64,7 @@ async function setup(page: Page, options: Options = {}) {
   }, options.lang ?? 'ru');
   const writes: Write[] = [];
   const listQueries: string[] = [];
+  const detailQueries: string[] = [];
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -88,10 +89,13 @@ async function setup(page: Page, options: Options = {}) {
     }
     if (path === '/api/v1/admin/quality/summary') return json(route, summary);
     const match = /^\/api\/v1\/admin\/quality\/answers\/([^/]+)$/.exec(path);
-    if (match) return json(route, detail(match[1]));
+    if (match) {
+      detailQueries.push(url.search);
+      return json(route, detail(match[1]));
+    }
     return json(route, { detail: 'No fixture' }, 404);
   });
-  return { writes, listQueries };
+  return { writes, listQueries, detailQueries };
 }
 
 const QUESTION = rows[0].question;
@@ -107,9 +111,10 @@ test('feed filters live in the URL and survive reload', async ({ page }) => {
   await page.goto('/admin/quality');
   await expect(page.getByRole('link', { name: QUESTION })).toBeVisible();
   await page.getByRole('button', { name: '👎 без разметки', exact: true }).click();
-  await expect(page).toHaveURL(/\/admin\/quality\?rating=down&verdict=unreviewed$/);
+  await expect(page).toHaveURL(/\/admin\/quality\?period=all&rating=down&verdict=unreviewed$/);
+  await expect(page.getByRole('button', { name: '👎 без разметки', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('checkbox', { name: 'Нет точной ссылки' }).click();
-  await expect(page).toHaveURL(/\/admin\/quality\?rating=down&verdict=unreviewed&flags=no_precise_citation$/);
+  await expect(page).toHaveURL(/\/admin\/quality\?period=all&rating=down&verdict=unreviewed&flags=no_precise_citation$/);
   await page.reload();
   await expect(page.getByRole('combobox', { name: 'Оценка' })).toHaveValue('down');
   await expect(page.getByRole('combobox', { name: 'Вердикт' })).toHaveValue('unreviewed');
@@ -118,6 +123,25 @@ test('feed filters live in the URL and survive reload', async ({ page }) => {
   await expect.poll(() => listQueries.at(-1)).toContain('flags=no_precise_citation');
   expect(listQueries.at(-1)).toContain('rating=down');
   expect(listQueries.at(-1)).toContain('verdict=unreviewed');
+  expect(listQueries.at(-1)).toContain('period=all');
+});
+
+test('invalid feed params are not forwarded to the review page', async ({ page }) => {
+  const { detailQueries } = await setup(page);
+  await page.goto('/admin/quality?rating=down&verdict=bogus&period=nope&flags=junk');
+  await page.getByRole('link', { name: QUESTION }).click();
+  await expect(page).toHaveURL(`/admin/quality/q-1?back=${encodeURIComponent('?rating=down')}`);
+  await expect(page.getByRole('heading', { name: 'Признаки' })).toBeVisible();
+  expect(detailQueries.at(-1)).toContain('rating=down');
+  expect(detailQueries.at(-1)).not.toMatch(/bogus|nope|junk/);
+});
+
+test('a queue chip clears the search term', async ({ page }) => {
+  await setup(page);
+  await page.goto('/admin/quality?q=abc&verdict=wrong');
+  await page.getByRole('button', { name: '👎 без разметки', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/quality\?period=all&rating=down&verdict=unreviewed$/);
+  await expect(page.getByRole('searchbox')).toHaveValue('');
 });
 
 test('opening an answer and going back keeps the filters', async ({ page }) => {
@@ -174,9 +198,10 @@ test('opening the client needs a reason, is posted, then leads to the user card'
 });
 
 test('next answer keeps the filters in the back parameter', async ({ page }) => {
-  await setup(page);
+  const { detailQueries } = await setup(page);
   await page.goto(`/admin/quality/q-1?back=${encodeURIComponent(FILTERED)}`);
   await page.getByRole('link', { name: 'Следующий →' }).click();
+  await expect.poll(() => detailQueries.at(-1)).toContain('rating=down');
   await expect(page).toHaveURL(`/admin/quality/q-next?back=${encodeURIComponent(FILTERED)}`);
   await expect(page.getByRole('link', { name: '← К ленте' })).toHaveAttribute('href', `/admin/quality${FILTERED}`);
   await expect(page.getByRole('heading', { name: 'Признаки' })).toBeVisible();

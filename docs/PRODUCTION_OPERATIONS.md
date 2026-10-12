@@ -21,6 +21,13 @@ re-executes the newly checked-out script before builds or container changes.
 This ensures a new preflight or rollback guard applies on the deployment that
 introduces it, rather than only on the following release.
 
+The answer-quality release (`scripts/add_answer_quality.py`) is the first deploy
+that ALTERs the live `messages` table. In-flight chat requests hold locks during
+LLM generation, so run this deploy in a quiet window. Chat may pause for up to
+the slowest generation (tens of seconds) while the schema step waits for its
+lock; the schema script deliberately sets no `lock_timeout` because that would
+change its pinned contract.
+
 ## Origin TLS renewal
 
 Nginx serves the ACME HTTP-01 path from `/root/infohub/certbot/www`, so Certbot

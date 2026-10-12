@@ -99,14 +99,23 @@ function QualityFeed() {
   const rows = data?.items ?? [];
   const total = data?.total ?? 0;
   const filtered = Boolean(q || rating || verdict || flags.length > 0);
-  const listQuery = params.toString();
+  // `back` carries only validated values, so the review page never forwards junk the feed itself ignored.
+  const backParams = new URLSearchParams();
+  if (period !== DEFAULT_PERIOD) backParams.set('period', period);
+  if (rating) backParams.set('rating', rating);
+  if (verdict) backParams.set('verdict', verdict);
+  flags.forEach((f) => backParams.append('flags', f));
+  if (q) backParams.set('q', q);
+  if (offset > 0) backParams.set('offset', String(offset));
+  const listQuery = backParams.toString();
   const reviewHref = (id: string) => `/admin/quality/${id}${listQuery ? `?back=${encodeURIComponent(`?${listQuery}`)}` : ''}`;
   const reset = () => { setDraft(''); setPushedQ(''); router.replace(pathname, { scroll: false }); };
 
   const toggleFlag = (f: QualityFlag) => update({ flags: flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f] });
-  const queue = (patch: { rating?: string; verdict?: string; flags?: readonly string[] }) =>
-    update({ rating: patch.rating ?? '', verdict: patch.verdict ?? '', flags: patch.flags ?? [] });
-  const downActive = rating === 'down' && verdict === 'unreviewed' && flags.length === 0;
+  // Queues are exclusive presets: they replace every filter and the search term.
+  const queue = (patch: { period?: string; rating?: string; verdict?: string; flags?: readonly string[] }) =>
+    update({ ...(patch.period ? { period: patch.period } : {}), rating: patch.rating ?? '', verdict: patch.verdict ?? '', flags: patch.flags ?? [], q: '' });
+  const downActive = period === 'all' && rating === 'down' && verdict === 'unreviewed' && flags.length === 0;
   const citationActive = !rating && !verdict && sameFlags(flags, ['no_precise_citation']);
   const wrongActive = !rating && verdict === 'wrong' && flags.length === 0;
 
@@ -117,7 +126,7 @@ function QualityFeed() {
   const columns: Column<QualityRow>[] = [
     { key: 'when', header: c.quality.when, render: (r) => <span className={styles.muted}>{formatDateTime(r.created_at, locale)}</span> },
     { key: 'user', header: c.quality.user, render: (r) => <span className={styles.mono}>{r.pseudonym}</span> },
-    { key: 'question', header: c.quality.question, render: (r) => <Link href={reviewHref(r.message_id)}>{r.question}</Link> },
+    { key: 'question', header: c.quality.question, render: (r) => <Link href={reviewHref(r.message_id)}>{r.question || r.answer.slice(0, 120) || c.common.dash}</Link> },
     { key: 'signals', header: c.quality.signals, render: (r) => <FlagBadges flags={r.flags} c={c} /> },
     { key: 'rating', header: c.quality.rating, render: (r) => <RatingMark rating={r.rating} c={c} /> },
     { key: 'verdict', header: c.quality.verdict, render: (r) => <VerdictBadge verdict={r.verdict} c={c} /> },
@@ -135,15 +144,16 @@ function QualityFeed() {
     </div>}
 
     <section className={`liquid-glass ${styles.panel}`}>
+      <div className={styles.filters}>
       <div className={styles.toolbar}>
         <select className={styles.select} aria-label={c.quality.period} value={period} onChange={(e) => update({ period: e.target.value })}>
           {PERIODS.map((p) => <option key={p} value={p}>{c.quality.periods[p]}</option>)}
         </select>
-        <button type="button" className={styles.chip} aria-pressed={downActive}
-          onClick={() => queue({ rating: 'down', verdict: 'unreviewed' })}>{c.quality.queues.downUnreviewed}</button>
-        <button type="button" className={styles.chip} aria-pressed={citationActive}
+        <button type="button" className={`${styles.button} ${styles.chip} ${styles.queueChip}`} aria-pressed={downActive}
+          onClick={() => queue({ period: 'all', rating: 'down', verdict: 'unreviewed' })}>{c.quality.queues.downUnreviewed}</button>
+        <button type="button" className={`${styles.button} ${styles.chip} ${styles.queueChip}`} aria-pressed={citationActive}
           onClick={() => queue({ flags: ['no_precise_citation'] })}>{c.quality.queues.noCitation}</button>
-        <button type="button" className={styles.chip} aria-pressed={wrongActive}
+        <button type="button" className={`${styles.button} ${styles.chip} ${styles.queueChip}`} aria-pressed={wrongActive}
           onClick={() => queue({ verdict: 'wrong' })}>{c.quality.queues.wrong}</button>
       </div>
       <div className={styles.toolbar}>
@@ -157,12 +167,17 @@ function QualityFeed() {
           <option value="">{c.quality.verdictFilter}: {c.common.all}</option>
           {VERDICT_FILTERS.map((v) => <option key={v} value={v}>{c.quality.verdictFilters[v]}</option>)}
         </select>
-        {filtered && <button type="button" className={styles.button} onClick={reset}>{c.quality.reset}</button>}
+        {filtered && rows.length > 0 && <button type="button" className={styles.button} onClick={reset}>{c.quality.reset}</button>}
       </div>
-      <div className={styles.toolbar}>
-        {QUALITY_FLAGS.map((f) => <label key={f}>
-          <input type="checkbox" checked={flags.includes(f)} onChange={() => toggleFlag(f)} /> {c.quality.flags[f]}
-        </label>)}
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.legend}>{c.quality.signals}</legend>
+        <div className={styles.toolbar}>
+          {QUALITY_FLAGS.map((f) => <label key={f} className={styles.toggle}>
+            <input type="checkbox" checked={flags.includes(f)} onChange={() => toggleFlag(f)} />
+            <span>{c.quality.flags[f]}</span>
+          </label>)}
+        </div>
+      </fieldset>
       </div>
     </section>
 

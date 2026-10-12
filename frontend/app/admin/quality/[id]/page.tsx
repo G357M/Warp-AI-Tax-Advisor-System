@@ -63,7 +63,7 @@ function Review() {
           <h2 className={styles.panelTitle}>{c.quality.sources}</h2>
           <ul>
             {message.sources.map((s, i) => <li key={`${s.url ?? s.title ?? ''}-${i}`}>
-              {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title ?? s.url}</a> : s.title}
+              {s.url && /^https?:\/\//i.test(s.url) ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title ?? s.url}</a> : s.title}
               {s.article_ref && <span className={styles.muted}> · {s.article_ref}</span>}
             </li>)}
           </ul>
