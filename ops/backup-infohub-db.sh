@@ -98,7 +98,7 @@ done
 mv "$partial" "$target"
 (cd "$BACKUP_DIR" && sha256sum "$(basename "$target")" > "$(basename "$target").sha256")
 log "ok $(basename "$target") $(stat -c %s "$target") bytes, $(grep -vc '^;' "$toc") TOC entries"
-summary="ok $(basename "$target") $(( $(stat -c %s "$target") / 1048576 )) MiB"
+summary="ok $(basename "$target") $(( $(stat -c %s "$target" 2>/dev/null || echo 0) / 1048576 )) MiB"
 
 # Rotation only after a verified success, newest first.
 ls -1t "$BACKUP_DIR"/infohub_ai-*.dump | tail -n +"$((KEEP + 1))" | while read -r old; do

@@ -71,7 +71,7 @@ write_scraper_status() {
     local rc=$?
     local mode="full"
     [ "$INGEST_ONLY" -eq 1 ] && mode="ingest-only"
-    python3 "$STATUS_WRITER" scraper "$STARTED_AT" "${EXIT_CODE:-$rc}" \
+    python3 "$STATUS_WRITER" scraper "$STARTED_AT" "$rc" \
         "+${NEW_DOCS:-?} new docs (${mode})" "$LOG_FILE" || true
 }
 trap write_scraper_status EXIT
