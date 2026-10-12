@@ -29,7 +29,7 @@ export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 const ru = {
   nav: {
     menu: 'Меню администратора', checking: 'Проверяем доступ…', admin: 'Администрирование', back: 'На сайт',
-    dashboard: 'Обзор', documents: 'Документы', analytics: 'Аналитика споров', users: 'Пользователи', quality: 'Качество ответов',
+    dashboard: 'Обзор', trends: 'Динамика', documents: 'Документы', analytics: 'Аналитика споров', users: 'Пользователи', quality: 'Качество ответов',
     feedback: 'Обращения', scraper: 'Ингест', audit: 'Журнал действий', config: 'Конфигурация',
   },
   common: {
@@ -149,6 +149,18 @@ const ru = {
     decisions: 'Решения в очереди на разметку', amendments: 'Поправки в очереди', logEmpty: 'Лог пуст или недоступен.',
     logs: { scraper: 'Ночной скрейпер', law_amendments_backfill: 'Бэкфилл поправок', decision_facts_backfill: 'Бэкфилл решений' } as Record<string, string>,
   },
+  trends: {
+    title: 'Динамика', subtitle: 'Как меняются выручка, активность и качество ответов. Время тбилисское, администраторы не учитываются.',
+    periods: { '30d': '30 дней', '90d': '90 дней', '12m': '12 месяцев' }, period: 'Период',
+    revenue: 'Выручка', payments: 'Оплаты', signups: 'Новые пользователи', questions: 'Вопросы', askers: 'Спрашивающие',
+    upShare: 'Доля 👍', ofRated: (n: string) => `из ${n} оценок`, activity: 'Активность', quality: 'Качество ответов',
+    ratings: 'Оценки ответов', up: '👍 полезно', down: '👎 неточно', flaggedShare: 'Доля ответов с признаками проблем',
+    vsPrev: (d: string) => `${d} к прошлому периоду`, newVsPrev: 'в прошлом периоде было 0',
+    qualitySince: (d: string) => `Данные о качестве собираются с ${d}.`, noQuality: 'Данных о качестве пока нет.',
+    medianTime: 'Медианное время ответа', seconds: (s: string) => `${s} с`,
+    showData: 'Показать данные', date: 'Период', empty: 'За период данных нет', partial: 'текущий период ещё идёт',
+    currency: '₾',
+  },
   analytics: {
     title: 'Аналитика споров', subtitle: 'Исходы налоговых и таможенных споров по решениям из официальной базы.',
     analyzed: 'Решений разобрано', coverage: (p: number, total: string) => `${p}% из ${total} в базе`,
@@ -207,7 +219,7 @@ export type AdminCopy = typeof ru;
 const ka: AdminCopy = {
   nav: {
     menu: 'ადმინისტრატორის მენიუ', checking: 'წვდომა მოწმდება…', admin: 'ადმინისტრირება', back: 'საიტზე დაბრუნება',
-    dashboard: 'მიმოხილვა', documents: 'დოკუმენტები', analytics: 'დავების ანალიტიკა', users: 'მომხმარებლები', quality: 'პასუხების ხარისხი',
+    dashboard: 'მიმოხილვა', trends: 'დინამიკა', documents: 'დოკუმენტები', analytics: 'დავების ანალიტიკა', users: 'მომხმარებლები', quality: 'პასუხების ხარისხი',
     feedback: 'მიმართვები', scraper: 'მონაცემების შეგროვება', audit: 'მოქმედებების ჟურნალი', config: 'კონფიგურაცია',
   },
   common: {
@@ -327,6 +339,18 @@ const ka: AdminCopy = {
     decisions: 'დასამუშავებელი გადაწყვეტილებები', amendments: 'დასამუშავებელი ცვლილებები', logEmpty: 'ჟურნალი ცარიელია ან მიუწვდომელია.',
     logs: { scraper: 'ღამის შეგროვება', law_amendments_backfill: 'ცვლილებების დამუშავება', decision_facts_backfill: 'გადაწყვეტილებების დამუშავება' },
   },
+  trends: {
+    title: 'დინამიკა', subtitle: 'როგორ იცვლება შემოსავალი, აქტივობა და პასუხების ხარისხი. დრო თბილისისაა, ადმინისტრატორები არ ითვლება.',
+    periods: { '30d': '30 დღე', '90d': '90 დღე', '12m': '12 თვე' }, period: 'პერიოდი',
+    revenue: 'შემოსავალი', payments: 'გადახდები', signups: 'ახალი მომხმარებლები', questions: 'კითხვები', askers: 'კითხვის ავტორები',
+    upShare: '👍-ის წილი', ofRated: (n: string) => `${n} შეფასებიდან`, activity: 'აქტივობა', quality: 'პასუხების ხარისხი',
+    ratings: 'პასუხების შეფასებები', up: '👍 სასარგებლო', down: '👎 არაზუსტი', flaggedShare: 'პრობლემის ნიშნების მქონე პასუხების წილი',
+    vsPrev: (d: string) => `${d} წინა პერიოდთან შედარებით`, newVsPrev: 'წინა პერიოდში იყო 0',
+    qualitySince: (d: string) => `ხარისხის მონაცემები გროვდება ${d}-დან.`, noQuality: 'ხარისხის მონაცემები ჯერ არ არის.',
+    medianTime: 'პასუხის მედიანური დრო', seconds: (s: string) => `${s} წმ`,
+    showData: 'მონაცემების ჩვენება', date: 'პერიოდი', empty: 'ამ პერიოდში მონაცემები არ არის', partial: 'მიმდინარე პერიოდი ჯერ არ დასრულებულა',
+    currency: '₾',
+  },
   analytics: {
     title: 'დავების ანალიტიკა', subtitle: 'საგადასახადო და საბაჟო დავების შედეგები ოფიციალური ბაზის გადაწყვეტილებების მიხედვით.',
     analyzed: 'გაანალიზებული გადაწყვეტილებები', coverage: (p: number, total: string) => `${p}% ბაზაში არსებული ${total}-დან`,
@@ -383,7 +407,7 @@ const ka: AdminCopy = {
 const en: AdminCopy = {
   nav: {
     menu: 'Administrator menu', checking: 'Checking access…', admin: 'Administration', back: 'Back to site',
-    dashboard: 'Overview', documents: 'Documents', analytics: 'Dispute analytics', users: 'Users', quality: 'Answer quality',
+    dashboard: 'Overview', trends: 'Trends', documents: 'Documents', analytics: 'Dispute analytics', users: 'Users', quality: 'Answer quality',
     feedback: 'Feedback', scraper: 'Ingest', audit: 'Action log', config: 'Configuration',
   },
   common: {
@@ -502,6 +526,18 @@ const en: AdminCopy = {
     title: 'Ingest and background jobs', lastIngest: 'Last ingest', today: (n: string) => `added today: ${n}`,
     decisions: 'Decisions awaiting extraction', amendments: 'Amendments awaiting extraction', logEmpty: 'Log is empty or unavailable.',
     logs: { scraper: 'Nightly scraper', law_amendments_backfill: 'Amendments backfill', decision_facts_backfill: 'Decision facts backfill' },
+  },
+  trends: {
+    title: 'Trends', subtitle: 'How revenue, activity and answer quality change over time. Tbilisi time; administrators are excluded.',
+    periods: { '30d': '30 days', '90d': '90 days', '12m': '12 months' }, period: 'Period',
+    revenue: 'Revenue', payments: 'Payments', signups: 'New users', questions: 'Questions', askers: 'Askers',
+    upShare: '👍 share', ofRated: (n: string) => `of ${n} ratings`, activity: 'Activity', quality: 'Answer quality',
+    ratings: 'Answer ratings', up: '👍 helpful', down: '👎 inaccurate', flaggedShare: 'Share of answers with problem signals',
+    vsPrev: (d: string) => `${d} vs previous period`, newVsPrev: 'previous period had 0',
+    qualitySince: (d: string) => `Quality data is collected since ${d}.`, noQuality: 'No quality data yet.',
+    medianTime: 'Median answer time', seconds: (s: string) => `${s} s`,
+    showData: 'Show data', date: 'Period', empty: 'No data for this period', partial: 'current period is still running',
+    currency: '₾',
   },
   analytics: {
     title: 'Dispute analytics', subtitle: 'Outcomes of tax and customs dispute decisions from the official corpus.',

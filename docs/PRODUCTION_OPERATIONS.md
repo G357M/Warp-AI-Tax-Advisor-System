@@ -1224,6 +1224,10 @@ applying.
   `/admin/quality` (review page `/admin/quality/<message id>`). "Open client" there reveals the user behind a
   pseudonym; it needs a reason and is journaled as `user.identity_revealed` in `/admin/audit`. The privacy
   policy text now covers review of answers, so publish the frontend together with the backend.
+- Admin stage 3 adds `/admin/trends` (revenue, payments, signups, questions, ratings and answer-quality
+  signals over Tbilisi-local days, weeks or months). It is read-only, has no schema step and uses the normal
+  `deploy.sh`. Administrator accounts are excluded from the numbers, so testing from the admin account does
+  not distort them.
 
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 

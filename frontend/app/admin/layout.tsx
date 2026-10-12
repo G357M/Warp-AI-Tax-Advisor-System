@@ -8,12 +8,13 @@ import { useAdminCopy } from '@/lib/admin-i18n';
 import { reconciliationCopy } from '@/lib/billing-reconciliation';
 import {
   DashboardIcon, FileTextIcon, PersonIcon, ActivityLogIcon, BarChartIcon, ChatBubbleIcon,
-  GearIcon, ExitIcon, CheckCircledIcon, HamburgerMenuIcon, CardStackIcon, ReaderIcon,
+  GearIcon, ExitIcon, CheckCircledIcon, HamburgerMenuIcon, CardStackIcon, ReaderIcon, PieChartIcon,
 } from '@radix-ui/react-icons';
 import styles from './admin.module.css';
 
 const navigation = [
   { key: 'dashboard', href: '/admin', icon: DashboardIcon },
+  { key: 'trends', href: '/admin/trends', icon: PieChartIcon },
   { key: 'users', href: '/admin/users', icon: PersonIcon },
   { key: 'quality', href: '/admin/quality', icon: CheckCircledIcon },
   { key: 'payments', href: '/admin/billing', icon: CardStackIcon },

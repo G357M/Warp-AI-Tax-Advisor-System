@@ -58,9 +58,13 @@ def _ev(key):
     return Message.evidence[key]
 
 
-def _flag_condition(flag):
+def has_evidence():
     # evidence may be SQL NULL or a JSON null (the ORM's JSON type stores None as 'null').
-    has = func.coalesce(func.jsonb_typeof(cast(Message.evidence, JSONB)), "null") == "object"
+    return func.coalesce(func.jsonb_typeof(cast(Message.evidence, JSONB)), "null") == "object"
+
+
+def flag_condition(flag):
+    has = has_evidence()
     if flag == "no_evidence":
         return ~has
     if flag == "slow":
@@ -89,7 +93,7 @@ def _conditions(filt: FeedFilter, now) -> list:
     elif filt.verdict:
         conditions.append(verdict == filt.verdict)
     for flag in filt.flags:
-        conditions.append(_flag_condition(flag))
+        conditions.append(flag_condition(flag))
     term = (filt.q or "").strip()
     if term:
         conditions.append(_question_sq().ilike(f"%{escape_like(term)}%", escape="\\"))
