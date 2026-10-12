@@ -7,7 +7,7 @@ import { authFetch } from '@/lib/auth';
 import { useAdminCopy } from '@/lib/admin-i18n';
 import { reconciliationCopy } from '@/lib/billing-reconciliation';
 import {
-  DashboardIcon, FileTextIcon, PersonIcon, ActivityLogIcon, BarChartIcon, ChatBubbleIcon,
+  ArchiveIcon, DashboardIcon, FileTextIcon, PersonIcon, ActivityLogIcon, BarChartIcon, ChatBubbleIcon,
   GearIcon, ExitIcon, CheckCircledIcon, HamburgerMenuIcon, CardStackIcon, ReaderIcon, PieChartIcon,
 } from '@radix-ui/react-icons';
 import styles from './admin.module.css';
@@ -21,7 +21,8 @@ const navigation = [
   { key: 'feedback', href: '/admin/feedback', icon: ChatBubbleIcon },
   { key: 'documents', href: '/admin/documents', icon: FileTextIcon },
   { key: 'analytics', href: '/admin/analytics', icon: BarChartIcon },
-  { key: 'scraper', href: '/admin/scraper', icon: ActivityLogIcon },
+  { key: 'corpus', href: '/admin/corpus', icon: ArchiveIcon },
+  { key: 'system', href: '/admin/system', icon: ActivityLogIcon },
   { key: 'audit', href: '/admin/audit', icon: ReaderIcon },
   { key: 'config', href: '/admin/settings', icon: GearIcon },
 ] as const;

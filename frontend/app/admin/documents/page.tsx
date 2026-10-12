@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { authFetch } from '@/lib/auth';
 import { formatDate, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
 import { PageHeader } from '@/components/admin/PageHeader';
@@ -16,12 +17,14 @@ interface AdminDoc {
 const TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
 const LIMIT = 50;
 
-export default function AdminDocuments() {
+function DocumentsPage() {
+  const params = useSearchParams();
+  const initialType = params.get('doc_type') ?? '';
   const { c, locale } = useAdminCopy();
   const [items, setItems] = useState<AdminDoc[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [docType, setDocType] = useState('');
+  const [docType, setDocType] = useState(TYPES.includes(initialType) ? initialType : '');
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -69,4 +72,8 @@ export default function AdminDocuments() {
       onRetry={retry} emptyText={c.documents.notFound} />
     <Pagination offset={offset} limit={LIMIT} total={total} onChange={onPage} />
   </div>;
+}
+
+export default function AdminDocuments() {
+  return <Suspense><DocumentsPage /></Suspense>;
 }

@@ -20,8 +20,8 @@ function buildAttention(stats: AdminStats, c: AdminCopy, n: Fmt): AttentionItem[
     stats.billing.reconciliation_open > 0 && { href: '/admin/billing', text: c.dashboard.reconciliation(n(stats.billing.reconciliation_open)) },
     stats.billing.manual_pending > 0 && { href: '/admin/users', text: c.dashboard.manualPending(n(stats.billing.manual_pending)) },
     downUnreviewed > 0 && { href: '/admin/quality?period=all&rating=down&verdict=unreviewed', text: c.dashboard.qualityDown(n(downUnreviewed)) },
-    stats.attention.ingest_stale && { href: '/admin/scraper', text: c.dashboard.ingestStale },
-    stats.decisions.pending > 0 && { href: '/admin/scraper', text: c.dashboard.decisionsQueue(n(stats.decisions.pending)) },
+    stats.attention.ingest_stale && { href: '/admin/system', text: c.dashboard.ingestStale },
+    stats.decisions.pending > 0 && { href: '/admin/corpus', text: c.dashboard.decisionsQueue(n(stats.decisions.pending)) },
   ].filter((item): item is AttentionItem => Boolean(item));
 }
 
