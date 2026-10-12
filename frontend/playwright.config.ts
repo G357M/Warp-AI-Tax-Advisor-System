@@ -5,7 +5,7 @@ const isCI = Boolean(process.env.CI);
 export default defineConfig({
   testDir: './e2e',
   testMatch: ['visual.spec.ts', 'billing-reconciliation.spec.ts', 'admin.spec.ts', 'admin-users.spec.ts',
-    'admin-quality.spec.ts', 'answer-rating.spec.ts', 'admin-trends.spec.ts'],
+    'admin-quality.spec.ts', 'answer-rating.spec.ts', 'admin-trends.spec.ts', 'admin-system.spec.ts'],
   fullyParallel: false,
   workers: 1,
   forbidOnly: isCI,
