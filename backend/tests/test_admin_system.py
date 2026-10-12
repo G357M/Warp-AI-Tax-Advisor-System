@@ -1,19 +1,20 @@
 """Admin System page: job state from host status files (no database)."""
 import json
 from datetime import datetime
-from pathlib import Path
 
+from api.routes.admin_system import router
 from core.admin_system import system_status
+from core.security import require_admin
 
 NOW = datetime(2026, 10, 12, 10, 0)  # naive UTC
 
 
-def _write(directory, job, **fields):
-    data = {"schema_version": 1, "job": job, "started_at": "2026-10-12T03:00:00Z",
+def _write(directory, name, **fields):
+    data = {"schema_version": 1, "job": name, "started_at": "2026-10-12T03:00:00Z",
             "finished_at": "2026-10-12T03:40:00Z", "exit_code": 0, "summary": "ok",
             "trigger": "cron", "skipped": False, "log_tail": ["a", "b"]}
     data.update(fields)
-    (directory / f"{job}.json").write_text(json.dumps(data), encoding="utf-8")
+    (directory / f"{name}.json").write_text(json.dumps(data), encoding="utf-8")
 
 
 def _states(directory):
@@ -60,12 +61,7 @@ def test_skipped_then_stale(tmp_path):
 
 def test_bad_files_are_unknown(tmp_path):
     (tmp_path / "scraper.json").write_text("{not json", encoding="utf-8")
-    # Foreign job: write canary.json but with job="backup" inside
-    _write(tmp_path, "canary")
-    import json
-    data = json.loads((tmp_path / "canary.json").read_text(encoding="utf-8"))
-    data["job"] = "backup"
-    (tmp_path / "canary.json").write_text(json.dumps(data), encoding="utf-8")
+    _write(tmp_path, "canary", job="backup")                    # foreign job
     _write(tmp_path, "backup", schema_version=2)                 # unknown schema
     _write(tmp_path, "restore_drill", log_tail=["x" * 70000])    # over 64 KB
     assert set(_states(tmp_path).values()) == {"unknown"}
@@ -83,5 +79,4 @@ def test_bad_field_types_are_unknown_or_dropped(tmp_path):
 
 
 def test_router_requires_admin():
-    source = (Path(__file__).parents[1] / "api" / "routes" / "admin_system.py").read_text(encoding="utf-8")
-    assert "dependencies=[Depends(require_admin)]" in source
+    assert any(d.dependency is require_admin for d in router.dependencies)
