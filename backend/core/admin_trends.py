@@ -32,7 +32,7 @@ def _step(d: date, bucket: str, n: int) -> date:
     return date(month // 12, month % 12 + 1, 1)
 
 
-def _utc(d: date) -> datetime:
+def tbilisi_midnight_utc(d: date) -> datetime:
     return datetime.combine(d, datetime.min.time()) - TBILISI_OFFSET
 
 
@@ -44,12 +44,15 @@ class Window:
     previous_start: date
 
 
-def window(period: str, now: datetime) -> Window:
-    bucket, count = PERIODS[period]
+def window_of(bucket: str, count: int, now: datetime) -> Window:
     last = _floor((now + TBILISI_OFFSET).date(), bucket)
     first = _step(last, bucket, -(count - 1))
     return Window(bucket, [_step(first, bucket, i) for i in range(count)],
                   _step(last, bucket, 1), _step(first, bucket, -count))
+
+
+def window(period: str, now: datetime) -> Window:
+    return window_of(*PERIODS[period], now)
 
 
 def _sources() -> dict:
@@ -109,7 +112,7 @@ def _empty_bucket(start: date, partial: bool) -> dict:
 def trends(db: Session, period: str, now: datetime) -> dict:
     w = window(period, now)
     sources = _sources()
-    lo, hi = _utc(w.starts[0]), _utc(w.end)
+    lo, hi = tbilisi_midnight_utc(w.starts[0]), tbilisi_midnight_utc(w.end)
     buckets = {s: _empty_bucket(s, s == w.starts[-1]) for s in w.starts}
     for source in sources.values():
         for row in _query(db, source, lo, hi, w.bucket):
@@ -118,7 +121,7 @@ def trends(db: Session, period: str, now: datetime) -> dict:
                 slot.update({k: _int(v) for k, v in row.items() if k != "bucket"})
     # The previous window lasts as long as the elapsed part of the current one, so a
     # partial last bucket is compared fairly rather than against a full one.
-    previous_lo = _utc(w.previous_start)
+    previous_lo = tbilisi_midnight_utc(w.previous_start)
     first_evidence = db.execute(select(func.min(Message.created_at)).where(
         Message.role == "assistant", has_evidence(), Conversation.id == Message.conversation_id,
         User.id == Conversation.user_id, User.role != "admin")).scalar()
