@@ -209,16 +209,10 @@ if [ "$QUALITY_GATE_EXIT" -ne 0 ]; then
         | tee -a "$LOG_FILE"
 fi
 
-# Nightly RAG canary: 10 known-answer questions through the real pipeline.
-# Alerts to Telegram when below threshold (>1 failure). Non-fatal.
+# Nightly RAG canary (ops/run_canary.sh, shared with the admin manual run):
+# alerts to Telegram below threshold and writes ops-status/canary.json. Non-fatal.
 echo "Running RAG canary..." | tee -a "$LOG_FILE"
-CANARY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-CANARY_EXIT=0
-CANARY_OUT="$(docker exec "$CONTAINER_NAME" python /app/scripts/canary_eval.py 2>>"$LOG_FILE")" || CANARY_EXIT=$?
-echo "$CANARY_OUT" | tee -a "$LOG_FILE"
-bash "$(dirname "$0")/canary_alert.sh" "$CANARY_EXIT" "$(echo "$CANARY_OUT" | grep '^CANARY:' | tail -1)" 2>&1 | tee -a "$LOG_FILE" || true
-python3 "$STATUS_WRITER" canary "$CANARY_STARTED_AT" "$CANARY_EXIT" \
-    "$(echo "$CANARY_OUT" | grep '^CANARY:' | tail -1)" "$LOG_FILE" || true
+bash "$SCRIPT_DIR/ops/run_canary.sh" "$LOG_FILE" || true
 
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete

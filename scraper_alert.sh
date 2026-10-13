@@ -12,13 +12,17 @@
 #   TELEGRAM_BOT_TOKEN=...
 #   TELEGRAM_CHAT_ID=...
 # If they are missing the script no-ops (logs what it would have sent) instead of failing.
+#
+# A manual full run from the admin panel (INFOHUB_MANUAL_RUN=1) still alerts on
+# failure but never moves the nightly zero-new streak, in either direction.
 
 set -u
 
-INFOHUB_DIR="/root/infohub"
+INFOHUB_DIR="${INFOHUB_DIR:-/root/infohub}"
 ENV_FILE="$INFOHUB_DIR/.env"
 STREAK_FILE="$INFOHUB_DIR/logs/zero_new_streak"
 ZERO_NEW_THRESHOLD="${ZERO_NEW_THRESHOLD:-3}"
+MANUAL_RUN="${INFOHUB_MANUAL_RUN:-0}"
 
 EXIT_CODE="${1:-1}"
 NEW_DOCS="${2:-?}"
@@ -61,10 +65,14 @@ read_streak() {
     echo "$s"
 }
 
+write_streak() {
+    [ "$MANUAL_RUN" = "1" ] || echo "$1" > "$STREAK_FILE"
+}
+
 # --- decide ---------------------------------------------------------------
 # Failure: non-zero exit, or we couldn't parse a numeric new-doc count.
 if [ "$EXIT_CODE" != "0" ] || ! [[ "$NEW_DOCS" =~ ^[0-9]+$ ]]; then
-    echo 0 > "$STREAK_FILE"
+    write_streak 0
     send_telegram "🔴 InfoHub nightly pipeline FAILED on ${HOST}
 Exit code: ${EXIT_CODE}
 New docs: ${NEW_DOCS}
@@ -74,15 +82,20 @@ Check latest /root/infohub/logs/scraper_*.log"
     exit 0
 fi
 
+if [ "$MANUAL_RUN" = "1" ]; then
+    echo "[scraper_alert] manual run: +${NEW_DOCS} new docs — nightly streak unchanged."
+    exit 0
+fi
+
 # Success with 0 new docs: count the streak, alert only past the threshold.
 if [ "$NEW_DOCS" -eq 0 ]; then
     streak=$(( $(read_streak) + 1 ))
-    echo "$streak" > "$STREAK_FILE"
+    write_streak "$streak"
     if [ "$streak" -ge "$ZERO_NEW_THRESHOLD" ]; then
         send_telegram "🟠 InfoHub scraper: 0 new docs ${streak} runs in a row on ${HOST}
 ${NOW}
 Runs succeed (exit 0) but nothing has been ingested for ${streak} nights — scraper may be silently stuck. Compare source vs DB."
-        echo 0 > "$STREAK_FILE"   # reset: re-alert after another full streak, not every night
+        write_streak 0   # reset: re-alert after another full streak, not every night
     else
         echo "[scraper_alert] 0 new (streak ${streak}/${ZERO_NEW_THRESHOLD}) — no alert yet."
     fi
@@ -90,6 +103,6 @@ Runs succeed (exit 0) but nothing has been ingested for ${streak} nights — scr
 fi
 
 # Healthy run with new docs.
-echo 0 > "$STREAK_FILE"
+write_streak 0
 echo "[scraper_alert] +${NEW_DOCS} new docs — healthy, streak reset."
 exit 0

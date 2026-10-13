@@ -102,7 +102,7 @@ def test_scraper_writes_scraper_and_canary_status():
     text = _text("run_scraper.sh")
     assert 'STATUS_WRITER="$SCRIPT_DIR/ops/write_job_status.py"' in text
     assert "trap write_scraper_status EXIT" in text
-    assert 'python3 "$STATUS_WRITER" canary "$CANARY_STARTED_AT" "$CANARY_EXIT"' in text
+    assert 'python3 "$STATUS_WRITER" canary "$STARTED_AT" "$CANARY_EXIT"' in _text("ops/run_canary.sh")
     # The trap is installed only after the lock: a skipped overlapping run must not overwrite the status.
     assert text.index("flock -n 9") < text.index("trap write_scraper_status EXIT")
 
