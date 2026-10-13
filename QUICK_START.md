@@ -56,23 +56,9 @@ Open **http://localhost:8000/docs** for Swagger UI
 
 ## 🕷️ Optional: Scrape Real Data
 
-### Start Scraping
-```bash
-curl -X POST http://localhost:8000/api/v1/scraper/start \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://infohub.ge", "max_depth": 2, "max_pages": 50}'
-```
+### Ingestion
 
-### Check Status
-```bash
-# Copy the task_id from response, then:
-curl http://localhost:8000/api/v1/scraper/status/YOUR_TASK_ID
-```
-
-**Or use Swagger UI:**
-1. Go to http://localhost:8000/docs
-2. Try `/scraper/start` endpoint
-3. Monitor via `/scraper/status/{task_id}`
+Ingestion runs on the server via cron (`run_scraper.sh`). The old `/api/v1/scraper/*` API was removed; check the last run at `/admin/system` and the corpus at `/admin/corpus`.
 
 ---
 

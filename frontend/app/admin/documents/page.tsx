@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { authFetch } from '@/lib/auth';
 import { formatDate, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
+import { DOCUMENT_TYPES } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { DataTable, type Column } from '@/components/admin/DataTable';
 import { Pagination } from '@/components/admin/Pagination';
@@ -13,15 +15,17 @@ interface AdminDoc {
   date_published: string | null; authority: string | null; source_url: string; created_at: string | null;
 }
 
-const TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
+const TYPES: readonly string[] = DOCUMENT_TYPES;
 const LIMIT = 50;
 
-export default function AdminDocuments() {
+function DocumentsPage() {
+  const params = useSearchParams();
+  const initialType = params.get('doc_type') ?? '';
   const { c, locale } = useAdminCopy();
   const [items, setItems] = useState<AdminDoc[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [docType, setDocType] = useState('');
+  const [docType, setDocType] = useState(TYPES.includes(initialType) ? initialType : '');
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -69,4 +73,8 @@ export default function AdminDocuments() {
       onRetry={retry} emptyText={c.documents.notFound} />
     <Pagination offset={offset} limit={LIMIT} total={total} onChange={onPage} />
   </div>;
+}
+
+export default function AdminDocuments() {
+  return <Suspense><DocumentsPage /></Suspense>;
 }

@@ -1,3 +1,5 @@
+export const DOCUMENT_TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'] as const;
+
 export interface AuditEntry {
   id: string;
   actor: { id: string; username: string | null };
@@ -133,4 +135,21 @@ export interface Trends {
   median_processing_ms: number | null;
   buckets: TrendBucket[];
   totals: { current: TrendTotals; previous: TrendTotals };
+}
+
+export const SYSTEM_JOBS = ['scraper', 'canary', 'backup', 'restore_drill'] as const;
+export type SystemJobName = (typeof SYSTEM_JOBS)[number];
+export type SystemJobState = 'ok' | 'stale' | 'failed' | 'skipped' | 'unknown';
+export interface SystemJob {
+  job: SystemJobName; state: SystemJobState;
+  started_at: string | null; finished_at: string | null; exit_code: number | null;
+  summary: string | null; trigger: 'cron' | 'manual' | null; skipped: boolean; log_tail: string[];
+}
+export interface SystemStatus { generated_at: string; jobs: SystemJob[] }
+export interface CorpusTypeRow { document_type: string; documents: number; added_30d: number; without_date: number; without_chunks: number }
+export interface CorpusWeek { week_start: string; added: number; partial: boolean }
+export interface Corpus {
+  totals: { documents: number; chunks: number; added_7d: number; added_30d: number; last_ingest: string | null };
+  by_type: CorpusTypeRow[]; weekly: CorpusWeek[];
+  pending: { decision_facts: number; law_amendments: number };
 }

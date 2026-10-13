@@ -196,6 +196,7 @@ typings/
 # OpenClaw / local operator artifacts
 .state/
 state/
+ops-status/
 .tmp_*.py
 .venv-*/
 OPENCLAW_VISIBLE_TEST_*.txt
@@ -223,3 +224,4 @@ full_corpus_state_*.md
 /infohub_species.json
 /tax_code_sample.md
 /Улучшение InfoHub Scraper - Релевантные документы.md
+!frontend/app/admin/corpus/

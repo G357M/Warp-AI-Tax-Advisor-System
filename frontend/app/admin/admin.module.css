@@ -191,3 +191,14 @@ a.tile:hover { box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.6); }
 @media (max-width: 639px) {
   .tiles3 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* System health */
+.jobGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.jobCard { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 20px; border-radius: var(--radius); }
+.jobHead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.jobTitle { margin: 0; font-size: 16px; font-weight: 600; }
+.jobMeta { margin: 0; font-size: 13px; color: hsl(var(--muted-foreground)); overflow-wrap: anywhere; }
+.jobSummary { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.jobLog summary { cursor: pointer; font-size: 13px; color: hsl(var(--muted-foreground)); }
+.jobLog[open] summary { margin-bottom: 8px; }
+@media (max-width: 860px) { .jobGrid { grid-template-columns: minmax(0, 1fr); } }

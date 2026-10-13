@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from core.config import settings
 from core.database import init_db
-from api.routes import account, admin, admin_quality, admin_trends, admin_users, amendments, analytics, auth, billing, feedback, guides, news, query, public, scraper
+from api.routes import account, admin, admin_corpus, admin_quality, admin_system, admin_trends, admin_users, amendments, analytics, auth, billing, feedback, guides, news, query, public
 from core.metrics import metrics_middleware, get_metrics
 from core.logging_config import setup_logging, logging_middleware
 from core.rate_limit import rate_limit_middleware
@@ -49,7 +49,6 @@ app.middleware("http")(rate_limit_middleware)
 app.include_router(public.router, prefix=settings.API_PREFIX)  # Public endpoints (no auth)
 app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(query.router, prefix=settings.API_PREFIX)
-app.include_router(scraper.router, prefix=settings.API_PREFIX)
 app.include_router(analytics.router, prefix=settings.API_PREFIX)  # Public decision statistics
 app.include_router(amendments.router, prefix=settings.API_PREFIX)  # Law-change timeline
 app.include_router(billing.router, prefix=settings.API_PREFIX)     # Subscriptions & payments
@@ -58,6 +57,8 @@ app.include_router(admin.router, prefix=settings.API_PREFIX)       # Admin panel
 app.include_router(admin_users.router, prefix=settings.API_PREFIX)  # Admin: clients
 app.include_router(admin_quality.router, prefix=settings.API_PREFIX)  # Admin: answer quality
 app.include_router(admin_trends.router, prefix=settings.API_PREFIX)  # Admin: trends
+app.include_router(admin_system.router, prefix=settings.API_PREFIX)  # Admin: system health
+app.include_router(admin_corpus.router, prefix=settings.API_PREFIX)  # Admin: corpus
 app.include_router(guides.router, prefix=settings.API_PREFIX)      # Situational guides catalog
 app.include_router(feedback.router, prefix=settings.API_PREFIX)    # Bug reports from the cabinet
 app.include_router(news.router, prefix=settings.API_PREFIX)        # Public news feed by subcategory

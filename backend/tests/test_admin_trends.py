@@ -42,3 +42,9 @@ def test_month_window_crosses_year_start():
 def test_router_requires_admin():
     source = (Path(__file__).parents[1] / "api" / "routes" / "admin_trends.py").read_text(encoding="utf-8")
     assert "dependencies=[Depends(require_admin)]" in source
+
+
+def test_window_of_twelve_weeks():
+    from core.admin_trends import window_of
+    w = window_of("week", 12, NOW)
+    assert len(w.starts) == 12 and w.starts[-1] == date(2026, 10, 12) and w.starts[0] == date(2026, 7, 27)

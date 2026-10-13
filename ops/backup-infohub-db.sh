@@ -21,6 +21,12 @@ REQUIRED_TABLES=(documents document_chunks users)
 
 ALERT="${INFOHUB_OPS_ALERT:-$(dirname "${BASH_SOURCE[0]}")/ops_alert.sh}"
 
+STATUS_WRITER="${INFOHUB_OPS_STATUS_WRITER:-$(dirname "${BASH_SOURCE[0]}")/write_job_status.py}"
+STATUS_LOG="${INFOHUB_DB_BACKUP_LOG:-/root/infohub/logs/db-backup.log}"
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+skipped=0
+summary=""
+
 log() { echo "[db-backup $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 die() {
     local code="$1"; shift
@@ -42,6 +48,8 @@ finish() {
         bash "$ALERT" "nightly DB backup" "exit $rc: ${reason:-unknown error}
 Log: /root/infohub/logs/db-backup.log" || true
     fi
+    INFOHUB_JOB_SKIPPED="$skipped" python3 "$STATUS_WRITER" backup "$started_at" "$rc" \
+        "$( if (( rc != 0 && skipped == 0 )); then echo "${reason:-exit $rc}"; else echo "${summary:-${reason:-}}"; fi )" "$STATUS_LOG" || true
 }
 trap finish EXIT
 
@@ -52,6 +60,8 @@ fi
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     log "another backup is running; skipped"
+    skipped=1
+    summary="skipped: another backup is running"
     exit 0
 fi
 
@@ -88,6 +98,7 @@ done
 mv "$partial" "$target"
 (cd "$BACKUP_DIR" && sha256sum "$(basename "$target")" > "$(basename "$target").sha256")
 log "ok $(basename "$target") $(stat -c %s "$target") bytes, $(grep -vc '^;' "$toc") TOC entries"
+summary="ok $(basename "$target") $(( $(stat -c %s "$target" 2>/dev/null || echo 0) / 1048576 )) MiB"
 
 # Rotation only after a verified success, newest first.
 ls -1t "$BACKUP_DIR"/infohub_ai-*.dump | tail -n +"$((KEEP + 1))" | while read -r old; do

@@ -137,6 +137,8 @@ jobs:
           tests/test_integration.py
           tests/test_rating_limit.py
           tests/test_admin_trends.py
+          tests/test_ops_job_status.py
+          tests/test_admin_system.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
           tests/test_legal_temporal_backfill.py
@@ -259,6 +261,7 @@ jobs:
           tests/test_admin_users_postgres.py
           tests/test_admin_quality_postgres.py
           tests/test_admin_trends_postgres.py
+          tests/test_admin_corpus_postgres.py
           tests/test_db_restore_drill_postgres.py
           -q -p no:cacheprovider
           -W error::DeprecationWarning

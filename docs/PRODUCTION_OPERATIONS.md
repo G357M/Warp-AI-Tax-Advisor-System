@@ -1229,6 +1229,16 @@ applying.
   `deploy.sh`. Administrator accounts are excluded from the numbers, so testing from the admin account does
   not distort them.
 
+### Состояние системы и корпус (этап 5a)
+
+- `/admin/system` показывает последний запуск скрапера, канарейки, бэкапа и restore drill из
+  `/root/infohub/ops-status/<job>.json`. Файлы пишет `ops/write_job_status.py` из EXIT-ловушек
+  `run_scraper.sh`, `ops/backup-infohub-db.sh`, `ops/restore-drill-infohub-db.sh`; папка смонтирована
+  в бэкенд только для чтения (`/app/ops-status`).
+- После первого деплоя все карточки показывают «Нет данных» до ближайшего запуска каждой задачи.
+- `/admin/corpus` — только чтение из `documents`/`document_chunks`.
+- Удалены: страница `/admin/scraper`, `GET /api/v1/admin/ops`, роутер `/api/v1/scraper/*`.
+
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 
 ```dotenv

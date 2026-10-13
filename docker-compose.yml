@@ -107,6 +107,8 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
     volumes:
       - ai_models:/root/.cache/huggingface
+      # Latest-run status of host cron jobs, written by ops/write_job_status.py.
+      - ./ops-status:/app/ops-status:ro
     expose:
       - "8000"
     depends_on:

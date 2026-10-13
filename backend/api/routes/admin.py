@@ -1,11 +1,8 @@
 """
-Admin API: real system stats, document/user management, ops visibility.
+Admin API: real system stats, document/user management.
 All endpoints require the admin role.
 """
-import os
-import tempfile
 from datetime import timedelta
-from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
@@ -27,10 +24,6 @@ from models import AdminAuditLog, BillingCheckout, Feedback, User
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
 INGEST_STALE_HOURS = 36
-
-# Operator backfill logs are written by hand (nohup ... > <dir>/<name>.log); on Linux this is /tmp.
-LOG_DIR = Path(os.environ.get("ADMIN_OPS_LOG_DIR", tempfile.gettempdir()))
-
 
 @router.get("/stats")
 def system_stats(db: Session = Depends(get_db)):
@@ -141,43 +134,6 @@ def list_documents(
             }
             for r in rows
         ],
-    }
-
-
-def _tail(path: str, lines: int = 12) -> list:
-    try:
-        content = Path(path).read_text(encoding="utf-8", errors="replace").strip().splitlines()
-        return content[-lines:]
-    except Exception:
-        return []
-
-
-@router.get("/ops")
-def ops_status(db: Session = Depends(get_db)):
-    last_ingest = db.execute(text("SELECT max(created_at) FROM documents")).scalar()
-    docs_today = db.execute(text(
-        "SELECT count(*) FROM documents WHERE created_at >= date_trunc('day', now())"
-    )).scalar()
-    pending = db.execute(text("""
-        SELECT
-          (SELECT count(*) FROM documents d LEFT JOIN decision_facts f ON f.document_id = d.id
-             WHERE d.document_type='court_decision' AND f.id IS NULL
-               AND (d.metadata->>'kind') IS DISTINCT FROM 'digest') AS decisions_pending,
-          (SELECT count(*) FROM documents d LEFT JOIN law_amendments a ON a.amendment_doc_id = d.id
-             WHERE d.document_type='law' AND d.title ILIKE '%ცვლილებ%' AND a.id IS NULL) AS amendments_pending
-    """)).one()
-    return {
-        "last_ingest": last_ingest.isoformat() if last_ingest else None,
-        "documents_today": docs_today,
-        "pending": {
-            "decision_facts": pending.decisions_pending,
-            "law_amendments": pending.amendments_pending,
-        },
-        "logs": {
-            "scraper": _tail("/app/logs/scraper.log"),
-            "law_amendments_backfill": _tail(str(LOG_DIR / "law_amendments_backfill.log")),
-            "decision_facts_backfill": _tail(str(LOG_DIR / "decision_facts_backfill.log")),
-        },
     }
 
 

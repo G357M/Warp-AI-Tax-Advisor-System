@@ -5,7 +5,7 @@
  * Payments keep their own dictionary in lib/billing-reconciliation.ts.
  */
 import { useLang, type Lang } from './i18n';
-import type { QualityFlag, ReviewReason, Verdict } from './admin-types';
+import type { QualityFlag, ReviewReason, SystemJobName, SystemJobState, Verdict } from './admin-types';
 
 export type AdminLocale = string | string[];
 // Chromium ICU ships no `ka` data, so ka-GE would fall back to en-US (11/1/2026).
@@ -30,7 +30,7 @@ const ru = {
   nav: {
     menu: 'Меню администратора', checking: 'Проверяем доступ…', admin: 'Администрирование', back: 'На сайт',
     dashboard: 'Обзор', trends: 'Динамика', documents: 'Документы', analytics: 'Аналитика споров', users: 'Пользователи', quality: 'Качество ответов',
-    feedback: 'Обращения', scraper: 'Ингест', audit: 'Журнал действий', config: 'Конфигурация',
+    feedback: 'Обращения', system: 'Состояние системы', corpus: 'Корпус', audit: 'Журнал действий', config: 'Конфигурация',
   },
   common: {
     loading: 'Загружаем…', loadError: 'Не удалось загрузить данные.', retry: 'Повторить', empty: 'Пока пусто.',
@@ -144,10 +144,26 @@ const ru = {
     title: 'Документы', search: 'Поиск по названию или номеру…', allTypes: 'Все типы',
     name: 'Название', type: 'Тип', number: 'Номер', date: 'Дата', authority: 'Орган', notFound: 'Ничего не найдено.',
   },
-  scraper: {
-    title: 'Ингест и фоновые задачи', lastIngest: 'Последний ингест', today: (n: string) => `сегодня добавлено: ${n}`,
-    decisions: 'Решения в очереди на разметку', amendments: 'Поправки в очереди', logEmpty: 'Лог пуст или недоступен.',
-    logs: { scraper: 'Ночной скрейпер', law_amendments_backfill: 'Бэкфилл поправок', decision_facts_backfill: 'Бэкфилл решений' } as Record<string, string>,
+  system: {
+    title: 'Состояние системы',
+    subtitle: 'Ночные задачи на сервере: когда последний раз отработали и чем закончились. Время тбилисское.',
+    jobs: { scraper: 'Скрапер', canary: 'Канарейка', backup: 'Бэкап базы', restore_drill: 'Проверка восстановления' } satisfies Record<SystemJobName, string>,
+    expected: { scraper: 'запускается каждую ночь и днём', canary: 'запускается каждую ночь', backup: 'запускается каждую ночь', restore_drill: 'запускается раз в месяц' } satisfies Record<SystemJobName, string>,
+    states: { ok: 'В порядке', stale: 'Просрочено', failed: 'Ошибка', skipped: 'Пропущено (занято)', unknown: 'Нет данных' } satisfies Record<SystemJobState, string>,
+    lastRun: (d: string) => `Последний запуск: ${d}`,
+    justNow: 'только что', hoursAgo: (n: string) => `${n} ч назад`, daysAgo: (n: string) => `${n} дн. назад`,
+    manual: 'запущено вручную', exitCode: (n: string) => `код выхода ${n}`,
+    showLog: 'Показать лог',
+    noData: 'Статус ещё не записан. Он появится после ближайшего запуска задачи.',
+  },
+  corpus: {
+    title: 'Корпус',
+    subtitle: 'Что лежит в базе документов и как она пополняется. Время тбилисское.',
+    documents: 'Документов', chunks: 'Фрагментов (чанков)', added7d: 'Добавлено за 7 дней', added30d: 'Добавлено за 30 дней',
+    lastIngest: 'Последнее поступление', decisionsQueue: 'Решения ждут извлечения фактов', amendmentsQueue: 'Поправки ждут извлечения',
+    byType: 'По типам документов', type: 'Тип', total: 'Документов', new30: 'Новых за 30 дней',
+    withoutDate: 'Без даты публикации', withoutChunks: 'Без чанков',
+    weekly: 'Поступления по неделям', added: 'Добавлено', week: 'Неделя',
   },
   trends: {
     title: 'Динамика', subtitle: 'Как меняются выручка, активность и качество ответов. Время тбилисское, администраторы не учитываются.',
@@ -220,7 +236,7 @@ const ka: AdminCopy = {
   nav: {
     menu: 'ადმინისტრატორის მენიუ', checking: 'წვდომა მოწმდება…', admin: 'ადმინისტრირება', back: 'საიტზე დაბრუნება',
     dashboard: 'მიმოხილვა', trends: 'დინამიკა', documents: 'დოკუმენტები', analytics: 'დავების ანალიტიკა', users: 'მომხმარებლები', quality: 'პასუხების ხარისხი',
-    feedback: 'მიმართვები', scraper: 'მონაცემების შეგროვება', audit: 'მოქმედებების ჟურნალი', config: 'კონფიგურაცია',
+    feedback: 'მიმართვები', system: 'სისტემის მდგომარეობა', corpus: 'კორპუსი', audit: 'მოქმედებების ჟურნალი', config: 'კონფიგურაცია',
   },
   common: {
     loading: 'იტვირთება…', loadError: 'მონაცემები ვერ ჩაიტვირთა.', retry: 'ხელახლა ცდა', empty: 'ჯერ ცარიელია.',
@@ -334,10 +350,26 @@ const ka: AdminCopy = {
     title: 'დოკუმენტები', search: 'ძიება სათაურით ან ნომრით…', allTypes: 'ყველა ტიპი',
     name: 'სათაური', type: 'ტიპი', number: 'ნომერი', date: 'თარიღი', authority: 'ორგანო', notFound: 'ვერაფერი მოიძებნა.',
   },
-  scraper: {
-    title: 'შეგროვება და ფონური ამოცანები', lastIngest: 'ბოლო შეგროვება', today: (n: string) => `დღეს დაემატა: ${n}`,
-    decisions: 'დასამუშავებელი გადაწყვეტილებები', amendments: 'დასამუშავებელი ცვლილებები', logEmpty: 'ჟურნალი ცარიელია ან მიუწვდომელია.',
-    logs: { scraper: 'ღამის შეგროვება', law_amendments_backfill: 'ცვლილებების დამუშავება', decision_facts_backfill: 'გადაწყვეტილებების დამუშავება' },
+  system: {
+    title: 'სისტემის მდგომარეობა',
+    subtitle: 'სერვერის ღამის ამოცანები: როდის გაეშვა თითოეული ბოლოს და როგორ დასრულდა. დრო თბილისისაა.',
+    jobs: { scraper: 'მონაცემების შეგროვება', canary: 'საკონტროლო შემოწმება', backup: 'ბაზის სარეზერვო ასლი', restore_drill: 'აღდგენის შემოწმება' } satisfies Record<SystemJobName, string>,
+    expected: { scraper: 'ეშვება ყოველ ღამე და დღისითაც', canary: 'ეშვება ყოველ ღამე', backup: 'ეშვება ყოველ ღამე', restore_drill: 'ეშვება თვეში ერთხელ' } satisfies Record<SystemJobName, string>,
+    states: { ok: 'წესრიგშია', stale: 'დაგვიანებულია', failed: 'ჩაშლილია', skipped: 'გამოტოვებულია (დაკავებული იყო)', unknown: 'მონაცემები არ არის' } satisfies Record<SystemJobState, string>,
+    lastRun: (d: string) => `ბოლო გაშვება: ${d}`,
+    justNow: 'ახლახან', hoursAgo: (n: string) => `${n} საათის წინ`, daysAgo: (n: string) => `${n} დღის წინ`,
+    manual: 'ხელით გაშვებულია', exitCode: (n: string) => `დასრულების კოდი ${n}`,
+    showLog: 'ჟურნალის ჩვენება',
+    noData: 'სტატუსი ჯერ არ ჩაწერილა. ის გამოჩნდება, როცა ამოცანა კიდევ გაეშვება.',
+  },
+  corpus: {
+    title: 'კორპუსი',
+    subtitle: 'რა ინახება დოკუმენტების ბაზაში და როგორ ივსება. დრო თბილისისაა.',
+    documents: 'დოკუმენტები', chunks: 'ფრაგმენტები', added7d: 'დაემატა 7 დღეში', added30d: 'დაემატა 30 დღეში',
+    lastIngest: 'ბოლო დამატება', decisionsQueue: 'გადაწყვეტილებები ელოდება ფაქტების ამოღებას', amendmentsQueue: 'ცვლილებები ელოდება დამუშავებას',
+    byType: 'დოკუმენტების ტიპების მიხედვით', type: 'ტიპი', total: 'დოკუმენტები', new30: 'ახალი 30 დღეში',
+    withoutDate: 'გამოქვეყნების თარიღის გარეშე', withoutChunks: 'ფრაგმენტების გარეშე',
+    weekly: 'დამატებები კვირების მიხედვით', added: 'დაემატა', week: 'კვირა',
   },
   trends: {
     title: 'დინამიკა', subtitle: 'როგორ იცვლება შემოსავალი, აქტივობა და პასუხების ხარისხი. დრო თბილისისაა, ადმინისტრატორები არ ითვლება.',
@@ -408,7 +440,7 @@ const en: AdminCopy = {
   nav: {
     menu: 'Administrator menu', checking: 'Checking access…', admin: 'Administration', back: 'Back to site',
     dashboard: 'Overview', trends: 'Trends', documents: 'Documents', analytics: 'Dispute analytics', users: 'Users', quality: 'Answer quality',
-    feedback: 'Feedback', scraper: 'Ingest', audit: 'Action log', config: 'Configuration',
+    feedback: 'Feedback', system: 'System health', corpus: 'Corpus', audit: 'Action log', config: 'Configuration',
   },
   common: {
     loading: 'Loading…', loadError: 'Could not load the data.', retry: 'Retry', empty: 'Nothing here yet.',
@@ -522,10 +554,26 @@ const en: AdminCopy = {
     title: 'Documents', search: 'Search by title or number…', allTypes: 'All types',
     name: 'Title', type: 'Type', number: 'Number', date: 'Date', authority: 'Authority', notFound: 'Nothing found.',
   },
-  scraper: {
-    title: 'Ingest and background jobs', lastIngest: 'Last ingest', today: (n: string) => `added today: ${n}`,
-    decisions: 'Decisions awaiting extraction', amendments: 'Amendments awaiting extraction', logEmpty: 'Log is empty or unavailable.',
-    logs: { scraper: 'Nightly scraper', law_amendments_backfill: 'Amendments backfill', decision_facts_backfill: 'Decision facts backfill' },
+  system: {
+    title: 'System health',
+    subtitle: 'Nightly server jobs: when each last ran and how it ended. Tbilisi time.',
+    jobs: { scraper: 'Scraper', canary: 'Canary', backup: 'Database backup', restore_drill: 'Restore drill' },
+    expected: { scraper: 'runs nightly and during the day', canary: 'runs nightly', backup: 'runs nightly', restore_drill: 'runs monthly' },
+    states: { ok: 'OK', stale: 'Overdue', failed: 'Failed', skipped: 'Skipped (busy)', unknown: 'No data' },
+    lastRun: (d: string) => `Last run: ${d}`,
+    justNow: 'just now', hoursAgo: (n: string) => `${n} h ago`, daysAgo: (n: string) => `${n} d ago`,
+    manual: 'started manually', exitCode: (n: string) => `exit code ${n}`,
+    showLog: 'Show log',
+    noData: 'No status recorded yet. It appears after the job next runs.',
+  },
+  corpus: {
+    title: 'Corpus',
+    subtitle: 'What the document base holds and how it grows. Tbilisi time.',
+    documents: 'Documents', chunks: 'Chunks', added7d: 'Added in 7 days', added30d: 'Added in 30 days',
+    lastIngest: 'Last ingest', decisionsQueue: 'Decisions awaiting fact extraction', amendmentsQueue: 'Amendments awaiting extraction',
+    byType: 'By document type', type: 'Type', total: 'Documents', new30: 'New in 30 days',
+    withoutDate: 'No publication date', withoutChunks: 'No chunks',
+    weekly: 'Ingest by week', added: 'Added', week: 'Week',
   },
   trends: {
     title: 'Trends', subtitle: 'How revenue, activity and answer quality change over time. Tbilisi time; administrators are excluded.',

@@ -147,14 +147,6 @@ def test_recovery_endpoints_use_dedicated_hourly_rate_limit(monkeypatch):
     assert observed["window_seconds"] == 3600
 
 
-def test_scraper_router_requires_admin_dependency():
-    route_source = (
-        Path(__file__).parents[1] / "api" / "routes" / "scraper.py"
-    ).read_text(encoding="utf-8")
-
-    assert "dependencies=[Depends(require_admin)]" in route_source
-
-
 def test_http_only_session_cookie_authenticates_without_bearer_header():
     user = SimpleNamespace(username="cookie-user", is_active=True)
 

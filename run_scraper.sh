@@ -62,6 +62,20 @@ LOG_FILE="$LOG_DIR/scraper_$(date +%Y%m%d_%H%M%S).log"
 touch "$LOG_FILE"
 chmod 0600 "$LOG_FILE"
 
+# Latest-run status for the admin System page (ops-status/scraper.json). The
+# trap is set after the lock, so an overlapping run that was skipped above
+# never overwrites the status of the run that holds the lock.
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+STATUS_WRITER="$SCRIPT_DIR/ops/write_job_status.py"
+write_scraper_status() {
+    local rc=$?
+    local mode="full"
+    [ "$INGEST_ONLY" -eq 1 ] && mode="ingest-only"
+    python3 "$STATUS_WRITER" scraper "$STARTED_AT" "$rc" \
+        "+${NEW_DOCS:-?} new docs (${mode})" "$LOG_FILE" || true
+}
+trap write_scraper_status EXIT
+
 echo "========================================" | tee -a "$LOG_FILE"
 echo "Starting scraper at $(date)" | tee -a "$LOG_FILE"
 echo "Run mode: $([ "$INGEST_ONLY" -eq 1 ] && echo ingest-only || echo full)" | tee -a "$LOG_FILE"
@@ -198,10 +212,13 @@ fi
 # Nightly RAG canary: 10 known-answer questions through the real pipeline.
 # Alerts to Telegram when below threshold (>1 failure). Non-fatal.
 echo "Running RAG canary..." | tee -a "$LOG_FILE"
+CANARY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 CANARY_EXIT=0
 CANARY_OUT="$(docker exec "$CONTAINER_NAME" python /app/scripts/canary_eval.py 2>>"$LOG_FILE")" || CANARY_EXIT=$?
 echo "$CANARY_OUT" | tee -a "$LOG_FILE"
 bash "$(dirname "$0")/canary_alert.sh" "$CANARY_EXIT" "$(echo "$CANARY_OUT" | grep '^CANARY:' | tail -1)" 2>&1 | tee -a "$LOG_FILE" || true
+python3 "$STATUS_WRITER" canary "$CANARY_STARTED_AT" "$CANARY_EXIT" \
+    "$(echo "$CANARY_OUT" | grep '^CANARY:' | tail -1)" "$LOG_FILE" || true
 
 # Keep only last 30 days of logs
 find "$LOG_DIR" -name "scraper_*.log" -mtime +30 -delete

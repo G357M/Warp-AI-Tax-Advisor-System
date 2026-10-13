@@ -184,11 +184,6 @@ class PerformanceBenchmark(HttpUser):
     def benchmark_metrics(self):
         """Benchmark metrics endpoint."""
         self.client.get("/metrics")
-    
-    @task(1)
-    def benchmark_scraper_list(self):
-        """Benchmark scraper list endpoint."""
-        self.client.get("/api/v1/scraper/tasks")
 
 
 if __name__ == "__main__":
