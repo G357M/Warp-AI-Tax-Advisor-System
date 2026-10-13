@@ -1,3 +1,5 @@
+export const DOCUMENT_TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'] as const;
+
 export interface AuditEntry {
   id: string;
   actor: { id: string; username: string | null };

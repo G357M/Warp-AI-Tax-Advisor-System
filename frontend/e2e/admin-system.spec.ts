@@ -20,7 +20,7 @@ async function json(route: Route, data: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
 }
 
-async function setup(page: Page, lang = 'ru', failFirst = false) {
+async function setup(page: Page, lang = 'ru', failFirst = false, status: unknown = STATUS) {
   await page.clock.setFixedTime(NOW);
   await page.addInitScript((language) => {
     localStorage.setItem('ta_lang', language);
@@ -32,7 +32,7 @@ async function setup(page: Page, lang = 'ru', failFirst = false) {
     if (url.pathname === '/api/v1/auth/me') return json(route, { username: 'admin', role: 'admin' });
     if (url.pathname === '/api/v1/admin/system') {
       if (failures > 0) { failures -= 1; return json(route, { detail: 'boom' }, 500); }
-      return json(route, STATUS);
+      return json(route, status);
     }
     return json(route, { detail: 'No fixture' }, 404);
   });
@@ -101,4 +101,22 @@ test('system visual baseline', async ({ page }) => {
   await mobile.evaluate(async () => { await document.fonts.ready; });
   await expect(mobile).toHaveScreenshot('admin-system-ka-mobile.png', { fullPage: true });
   await mobile.close();
+});
+
+test('skipped job shows the busy state without an exit code', async ({ page }) => {
+  const skipped = {
+    ...STATUS,
+    jobs: STATUS.jobs.map((j) => (j.job === 'restore_drill'
+      ? job('restore_drill', 'skipped', {
+        skipped: true, exit_code: 75, finished_at: '2026-10-11T22:20:00Z',
+        summary: 'skipped: a backup or another drill holds the lock',
+      })
+      : j)),
+  };
+  await setup(page, 'ru', false, skipped);
+  await page.goto('/admin/system');
+  const drill = card(page, 'Проверка восстановления');
+  await expect(drill).toContainText('Пропущено (занято)');
+  await expect(drill).toContainText('skipped: a backup or another drill holds the lock');
+  await expect(drill).not.toContainText('код выхода 75');
 });

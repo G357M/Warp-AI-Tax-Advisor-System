@@ -31,7 +31,7 @@ function JobCard({ job, c, locale }: Readonly<{ job: SystemJob; c: AdminCopy; lo
       <p className={styles.jobMeta}>
         {c.system.lastRun(formatDateTime(job.finished_at, locale))} · {age(job.finished_at, c, locale)}
         {job.trigger === 'manual' && <> · {c.system.manual}</>}
-        {job.exit_code !== null && job.exit_code !== 0 && <> · {c.system.exitCode(String(job.exit_code))}</>}
+        {!job.skipped && job.exit_code !== null && job.exit_code !== 0 && <> · {c.system.exitCode(String(job.exit_code))}</>}
       </p>
       {job.summary && <p className={`${styles.jobSummary} ${styles.mono}`}>{job.summary}</p>}
     </>}

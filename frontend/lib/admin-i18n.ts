@@ -153,7 +153,7 @@ const ru = {
     lastRun: (d: string) => `Последний запуск: ${d}`,
     justNow: 'только что', hoursAgo: (n: string) => `${n} ч назад`, daysAgo: (n: string) => `${n} дн. назад`,
     manual: 'запущено вручную', exitCode: (n: string) => `код выхода ${n}`,
-    showLog: 'Показать лог', logEmpty: 'Лог пуст.',
+    showLog: 'Показать лог',
     noData: 'Статус ещё не записан. Он появится после ближайшего запуска задачи.',
   },
   corpus: {
@@ -359,7 +359,7 @@ const ka: AdminCopy = {
     lastRun: (d: string) => `ბოლო გაშვება: ${d}`,
     justNow: 'ახლახან', hoursAgo: (n: string) => `${n} საათის წინ`, daysAgo: (n: string) => `${n} დღის წინ`,
     manual: 'ხელით გაშვებულია', exitCode: (n: string) => `დასრულების კოდი ${n}`,
-    showLog: 'ჟურნალის ჩვენება', logEmpty: 'ჟურნალი ცარიელია.',
+    showLog: 'ჟურნალის ჩვენება',
     noData: 'სტატუსი ჯერ არ ჩაწერილა. ის გამოჩნდება, როცა ამოცანა კიდევ გაეშვება.',
   },
   corpus: {
@@ -563,7 +563,7 @@ const en: AdminCopy = {
     lastRun: (d: string) => `Last run: ${d}`,
     justNow: 'just now', hoursAgo: (n: string) => `${n} h ago`, daysAgo: (n: string) => `${n} d ago`,
     manual: 'started manually', exitCode: (n: string) => `exit code ${n}`,
-    showLog: 'Show log', logEmpty: 'Log is empty.',
+    showLog: 'Show log',
     noData: 'No status recorded yet. It appears after the job next runs.',
   },
   corpus: {

@@ -65,7 +65,7 @@ finish() {
 Log: /root/infohub/logs/restore-drill.log" || true
     fi
     INFOHUB_JOB_SKIPPED="$skipped" python3 "$STATUS_WRITER" restore_drill "$started_at" "$rc" \
-        "${summary:-${reason:-}}" "$STATUS_LOG" || true
+        "$( if (( rc != 0 && skipped == 0 )); then echo "${reason:-exit $rc}"; else echo "${summary:-${reason:-}}"; fi )" "$STATUS_LOG" || true
 }
 trap finish EXIT
 
@@ -98,7 +98,7 @@ if ! flock -n 9; then
     reason="skipped: a backup or another drill holds the lock"
     log "$reason; try again later" >&2
     skipped=1
-    summary="skipped: lock held by the backup"
+    summary="skipped: a backup or another drill holds the lock"
     exit 75
 fi
 

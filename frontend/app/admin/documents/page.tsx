@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { authFetch } from '@/lib/auth';
 import { formatDate, formatNumber, useAdminCopy } from '@/lib/admin-i18n';
+import { DOCUMENT_TYPES } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { DataTable, type Column } from '@/components/admin/DataTable';
 import { Pagination } from '@/components/admin/Pagination';
@@ -14,7 +15,7 @@ interface AdminDoc {
   date_published: string | null; authority: string | null; source_url: string; created_at: string | null;
 }
 
-const TYPES = ['law', 'regulation', 'court_decision', 'guideline', 'news', 'bill'];
+const TYPES: readonly string[] = DOCUMENT_TYPES;
 const LIMIT = 50;
 
 function DocumentsPage() {

@@ -38,10 +38,10 @@ def test_ok_and_fields_pass_through(tmp_path):
 def test_freshness_thresholds_on_the_boundary(tmp_path):
     _write(tmp_path, "scraper", finished_at="2026-10-11T08:00:00Z")   # exactly 26 h
     _write(tmp_path, "canary", finished_at="2026-10-11T07:59:59Z")    # 26 h + 1 s
-    _write(tmp_path, "restore_drill", finished_at="2026-09-07T10:00:00Z")  # exactly 35 days
+    _write(tmp_path, "restore_drill", finished_at="2026-09-06T10:00:00Z")  # exactly 36 days
     states = _states(tmp_path)
     assert states["scraper"] == "ok" and states["canary"] == "stale" and states["restore_drill"] == "ok"
-    _write(tmp_path, "restore_drill", finished_at="2026-09-07T09:59:59Z")
+    _write(tmp_path, "restore_drill", finished_at="2026-09-06T09:59:59Z")
     assert _states(tmp_path)["restore_drill"] == "stale"
 
 

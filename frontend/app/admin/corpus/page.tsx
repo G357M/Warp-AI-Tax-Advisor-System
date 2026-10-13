@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { formatDateTime, formatNumber, useAdminCopy, type AdminCopy, type AdminLocale } from '@/lib/admin-i18n';
-import type { Corpus, CorpusTypeRow } from '@/lib/admin-types';
+import { DOCUMENT_TYPES, type Corpus, type CorpusTypeRow } from '@/lib/admin-types';
 import { useAdminFetch } from '@/lib/use-admin-fetch';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { StatTile } from '@/components/admin/StatTile';
@@ -24,7 +24,9 @@ function CorpusView({ data, c, locale }: Readonly<{ data: Corpus; c: AdminCopy; 
   const gap = (v: number) => (v > 0 ? <strong className={styles.warning}>{n(v)}</strong> : n(v));
   const columns: Column<CorpusTypeRow>[] = [
     { key: 'type', header: c.corpus.type, render: (r) =>
-      <Link href={`/admin/documents?doc_type=${encodeURIComponent(r.document_type)}`}>{r.document_type}</Link> },
+      (DOCUMENT_TYPES as readonly string[]).includes(r.document_type)
+        ? <Link href={`/admin/documents?doc_type=${encodeURIComponent(r.document_type)}`}>{r.document_type}</Link>
+        : r.document_type },
     { key: 'documents', header: c.corpus.total, render: (r) => n(r.documents) },
     { key: 'new', header: c.corpus.new30, render: (r) => n(r.added_30d) },
     { key: 'noDate', header: c.corpus.withoutDate, render: (r) => gap(r.without_date) },

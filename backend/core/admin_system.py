@@ -13,7 +13,7 @@ FRESH_FOR = {
     "scraper": timedelta(hours=26),
     "canary": timedelta(hours=26),
     "backup": timedelta(hours=26),
-    "restore_drill": timedelta(days=35),
+    "restore_drill": timedelta(days=36),
 }
 MAX_BYTES = 64 * 1024
 

@@ -49,7 +49,7 @@ finish() {
 Log: /root/infohub/logs/db-backup.log" || true
     fi
     INFOHUB_JOB_SKIPPED="$skipped" python3 "$STATUS_WRITER" backup "$started_at" "$rc" \
-        "${summary:-${reason:-}}" "$STATUS_LOG" || true
+        "$( if (( rc != 0 && skipped == 0 )); then echo "${reason:-exit $rc}"; else echo "${summary:-${reason:-}}"; fi )" "$STATUS_LOG" || true
 }
 trap finish EXIT
 
