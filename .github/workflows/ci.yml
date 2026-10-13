@@ -142,6 +142,7 @@ jobs:
           tests/test_ops_request.py
           tests/test_ops_dispatcher.py
           tests/test_admin_system.py
+          tests/test_admin_ops_requests.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
           tests/test_legal_temporal_backfill.py
