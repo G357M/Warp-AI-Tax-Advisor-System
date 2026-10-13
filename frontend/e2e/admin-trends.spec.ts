@@ -139,7 +139,7 @@ test('hovering a column shows its values', async ({ page }) => {
 test('load error offers a retry', async ({ page }) => {
   const { queries } = await setup(page, { failFirst: true });
   await page.goto('/admin/trends');
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Повторить' }).click();
   await expect(page.getByText('294 ₾')).toBeVisible();
   expect(queries).toEqual(['30d', '30d']);

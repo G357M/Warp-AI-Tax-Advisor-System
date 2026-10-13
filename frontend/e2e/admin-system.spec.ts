@@ -69,7 +69,7 @@ test('log is collapsed until asked for', async ({ page }) => {
 test('load error offers a retry', async ({ page }) => {
   await setup(page, 'ru', true);
   await page.goto('/admin/system');
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Повторить' }).click();
   await expect(card(page, 'Скрапер')).toContainText('В порядке');
 });
