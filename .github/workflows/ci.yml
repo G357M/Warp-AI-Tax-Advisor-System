@@ -140,6 +140,7 @@ jobs:
           tests/test_ops_job_status.py
           tests/test_ops_run_canary.py
           tests/test_ops_request.py
+          tests/test_ops_dispatcher.py
           tests/test_admin_system.py
           tests/test_legal_answer_contracts.py
           tests/test_legal_answer_coverage.py
@@ -368,6 +369,7 @@ jobs:
           ops/backup-infohub-db.sh
           ops/restore-drill-infohub-db.sh
           ops/run_canary.sh
+          ops/ops-dispatcher.sh
           ops/drop-stale-chunks-backup.sh
 
       - name: Validate operational PowerShell scripts
