@@ -86,6 +86,12 @@ export default function AdminSystem() {
     return () => window.clearInterval(id);
   }, [polling, reload]);
 
+  const open = (job: ManualJob) => {
+    setErrors((prev) => ({ ...prev, [cardOf(job)]: undefined }));
+    setDialog(job);
+  };
+  const refresh = () => { setErrors({}); reload(); };
+
   const run = async () => {
     if (dialog === null) return;
     const card = cardOf(dialog);
@@ -103,12 +109,12 @@ export default function AdminSystem() {
   let body = <AdminState kind="loading" />;
   if (error) body = <AdminState kind="error" onRetry={reload} />;
   else if (data) body = <div className={styles.jobGrid}>
-    {data.jobs.map((job) => <JobCard key={job.job} job={job} c={c} locale={locale} onRun={setDialog} error={errors[job.job]} />)}
+    {data.jobs.map((job) => <JobCard key={job.job} job={job} c={c} locale={locale} onRun={open} error={errors[job.job]} />)}
   </div>;
 
   return <div className={styles.page}>
     <PageHeader title={c.system.title} subtitle={c.system.subtitle}
-      actions={<button type="button" className={styles.button} onClick={reload}>{c.common.refresh}</button>} />
+      actions={<button type="button" className={styles.button} onClick={refresh}>{c.common.refresh}</button>} />
     {body}
     <ConfirmDialog open={dialog !== null} onOpenChange={(open) => { if (!open) setDialog(null); }}
       title={dialog ? c.system.run[dialog] : ''} description={dialog ? c.system.cost[dialog] : undefined}
