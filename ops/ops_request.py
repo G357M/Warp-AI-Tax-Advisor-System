@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -34,6 +35,7 @@ SKIP_MARKERS = ("Another scraper run is active",)
 DEFAULT_DIR = Path(__file__).resolve().parents[1] / "ops-status"
 USAGE = ("usage: ops_request.py check FILE | running FILE STARTED_AT | "
          "finish FILE STARTED_AT EXIT_CODE OUTPUT_FILE | interrupted FILE")
+ISO_TIMESTAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 
 
 def _now() -> str:
@@ -49,11 +51,25 @@ def read_request(path: Path) -> dict | None:
     if job is None:
         return None
     try:
-        info = os.lstat(path)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
-            return None
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        # Use O_RDONLY | O_NOFOLLOW | O_NONBLOCK to prevent TOCTOU attacks
+        # and avoid hanging on FIFOs. Fallback to getattr for Windows compatibility.
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        if hasattr(os, "O_NONBLOCK"):
+            flags |= os.O_NONBLOCK
+        fd = os.open(str(path), flags)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
+                return None
+            content = os.read(fd, MAX_BYTES + 1)
+            if len(content) > MAX_BYTES:
+                return None
+            data = json.loads(content.decode("utf-8"))
+        finally:
+            os.close(fd)
+    except (OSError, ValueError, RecursionError):
         return None
     if not isinstance(data, dict) or data.get("schema_version") != 1 or data.get("job") != job:
         return None
@@ -62,8 +78,11 @@ def read_request(path: Path) -> dict | None:
     except ValueError:
         return None
     requested_at = data.get("requested_at")
+    # Validate requested_at format to prevent encoding issues when writing status
+    if not (isinstance(requested_at, str) and ISO_TIMESTAMP.match(requested_at)):
+        requested_at = None
     return {"job": job, "request_id": request_id,
-            "requested_at": requested_at if isinstance(requested_at, str) else None}
+            "requested_at": requested_at}
 
 
 def write_status(request: dict, **fields) -> None:
@@ -125,19 +144,24 @@ def main(argv: list) -> int:
         print(request["request_id"])
         return 0
     try:
+        # Validate started_at to prevent encoding issues (surrogates, etc.)
+        started_at = argv[3] if command != "interrupted" else None
+        if started_at and not ISO_TIMESTAMP.match(started_at):
+            return 0  # Silently ignore invalid timestamp, don't fail dispatcher
+
         if command == "running":
-            write_status(request, state="running", started_at=argv[3])
+            write_status(request, state="running", started_at=started_at)
         elif command == "finish":
             try:
                 code = int(argv[4])
             except ValueError:
                 code = -1
-            state, reason = outcome(request["job"], code, _output(argv[5]), argv[3])
-            write_status(request, state=state, started_at=argv[3], finished_at=_now(),
+            state, reason = outcome(request["job"], code, _output(argv[5]), started_at)
+            write_status(request, state=state, started_at=started_at, finished_at=_now(),
                          exit_code=code, reason=reason)
         else:
             write_status(request, state="failed", finished_at=_now(), reason="interrupted")
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         print(f"[ops-request] could not write {request['job']} request status: {exc}", file=sys.stderr)
     return 0
 

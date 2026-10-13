@@ -147,3 +147,35 @@ def test_status_file_is_array_does_not_crash(tmp_path, status_dir):
     output.write_text("", encoding="utf-8")
     assert ops_request.main(["x", "finish", str(path), "2026-10-13T10:01:00Z", "0", str(output)]) == 0
     assert _status(status_dir, "backup")["state"] == "done"
+
+
+def test_hostile_surrogate_in_requested_at(tmp_path, status_dir):
+    """A request with surrogate in requested_at doesn't crash dispatcher."""
+    path = _request(tmp_path, "canary", requested_at="\ud800")
+    # check should still work, normalizing the bad requested_at to None
+    assert ops_request.main(["x", "check", str(path)]) == 0
+    # running should exit 0 and write the status with requested_at null
+    assert ops_request.main(["x", "running", str(path), "2026-10-13T10:01:00Z"]) == 0
+    status = _status(status_dir, "canary")
+    assert status["requested_at"] is None
+
+
+def test_recursive_json_does_not_crash_on_read(tmp_path):
+    """Deeply nested JSON causing RecursionError is rejected."""
+    path = tmp_path / "canary.json"
+    # Create a deeply nested array that will exceed recursion limit
+    nested = "[" * 3000 + "]" * 3000
+    path.write_text(json.dumps({"schema_version": 1, "job": "canary", "request_id": str(uuid4()),
+                                  "requested_at": "2026-10-13T10:00:00Z", "data": nested}),
+                    encoding="utf-8")
+    # Should reject due to RecursionError during json.loads
+    assert ops_request.main(["x", "check", str(path)]) == 1
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo") or os.name == "nt", reason="FIFOs need POSIX")
+def test_check_rejects_fifo_without_blocking(tmp_path):
+    """A FIFO should be rejected immediately without hanging."""
+    fifo_path = tmp_path / "canary.json"
+    os.mkfifo(str(fifo_path))
+    # Should exit 1 immediately without blocking on the FIFO
+    assert ops_request.main(["x", "check", str(fifo_path)]) == 1
