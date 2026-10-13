@@ -125,8 +125,8 @@ def _skipped_since(job: str, started_at: str) -> bool:
     return data.get("skipped") is True and isinstance(finished, str) and finished >= started_at
 
 
-def outcome(job: str, exit_code: int, output: str, started_at: str) -> tuple:
-    if any(marker in output for marker in SKIP_MARKERS) or _skipped_since(job, started_at):
+def outcome(job: str, exit_code: int, output: str, started_at: str | None) -> tuple:
+    if any(marker in output for marker in SKIP_MARKERS) or (started_at and _skipped_since(job, started_at)):
         return "skipped", "busy"
     return ("done", None) if exit_code == 0 else ("failed", None)
 
@@ -144,10 +144,11 @@ def main(argv: list) -> int:
         print(request["request_id"])
         return 0
     try:
-        # Validate started_at to prevent encoding issues (surrogates, etc.)
+        # Get and validate started_at to prevent encoding issues (surrogates, etc.)
         started_at = argv[3] if command != "interrupted" else None
         if started_at and not ISO_TIMESTAMP.match(started_at):
-            return 0  # Silently ignore invalid timestamp, don't fail dispatcher
+            print(f"[ops-request] ignoring invalid STARTED_AT", file=sys.stderr)
+            started_at = None  # Treat invalid timestamp as None, still write status
 
         if command == "running":
             write_status(request, state="running", started_at=started_at)
@@ -156,6 +157,7 @@ def main(argv: list) -> int:
                 code = int(argv[4])
             except ValueError:
                 code = -1
+            # For outcome check, use started_at only if valid (not None)
             state, reason = outcome(request["job"], code, _output(argv[5]), started_at)
             write_status(request, state=state, started_at=started_at, finished_at=_now(),
                          exit_code=code, reason=reason)

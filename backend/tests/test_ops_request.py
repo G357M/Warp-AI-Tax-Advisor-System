@@ -161,14 +161,15 @@ def test_hostile_surrogate_in_requested_at(tmp_path, status_dir):
 
 
 def test_recursive_json_does_not_crash_on_read(tmp_path):
-    """Deeply nested JSON causing RecursionError is rejected."""
+    """Deeply nested raw JSON array causing RecursionError is rejected."""
     path = tmp_path / "canary.json"
-    # Create a deeply nested array that will exceed recursion limit
-    nested = "[" * 3000 + "]" * 3000
-    path.write_text(json.dumps({"schema_version": 1, "job": "canary", "request_id": str(uuid4()),
-                                  "requested_at": "2026-10-13T10:00:00Z", "data": nested}),
-                    encoding="utf-8")
-    # Should reject due to RecursionError during json.loads
+    # Create a deeply nested raw array (not a string) that will exceed recursion limit
+    # Use 2000 nesting levels to trigger RecursionError but stay under 4 KiB
+    nested = "[" * 2000 + "]" * 2000
+    path.write_text(nested, encoding="utf-8")
+    # Verify file is under 4 KiB
+    assert path.stat().st_size < 4096
+    # Should reject due to RecursionError during json.loads, not size check
     assert ops_request.main(["x", "check", str(path)]) == 1
 
 
@@ -179,3 +180,26 @@ def test_check_rejects_fifo_without_blocking(tmp_path):
     os.mkfifo(str(fifo_path))
     # Should exit 1 immediately without blocking on the FIFO
     assert ops_request.main(["x", "check", str(fifo_path)]) == 1
+
+
+def test_running_with_invalid_started_at_writes_status(tmp_path, status_dir):
+    """running with invalid STARTED_AT still writes status with started_at null."""
+    path = _request(tmp_path, "canary")
+    # Try with garbage STARTED_AT
+    assert ops_request.main(["x", "running", str(path), "garbage"]) == 0
+    status = _status(status_dir, "canary")
+    assert status["state"] == "running"
+    assert status["started_at"] is None
+
+
+def test_finish_with_invalid_started_at_writes_status(tmp_path, status_dir):
+    """finish with invalid STARTED_AT still writes status with started_at null."""
+    path = _request(tmp_path, "backup")
+    output = tmp_path / "out.log"
+    output.write_text("", encoding="utf-8")
+    # Try with surrogate STARTED_AT
+    assert ops_request.main(["x", "finish", str(path), "\udcff-garbage", "0", str(output)]) == 0
+    status = _status(status_dir, "backup")
+    assert status["state"] == "done"
+    assert status["started_at"] is None
+    assert status["exit_code"] == 0
