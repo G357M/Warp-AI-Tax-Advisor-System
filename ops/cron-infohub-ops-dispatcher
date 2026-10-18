@@ -1,0 +1,6 @@
+# Installed to /etc/cron.d/infohub-ops-dispatcher by scripts/deploy_production.sh.
+# Every minute: run manual job requests from the admin System page (ops-requests/).
+# The dispatcher holds its own lock, so a long job never starts a second copy.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * root /bin/bash /root/infohub/ops/ops-dispatcher.sh >> /root/infohub/logs/ops-dispatcher.log 2>&1

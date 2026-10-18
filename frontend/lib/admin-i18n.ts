@@ -5,7 +5,7 @@
  * Payments keep their own dictionary in lib/billing-reconciliation.ts.
  */
 import { useLang, type Lang } from './i18n';
-import type { QualityFlag, ReviewReason, SystemJobName, SystemJobState, Verdict } from './admin-types';
+import type { ManualJob, QualityFlag, ReviewReason, SystemJobName, SystemJobState, Verdict } from './admin-types';
 
 export type AdminLocale = string | string[];
 // Chromium ICU ships no `ka` data, so ka-GE would fall back to en-US (11/1/2026).
@@ -15,7 +15,7 @@ export const ADMIN_LOCALE: Record<Lang, AdminLocale> = { ru: 'ru-RU', ka: ['ka-G
 export const ADMIN_ACTIONS = [
   'user.role_changed', 'subscription.activated', 'feedback.status_changed', 'user.blocked', 'user.unblocked',
   'subscription.granted', 'subscription.canceled', 'user.password_reset_sent', 'user.verification_sent',
-  'answer.reviewed', 'user.identity_revealed',
+  'answer.reviewed', 'user.identity_revealed', 'ops.job_requested',
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 
@@ -23,6 +23,7 @@ export const ADMIN_ERROR_CODES = [
   'user_not_found', 'feedback_not_found', 'cannot_block_self', 'cannot_block_admin', 'cannot_demote_self',
   'user_blocked', 'admin_has_business', 'active_plan_differs', 'plan_unlimited', 'no_active_subscription',
   'email_already_verified', 'email_unavailable', 'message_not_found',
+  'already_pending', 'scraper_busy', 'backup_too_recent', 'canary_too_recent', 'ops_queue_unavailable',
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 
@@ -67,8 +68,9 @@ const ru = {
       'subscription.canceled': 'Досрочное прекращение', 'user.password_reset_sent': 'Письмо сброса пароля',
       'user.verification_sent': 'Письмо подтверждения',
       'answer.reviewed': 'Разметка ответа', 'user.identity_revealed': 'Раскрытие пользователя',
+      'ops.job_requested': 'Ручной запуск задачи',
     } satisfies Record<AdminAction, string>,
-    targets: { user: 'Пользователь', checkout: 'Заявка', feedback: 'Обращение', message: 'Ответ' } as Record<string, string>,
+    targets: { user: 'Пользователь', checkout: 'Заявка', feedback: 'Обращение', message: 'Ответ', ops_job: 'Задача' } as Record<string, string>,
   },
   config: {
     title: 'Конфигурация', subtitle: 'Текущие настройки сервера, только для чтения.',
@@ -134,6 +136,11 @@ const ru = {
     plan_unlimited: 'У текущего тарифа нет даты окончания.', no_active_subscription: 'Нет активной платной подписки.',
     email_already_verified: 'Email уже подтверждён.', email_unavailable: 'Отправка почты не настроена.',
     message_not_found: 'Ответ не найден.',
+    already_pending: 'Эта задача уже в очереди или выполняется.',
+    scraper_busy: 'Скрапер уже запущен другой заявкой.',
+    backup_too_recent: 'Последний бэкап был меньше 6 часов назад.',
+    canary_too_recent: 'Канарейка запускалась меньше 10 минут назад.',
+    ops_queue_unavailable: 'Папка заявок недоступна, запуск не поставлен.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Обращения', date: 'Дата', user: 'Пользователь', page: 'Страница', message: 'Сообщение', status: 'Статус',
@@ -154,6 +161,25 @@ const ru = {
     justNow: 'только что', hoursAgo: (n: string) => `${n} ч назад`, daysAgo: (n: string) => `${n} дн. назад`,
     manual: 'запущено вручную', exitCode: (n: string) => `код выхода ${n}`,
     showLog: 'Показать лог',
+    run: {
+      scraper_ingest: 'Загрузить новые документы', scraper_full: 'Полный ночной прогон',
+      canary: 'Прогнать канарейку', backup: 'Бэкап сейчас',
+    } satisfies Record<ManualJob, string>,
+    confirmRun: 'Запустить',
+    cost: {
+      scraper_ingest: 'Скачает новые документы с infohub.rs.ge и добавит их в базу. Обычно несколько минут, без вызовов LLM. Если скрапер уже работает, запуск будет пропущен.',
+      scraper_full: 'Весь ночной прогон: загрузка, разбор решений и поправок, переводы, проверки качества и канарейка. Может занять до часа и сделать сотни вызовов gpt-4o-mini. Ночной счётчик «0 новых документов» не изменится.',
+      canary: 'Десять контрольных вопросов через настоящий конвейер ответов: около 10 вызовов gpt-4o-mini. Не чаще раза в 10 минут.',
+      backup: 'Полный дамп базы. Хранится 4 последних дампа; самый старый будет удалён. Не чаще раза в 6 часов.',
+    } satisfies Record<ManualJob, string>,
+    request: {
+      queued: 'В очереди: запустится в течение минуты',
+      running: (t: string) => `Выполняется с ${t}`,
+      done: (t: string) => `Ручной запуск завершён в ${t}`,
+      skipped: 'Ручной запуск пропущен: задача уже шла',
+      failed: 'Ручной запуск завершился ошибкой',
+      interrupted: 'Ручной запуск прерван',
+    },
     noData: 'Статус ещё не записан. Он появится после ближайшего запуска задачи.',
   },
   corpus: {
@@ -273,8 +299,9 @@ const ka: AdminCopy = {
       'subscription.canceled': 'ვადაზე ადრე შეწყვეტა', 'user.password_reset_sent': 'პაროლის აღდგენის წერილი',
       'user.verification_sent': 'დადასტურების წერილი',
       'answer.reviewed': 'პასუხის შემოწმება', 'user.identity_revealed': 'მომხმარებლის ვინაობის გამჟღავნება',
+      'ops.job_requested': 'ამოცანის ხელით გაშვება',
     },
-    targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა', message: 'პასუხი' },
+    targets: { user: 'მომხმარებელი', checkout: 'განაცხადი', feedback: 'მიმართვა', message: 'პასუხი', ops_job: 'ამოცანა' },
   },
   config: {
     title: 'კონფიგურაცია', subtitle: 'სერვერის მიმდინარე პარამეტრები, მხოლოდ სანახავად.',
@@ -340,6 +367,11 @@ const ka: AdminCopy = {
     plan_unlimited: 'მიმდინარე ტარიფს დასრულების თარიღი არ აქვს.', no_active_subscription: 'აქტიური ფასიანი გამოწერა არ არის.',
     email_already_verified: 'ელფოსტა უკვე დადასტურებულია.', email_unavailable: 'ფოსტის გაგზავნა არ არის გამართული.',
     message_not_found: 'პასუხი ვერ მოიძებნა.',
+    already_pending: 'ეს ამოცანა უკვე რიგშია ან მიმდინარეობს.',
+    scraper_busy: 'მონაცემების შეგროვება უკვე გაშვებულია სხვა მოთხოვნით.',
+    backup_too_recent: 'ბოლო სარეზერვო ასლი 6 საათზე ნაკლები ხნის წინ შეიქმნა.',
+    canary_too_recent: 'საკონტროლო შემოწმება 10 წუთზე ნაკლები ხნის წინ გაეშვა.',
+    ops_queue_unavailable: 'მოთხოვნების საქაღალდე მიუწვდომელია, ამოცანა რიგში არ ჩადგა.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'მიმართვები', date: 'თარიღი', user: 'მომხმარებელი', page: 'გვერდი', message: 'შეტყობინება', status: 'სტატუსი',
@@ -360,6 +392,25 @@ const ka: AdminCopy = {
     justNow: 'ახლახან', hoursAgo: (n: string) => `${n} საათის წინ`, daysAgo: (n: string) => `${n} დღის წინ`,
     manual: 'ხელით გაშვებულია', exitCode: (n: string) => `დასრულების კოდი ${n}`,
     showLog: 'ჟურნალის ჩვენება',
+    run: {
+      scraper_ingest: 'ახალი დოკუმენტების ჩატვირთვა', scraper_full: 'სრული ღამის ციკლის გაშვება',
+      canary: 'საკონტროლო შემოწმების გაშვება', backup: 'სარეზერვო ასლის შექმნა',
+    } satisfies Record<ManualJob, string>,
+    confirmRun: 'გაშვება',
+    cost: {
+      scraper_ingest: 'ჩამოტვირთავს ახალ დოკუმენტებს infohub.rs.ge-დან და დაამატებს ბაზაში. ჩვეულებრივ რამდენიმე წუთი სჭირდება, LLM არ გამოიყენება. თუ შეგროვება უკვე მიმდინარეობს, გაშვება გამოტოვდება.',
+      scraper_full: 'სრული ღამის ციკლი: ჩატვირთვა, გადაწყვეტილებებისა და ცვლილებების დამუშავება, თარგმანები, ხარისხის ფილტრები და საკონტროლო შემოწმება. შეიძლება ერთ საათამდე გაგრძელდეს და gpt-4o-mini-ზე ასობით მოთხოვნა დასჭირდეს. ღამის მრიცხველი „0 ახალი დოკუმენტი“ არ შეიცვლება.',
+      canary: 'ათი საკონტროლო კითხვა გაივლის პასუხების რეალურ ჯაჭვს: დაახლოებით 10 მოთხოვნა gpt-4o-mini-ზე. არაუმეტეს 10 წუთში ერთხელ.',
+      backup: 'ბაზის სრული ასლი. ინახება ბოლო 4 ასლი; ყველაზე ძველი წაიშლება. არაუმეტეს 6 საათში ერთხელ.',
+    } satisfies Record<ManualJob, string>,
+    request: {
+      queued: 'რიგშია: გაეშვება ერთი წუთის განმავლობაში',
+      running: (t: string) => `მიმდინარეობს ${t}-დან`,
+      done: (t: string) => `ხელით გაშვება დასრულდა ${t}-ზე`,
+      skipped: 'ხელით გაშვება გამოტოვდა: ამოცანა უკვე მიმდინარეობდა',
+      failed: 'ხელით გაშვება შეცდომით დასრულდა',
+      interrupted: 'ხელით გაშვება შეწყდა',
+    },
     noData: 'სტატუსი ჯერ არ ჩაწერილა. ის გამოჩნდება, როცა ამოცანა კიდევ გაეშვება.',
   },
   corpus: {
@@ -477,8 +528,9 @@ const en: AdminCopy = {
       'subscription.canceled': 'Early cancellation', 'user.password_reset_sent': 'Password reset email',
       'user.verification_sent': 'Verification email',
       'answer.reviewed': 'Answer review', 'user.identity_revealed': 'User revealed',
+      'ops.job_requested': 'Manual job run',
     },
-    targets: { user: 'User', checkout: 'Order', feedback: 'Feedback', message: 'Answer' },
+    targets: { user: 'User', checkout: 'Order', feedback: 'Feedback', message: 'Answer', ops_job: 'Job' },
   },
   config: {
     title: 'Configuration', subtitle: 'Current server settings, read-only.',
@@ -544,6 +596,11 @@ const en: AdminCopy = {
     plan_unlimited: 'The current plan has no end date.', no_active_subscription: 'No active paid subscription.',
     email_already_verified: 'Email is already verified.', email_unavailable: 'Email delivery is not configured.',
     message_not_found: 'Answer not found.',
+    already_pending: 'This job is already queued or running.',
+    scraper_busy: 'The scraper is already running for another request.',
+    backup_too_recent: 'The last backup was less than 6 hours ago.',
+    canary_too_recent: 'The canary ran less than 10 minutes ago.',
+    ops_queue_unavailable: 'The request folder is unavailable; nothing was queued.',
   } satisfies Record<AdminErrorCode, string>,
   feedback: {
     title: 'Feedback', date: 'Date', user: 'User', page: 'Page', message: 'Message', status: 'Status',
@@ -564,6 +621,22 @@ const en: AdminCopy = {
     justNow: 'just now', hoursAgo: (n: string) => `${n} h ago`, daysAgo: (n: string) => `${n} d ago`,
     manual: 'started manually', exitCode: (n: string) => `exit code ${n}`,
     showLog: 'Show log',
+    run: { scraper_ingest: 'Fetch new documents', scraper_full: 'Full nightly run', canary: 'Run canary', backup: 'Back up now' } satisfies Record<ManualJob, string>,
+    confirmRun: 'Run',
+    cost: {
+      scraper_ingest: 'Downloads new documents from infohub.rs.ge into the database. Usually a few minutes, no LLM calls. Skipped if the scraper is already running.',
+      scraper_full: 'The whole nightly run: ingest, decision and amendment extraction, translations, quality gates and the canary. Up to an hour and hundreds of gpt-4o-mini calls. The nightly "0 new documents" streak is left unchanged.',
+      canary: 'Ten known-answer questions through the real answer pipeline: about 10 gpt-4o-mini calls. At most once every 10 minutes.',
+      backup: 'A full database dump. The 4 newest dumps are kept; the oldest is deleted. At most once every 6 hours.',
+    } satisfies Record<ManualJob, string>,
+    request: {
+      queued: 'Queued: starts within a minute',
+      running: (t: string) => `Running since ${t}`,
+      done: (t: string) => `Manual run finished at ${t}`,
+      skipped: 'Manual run skipped: the job was already running',
+      failed: 'Manual run failed',
+      interrupted: 'Manual run interrupted',
+    },
     noData: 'No status recorded yet. It appears after the job next runs.',
   },
   corpus: {
