@@ -1239,6 +1239,26 @@ applying.
 - `/admin/corpus` — только чтение из `documents`/`document_chunks`.
 - Удалены: страница `/admin/scraper`, `GET /api/v1/admin/ops`, роутер `/api/v1/scraper/*`.
 
+#### Ручной запуск (этап 5b)
+
+- На карточках `/admin/system` четыре кнопки: «Загрузить новые документы» и «Полный ночной прогон»
+  (скрапер), «Прогнать канарейку», «Бэкап сейчас». У restore drill кнопки нет. Каждый запуск
+  подтверждается в диалоге и пишется в `/admin/audit` как «Ручной запуск задачи».
+- Бэкенд только кладёт файл заявки в `/root/infohub/ops-requests/` (смонтирована в бэкенд на запись);
+  больше ничего на хосте он не трогает. Состояние «выполняется» берётся из
+  `ops-status/<job>.request.json`, который диспетчер пишет сразу после взятия заявки.
+- Диспетчер запускается по cron (`/etc/cron.d/infohub-ops-dispatcher`), команды берёт из жёсткого `case`
+  по четырём именам задач. Лог: `/root/infohub/logs/ops-dispatcher.log`.
+- Рабочие каталоги диспетчера лежат вне `ops-requests/`, в каталоге только для root
+  `/var/lib/infohub/ops-dispatch` (0700, `INFOHUB_OPS_DISPATCH_STATE`; создаёт deploy): `processing/` и
+  `rejected/`. Бэкенд пишет в `ops-requests/`, поэтому не должен управлять каталогами, куда root
+  переносит файлы.
+- Зависшая заявка: `rm /var/lib/infohub/ops-dispatch/processing/<job>.json`, либо подождать 6 ч —
+  статус станет `interrupted`.
+- `/var/lib/infohub/ops-dispatch/rejected/` автоматически не чистится; его безопасно опустошать.
+- Проверка после деплоя: нажать «Прогнать канарейку»; в течение 1-2 минут карточка покажет `running`,
+  затем `done`.
+
 Keep these settings in `/root/infohub/.env`, never in Git or command output:
 
 ```dotenv

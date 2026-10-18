@@ -364,3 +364,14 @@ merge или production deployment.
   text is computed on the client from `finished_at`.
 - Cards show "Нет данных" until each job's next run after the first deploy; do not deploy around 03:00-04:00 UTC.
 - Next: stage 5b (manual launch of jobs from the admin).
+
+## 2026-10-13 - Admin stage 5b (manual runs of host jobs)
+
+- Manual runs go through files only: the backend writes request files to `ops-requests/` (its only writable
+  mount) and a journal row; a root cron dispatcher on the host picks them up. No Docker socket, no SSH.
+- The dispatcher's command map is a hard `case` over four job names; nothing from the request file reaches a
+  shell. Its `processing/` and `rejected/` live in the root-only `/var/lib/infohub/ops-dispatch`, not in
+  `ops-requests/`, so the backend cannot influence directories root moves files into.
+- Canary logic lives in `ops/run_canary.sh` and serves both the cron and the manual path.
+  `INFOHUB_MANUAL_RUN` keeps the zero-new streak of `scraper_alert.sh` untouched.
+- Do not deploy around 03:00-04:00 UTC. After deploy press "Прогнать канарейку" and expect running, then done.
