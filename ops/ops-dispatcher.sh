@@ -91,7 +91,7 @@ while IFS= read -r -d '' request; do
     run_job "$job" >"$output" 2>&1
     rc=$?
     cat "$output"
-    python3 "$HELPER" finish "$taken" "$started_at" "$rc" "$output" || true
+    python3 "$HELPER" finish "$taken" "$started_at" "$rc" <"$output" || true
     rm -f -- "$output" "$taken"
     log "$name: finished with exit $rc"
 done < <(find "$REQUEST_DIR" -maxdepth 1 ! -type d ! -name '.*' -printf '%T@ %p\0' | sort -z -n | cut -z -d' ' -f2-)

@@ -7,12 +7,16 @@
       request_id; otherwise exit 1. Nothing from the file ever reaches a
       command line: the dispatcher chooses the command by the file name.
   ops_request.py running FILE STARTED_AT
-  ops_request.py finish FILE STARTED_AT EXIT_CODE OUTPUT_FILE
+  ops_request.py finish FILE STARTED_AT EXIT_CODE < JOB_OUTPUT
   ops_request.py interrupted FILE
       Replace <status dir>/<job>.request.json atomically, so the backend
       (read-only mount) never reads a half-written status.
 
-Env: INFOHUB_OPS_STATUS_DIR (default: <repo>/ops-status).
+FILE must be <dispatch state>/processing/<job>.json; the helper opens the path
+it rebuilds from that directory and the job list, never the argument itself.
+
+Env: INFOHUB_OPS_STATUS_DIR (default: <repo>/ops-status),
+     INFOHUB_OPS_DISPATCH_STATE (default: /var/lib/infohub/ops-dispatch).
 A status write error is reported on stderr and never fails the dispatcher.
 """
 from __future__ import annotations
@@ -33,8 +37,9 @@ MAX_BYTES = 4096
 OUTPUT_BYTES = 65536
 SKIP_MARKERS = ("Another scraper run is active",)
 DEFAULT_DIR = Path(__file__).resolve().parents[1] / "ops-status"
+DEFAULT_STATE_DIR = "/var/lib/infohub/ops-dispatch"
 USAGE = ("usage: ops_request.py check FILE | running FILE STARTED_AT | "
-         "finish FILE STARTED_AT EXIT_CODE OUTPUT_FILE | interrupted FILE")
+         "finish FILE STARTED_AT EXIT_CODE < JOB_OUTPUT | interrupted FILE")
 ISO_TIMESTAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 
 
@@ -46,10 +51,26 @@ def _status_dir() -> Path:
     return Path(os.environ.get("INFOHUB_OPS_STATUS_DIR") or DEFAULT_DIR)
 
 
-def read_request(path: Path) -> dict | None:
-    job = path.stem if path.suffix == ".json" and path.stem in JOBS else None
-    if job is None:
+def _processing_dir() -> str:
+    state = os.environ.get("INFOHUB_OPS_DISPATCH_STATE") or DEFAULT_STATE_DIR
+    return os.path.realpath(os.path.join(state, "processing"))
+
+
+def _request_path(arg: str) -> tuple[str, str] | None:
+    """(job, path) for processing/<job>.json, rebuilt from trusted parts; None for anything else."""
+    given = Path(arg)
+    job = next((j for j in JOBS if given.name == f"{j}.json"), None)
+    processing = _processing_dir()
+    if job is None or os.path.realpath(given.parent) != processing:
         return None
+    return job, os.path.join(processing, f"{job}.json")
+
+
+def read_request(arg: str) -> dict | None:
+    located = _request_path(arg)
+    if located is None:
+        return None
+    job, path = located
     try:
         # Use O_RDONLY | O_NOFOLLOW | O_NONBLOCK to prevent TOCTOU attacks
         # and avoid hanging on FIFOs. Fallback to getattr for Windows compatibility.
@@ -58,7 +79,7 @@ def read_request(path: Path) -> dict | None:
             flags |= os.O_NOFOLLOW
         if hasattr(os, "O_NONBLOCK"):
             flags |= os.O_NONBLOCK
-        fd = os.open(str(path), flags)
+        fd = os.open(path, flags)
         try:
             info = os.fstat(fd)
             if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
@@ -103,14 +124,15 @@ def write_status(request: dict, **fields) -> None:
         raise
 
 
-def _output(path: str) -> str:
+def _output() -> str:
+    """Tail of the job output the dispatcher feeds on stdin."""
+    tail = b""
     try:
-        with open(path, "rb") as f:
-            f.seek(0, os.SEEK_END)
-            f.seek(max(0, f.tell() - OUTPUT_BYTES))
-            return f.read().decode("utf-8", "replace")
-    except OSError:
+        while chunk := sys.stdin.buffer.read(OUTPUT_BYTES):
+            tail = (tail + chunk)[-OUTPUT_BYTES:]
+    except (OSError, ValueError, AttributeError):
         return ""
+    return tail.decode("utf-8", "replace")
 
 
 def _skipped_since(job: str, started_at: str) -> bool:
@@ -132,12 +154,12 @@ def outcome(job: str, exit_code: int, output: str, started_at: str | None) -> tu
 
 
 def main(argv: list) -> int:
-    arity = {"check": 3, "running": 4, "finish": 6, "interrupted": 3}
+    arity = {"check": 3, "running": 4, "finish": 5, "interrupted": 3}
     if len(argv) < 2 or arity.get(argv[1]) != len(argv):
         print(USAGE, file=sys.stderr)
         return 2
     command = argv[1]
-    request = read_request(Path(argv[2]))
+    request = read_request(argv[2])
     if request is None:
         return 1
     if command == "check":
@@ -147,7 +169,7 @@ def main(argv: list) -> int:
         # Get and validate started_at to prevent encoding issues (surrogates, etc.)
         started_at = argv[3] if command != "interrupted" else None
         if started_at and not ISO_TIMESTAMP.match(started_at):
-            print(f"[ops-request] ignoring invalid STARTED_AT", file=sys.stderr)
+            print("[ops-request] ignoring invalid STARTED_AT", file=sys.stderr)
             started_at = None  # Treat invalid timestamp as None, still write status
 
         if command == "running":
@@ -158,7 +180,7 @@ def main(argv: list) -> int:
             except ValueError:
                 code = -1
             # For outcome check, use started_at only if valid (not None)
-            state, reason = outcome(request["job"], code, _output(argv[5]), started_at)
+            state, reason = outcome(request["job"], code, _output(), started_at)
             write_status(request, state=state, started_at=started_at, finished_at=_now(),
                          exit_code=code, reason=reason)
         else:
