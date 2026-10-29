@@ -107,7 +107,7 @@ The system has **5 test documents** about Georgian tax law:
 - Tax law basics
 - Simplified taxation
 
-**To add real data:** Use the scraper endpoints above!
+**To add real data:** ingestion runs on the server via cron (`run_scraper.sh`); see "Ingestion" above.
 
 ---
 
