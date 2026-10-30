@@ -46,7 +46,7 @@ const feedback = { total: 1, counts: { new: 1, in_progress: 0, fixed: 0 }, items
 }] };
 const system = { generated_at: '2026-10-12T10:00:00', jobs: ['scraper', 'canary', 'backup', 'restore_drill'].map((job) => ({
   job, state: 'ok', started_at: '2026-10-12T03:00:00Z', finished_at: '2026-10-12T03:40:00Z', exit_code: 0,
-  summary: job === 'scraper' ? '+14 new docs (full)' : 'ok', trigger: 'cron', skipped: false, log_tail: [] })) };
+  summary: job === 'scraper' ? '+14 new docs (full)' : 'ok', trigger: 'cron', skipped: false, log_tail: [], request: null })) };
 const corpusFixture = {
   totals: { documents: 48211, chunks: 269218, added_7d: 12, added_30d: 61, last_ingest: '2026-10-11T02:10:00' },
   by_type: [{ document_type: 'law', documents: 1204, added_30d: 3, without_date: 0, without_chunks: 0 }],

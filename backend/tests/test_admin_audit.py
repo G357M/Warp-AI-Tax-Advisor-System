@@ -61,5 +61,5 @@ def test_action_set_is_closed():
         "user.role_changed", "subscription.activated", "feedback.status_changed",
         "user.blocked", "user.unblocked", "subscription.granted", "subscription.canceled",
         "user.password_reset_sent", "user.verification_sent",
-        "answer.reviewed", "user.identity_revealed",
+        "answer.reviewed", "user.identity_revealed", "ops.job_requested",
     }

@@ -197,6 +197,7 @@ typings/
 .state/
 state/
 ops-status/
+ops-requests/
 .tmp_*.py
 .venv-*/
 OPENCLAW_VISIBLE_TEST_*.txt

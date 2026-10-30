@@ -144,6 +144,7 @@ export interface SystemJob {
   job: SystemJobName; state: SystemJobState;
   started_at: string | null; finished_at: string | null; exit_code: number | null;
   summary: string | null; trigger: 'cron' | 'manual' | null; skipped: boolean; log_tail: string[];
+  request: JobRequest | null;
 }
 export interface SystemStatus { generated_at: string; jobs: SystemJob[] }
 export interface CorpusTypeRow { document_type: string; documents: number; added_30d: number; without_date: number; without_chunks: number }
@@ -153,3 +154,15 @@ export interface Corpus {
   by_type: CorpusTypeRow[]; weekly: CorpusWeek[];
   pending: { decision_facts: number; law_amendments: number };
 }
+
+export const MANUAL_JOBS = ['scraper_ingest', 'scraper_full', 'canary', 'backup'] as const;
+export type ManualJob = (typeof MANUAL_JOBS)[number];
+export type JobRequestState = 'queued' | 'running' | 'done' | 'skipped' | 'failed';
+export interface JobRequest {
+  job: ManualJob; state: JobRequestState; request_id: string | null; requested_at: string | null;
+  started_at: string | null; finished_at: string | null; exit_code: number | null; reason: string | null;
+}
+/** Which manual runs each System card offers; restore drill is view-only. */
+export const CARD_ACTIONS: Record<SystemJobName, readonly ManualJob[]> = {
+  scraper: ['scraper_ingest', 'scraper_full'], canary: ['canary'], backup: ['backup'], restore_drill: [],
+};

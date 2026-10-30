@@ -5,9 +5,9 @@ ADMIN_ACTIONS = frozenset({
     "user.role_changed", "subscription.activated", "feedback.status_changed",
     "user.blocked", "user.unblocked", "subscription.granted", "subscription.canceled",
     "user.password_reset_sent", "user.verification_sent",
-    "answer.reviewed", "user.identity_revealed",
+    "answer.reviewed", "user.identity_revealed", "ops.job_requested",
 })
-TARGET_TYPES = frozenset({"user", "checkout", "feedback", "message"})
+TARGET_TYPES = frozenset({"user", "checkout", "feedback", "message", "ops_job"})
 REASON_MAX_LENGTH = 1000
 
 

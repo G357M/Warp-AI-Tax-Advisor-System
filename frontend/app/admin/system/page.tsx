@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { formatDateTime, formatNumber, useAdminCopy, type AdminCopy, type AdminLocale } from '@/lib/admin-i18n';
-import type { SystemJob, SystemJobState, SystemStatus } from '@/lib/admin-types';
+import { CARD_ACTIONS, type JobRequest, type ManualJob, type SystemJob, type SystemJobName, type SystemJobState, type SystemStatus } from '@/lib/admin-types';
+import { adminSend, AdminApiError, errorText } from '@/lib/admin-api';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useAdminFetch } from '@/lib/use-admin-fetch';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminState } from '@/components/admin/AdminState';
@@ -20,7 +23,27 @@ function age(finishedAt: string, c: AdminCopy, locale: AdminLocale): string {
   return c.system.daysAgo(formatNumber(Math.floor(hours / 24), locale));
 }
 
-function JobCard({ job, c, locale }: Readonly<{ job: SystemJob; c: AdminCopy; locale: AdminLocale }>) {
+const POLL_MS = 15_000;
+const isActive = (r: JobRequest | null) => r !== null && (r.state === 'queued' || r.state === 'running');
+const cardOf = (job: ManualJob): SystemJobName => (job === 'canary' || job === 'backup' ? job : 'scraper');
+
+function RequestLine({ request, c, locale }: Readonly<{ request: JobRequest; c: AdminCopy; locale: AdminLocale }>) {
+  const at = (value: string | null) => (value ? formatDateTime(value, locale) : '');
+  const r = c.system.request;
+  let text: string;
+  switch (request.state) {
+    case 'queued': text = r.queued; break;
+    case 'running': text = r.running(at(request.started_at)); break;
+    case 'done': text = r.done(at(request.finished_at)); break;
+    case 'skipped': text = r.skipped; break;
+    default: text = request.reason === 'interrupted' ? r.interrupted : r.failed;
+  }
+  return <p className={styles.jobMeta} role="status">{c.system.run[request.job]}: {text}</p>;
+}
+
+function JobCard({ job, c, locale, onRun, error }: Readonly<{
+  job: SystemJob; c: AdminCopy; locale: AdminLocale; onRun: (job: ManualJob) => void; error: string | undefined;
+}>) {
   const title = c.system.jobs[job.job];
   return <article className={`liquid-glass ${styles.jobCard}`} aria-labelledby={`job-${job.job}`}>
     <div className={styles.jobHead}>
@@ -35,6 +58,12 @@ function JobCard({ job, c, locale }: Readonly<{ job: SystemJob; c: AdminCopy; lo
       </p>
       {job.summary && <p className={`${styles.jobSummary} ${styles.mono}`}>{job.summary}</p>}
     </>}
+    {job.request && <RequestLine request={job.request} c={c} locale={locale} />}
+    {CARD_ACTIONS[job.job].length > 0 && <div className={styles.jobActions}>
+      {CARD_ACTIONS[job.job].map((action) => <button key={action} type="button" className={styles.button}
+        disabled={isActive(job.request)} onClick={() => onRun(action)}>{c.system.run[action]}</button>)}
+    </div>}
+    {error && <p className={styles.noticeError} role="alert">{error}</p>}
     <p className={styles.jobMeta}>{c.system.expected[job.job]}</p>
     {job.log_tail.length > 0 && <details className={styles.jobLog}>
       <summary>{c.system.showLog}</summary>
@@ -47,15 +76,48 @@ export default function AdminSystem() {
   const { c, locale } = useAdminCopy();
   const { data, error, reload } = useAdminFetch<SystemStatus>('/api/v1/admin/system');
 
+  const [dialog, setDialog] = useState<ManualJob | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<SystemJobName, string>>>({});
+  const polling = data?.jobs.some((j) => isActive(j.request)) ?? false;
+
+  useEffect(() => {
+    if (!polling) return;
+    const id = window.setInterval(reload, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [polling, reload]);
+
+  const open = (job: ManualJob) => {
+    setErrors((prev) => ({ ...prev, [cardOf(job)]: undefined }));
+    setDialog(job);
+  };
+  const refresh = () => { setErrors({}); reload(); };
+
+  const run = async () => {
+    if (dialog === null) return;
+    const card = cardOf(dialog);
+    try {
+      await adminSend(`/api/v1/admin/system/jobs/${dialog}`, 'POST', {});
+      setErrors((prev) => ({ ...prev, [card]: undefined }));
+    } catch (e) {
+      // 409 is about the job, not the dialog: close it and say why on the card.
+      if (!(e instanceof AdminApiError && e.status === 409)) throw new Error(errorText(c, e));
+      setErrors((prev) => ({ ...prev, [card]: errorText(c, e) }));
+    }
+    reload();
+  };
+
   let body = <AdminState kind="loading" />;
   if (error) body = <AdminState kind="error" onRetry={reload} />;
   else if (data) body = <div className={styles.jobGrid}>
-    {data.jobs.map((job) => <JobCard key={job.job} job={job} c={c} locale={locale} />)}
+    {data.jobs.map((job) => <JobCard key={job.job} job={job} c={c} locale={locale} onRun={open} error={errors[job.job]} />)}
   </div>;
 
   return <div className={styles.page}>
     <PageHeader title={c.system.title} subtitle={c.system.subtitle}
-      actions={<button type="button" className={styles.button} onClick={reload}>{c.common.refresh}</button>} />
+      actions={<button type="button" className={styles.button} onClick={refresh}>{c.common.refresh}</button>} />
     {body}
+    <ConfirmDialog open={dialog !== null} onOpenChange={(open) => { if (!open) setDialog(null); }}
+      title={dialog ? c.system.run[dialog] : ''} description={dialog ? c.system.cost[dialog] : undefined}
+      confirmLabel={c.system.confirmRun} withReason={false} onConfirm={run} />
   </div>;
 }
