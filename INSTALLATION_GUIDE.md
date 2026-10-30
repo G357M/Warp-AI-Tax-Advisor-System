@@ -310,7 +310,7 @@ docker-compose logs -f
 
 ## Support
 
-- **Documentation:** See `README.md`, `PROJECT_STATUS.md`, `100_PERCENT_COMPLETE.md`
+- **Documentation:** See `README.md`, `docs/CURRENT_STATE.md`
 - **API Docs:** http://localhost:8000/docs
 - **Issues:** https://github.com/G357M/Warp-AI-Tax-Advisor-System/issues
 
