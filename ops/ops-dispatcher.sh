@@ -29,7 +29,7 @@ flock -n 9 || exit 0
 # can write there and could swap them for symlinks that a root mv would follow.
 install -d -m 0700 "$STATE_DIR" "$STATE_DIR/processing" "$STATE_DIR/rejected" || exit 1
 for dir in "$STATE_DIR" "$STATE_DIR/processing" "$STATE_DIR/rejected"; do
-    if [ -L "$dir" ] || [ ! -d "$dir" ]; then
+    if [[ -L "$dir" || ! -d "$dir" ]]; then
         log "refusing to run: $dir is a symlink or not a directory"
         exit 1
     fi
@@ -37,7 +37,7 @@ done
 PROCESSING="$STATE_DIR/processing"
 REJECTED="$STATE_DIR/rejected"
 
-[ -d "$REQUEST_DIR" ] || exit 0
+[[ -d "$REQUEST_DIR" ]] || exit 0
 
 run_job() {
     case "$1" in

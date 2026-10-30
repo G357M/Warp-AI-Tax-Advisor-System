@@ -16,7 +16,7 @@ STATUS_WRITER="${INFOHUB_OPS_STATUS_WRITER:-$SCRIPT_DIR/write_job_status.py}"
 LOG_DIR="${INFOHUB_LOG_DIR:-/root/infohub/logs}"
 
 LOG_FILE="${1:-}"
-if [ -z "$LOG_FILE" ]; then
+if [[ -z "$LOG_FILE" ]]; then
     mkdir -p "$LOG_DIR"
     find "$LOG_DIR" -name "canary_*.log" -mtime +30 -delete
     LOG_FILE="$LOG_DIR/canary_$(date -u +%Y%m%d_%H%M%S).log"

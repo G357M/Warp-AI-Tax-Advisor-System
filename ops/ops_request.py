@@ -117,7 +117,7 @@ def write_status(request: dict, **fields) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False)
-        os.chmod(tmp, 0o644)
+        os.chmod(tmp, 0o640)  # root-owned; the backend container reads it as root
         os.replace(tmp, directory / f"{request['job']}.request.json")
     except BaseException:
         Path(tmp).unlink(missing_ok=True)

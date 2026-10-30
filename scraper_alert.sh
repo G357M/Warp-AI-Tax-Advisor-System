@@ -66,7 +66,7 @@ read_streak() {
 }
 
 write_streak() {
-    [ "$MANUAL_RUN" = "1" ] || echo "$1" > "$STREAK_FILE"
+    [[ "$MANUAL_RUN" == "1" ]] || echo "$1" > "$STREAK_FILE"
 }
 
 # --- decide ---------------------------------------------------------------
@@ -82,7 +82,7 @@ Check latest /root/infohub/logs/scraper_*.log"
     exit 0
 fi
 
-if [ "$MANUAL_RUN" = "1" ]; then
+if [[ "$MANUAL_RUN" == "1" ]]; then
     echo "[scraper_alert] manual run: +${NEW_DOCS} new docs — nightly streak unchanged."
     exit 0
 fi
