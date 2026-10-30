@@ -271,8 +271,9 @@ merge или production deployment.
 
 ## Внешние условия завершения Pro-запуска
 
-- Рабочие GitHub production SSH secrets с pinned host key.
-- Подключённый SMTP и проверка доставки на реальный контролируемый ящик.
+- ~~Рабочие GitHub production SSH secrets с pinned host key.~~ Сделано 2026-10-30.
+- ~~Подключённый SMTP и проверка доставки на реальный контролируемый ящик.~~
+  Доставка подтверждена владельцем (письмо сброса пароля 2026-10-12).
 - TBC merchant onboarding, защищённая настройка credentials и официальный
   sandbox drill. Локальные fake-provider тесты не заменяют этот прогон.
 - Независимый профильный эксперт. Машинные проверки не являются его вердиктом.
@@ -375,3 +376,92 @@ merge или production deployment.
 - Canary logic lives in `ops/run_canary.sh` and serves both the cron and the manual path.
   `INFOHUB_MANUAL_RUN` keeps the zero-new streak of `scraper_alert.sh` untouched.
 - Do not deploy around 03:00-04:00 UTC. After deploy press "Прогнать канарейку" and expect running, then done.
+
+## 2026-10-30 — Рабочие заметки (сессия Claude Code)
+
+Записано по просьбе владельца, чтобы не выяснять заново. Live-состояние
+перепроверять.
+
+### Что сделано и выпущено
+
+- PR #25–#31 слиты. Production на `65e06b2` и новее (только docs), health
+  `healthy`, канарейка 10/10 после ручного запуска из `/admin/system`.
+- #26: `next` 16.4.3, `follow-redirects` 1.16.2, `aiohttp` 3.14.4 — закрыты
+  критические advisories, из-за которых CI-аудит падал на неизменённом `main`.
+- #24 (этап 5b админки): исправлено SonarCloud `python:S2612` — файлы
+  `ops-status/<job>.request.json` пишутся с `0640` (backend читает их как root);
+  имя задачи сводится к константе `MANUAL_JOBS` до построения путей.
+- #29: готовый ответ `small-business-status` называет пороги. Источник:
+  Налоговый кодекс ст. 90 ч. 1–2 (1%; 3% при совокупном доходе выше
+  500 000 GEL, 700 000 GEL для винного и агротуризма, с месяца превышения до
+  конца года), ст. 89 ч. 2 «а» и ч. 3 (отмена статуса после двух таких лет);
+  приказ МФ №415 от 31.12.2010 «О специальных режимах налогообложения»,
+  ст. 1 п. 5 и приложение №5 (доходы, не учитываемые в пороге). В приказе №996
+  сумм порога нет. Формулировки RU/EN/KA подтвердил владелец.
+- Postgres пересоздан с `shm_size: 1g` (`/dev/shm` = 1.0G). Таблицы
+  `document_chunks_backup_20260630` на сервере уже нет. SMTP работает.
+
+### Deploy
+
+- GitHub `Deploy production` (`cd.yml`) работает с 2026-10-30: секреты
+  `HETZNER_SSH_KEY` (отдельный ключ `github-actions-deploy`) и
+  `HETZNER_KNOWN_HOSTS` (host key из `/etc/ssh/ssh_host_ed25519_key.pub`).
+  В `/root/.ssh/authorized_keys` ключ ограничен
+  `command="cd /root/infohub && ./scripts/deploy_production.sh",no-pty,...` —
+  он умеет только запускать deploy. Отозвать: удалить строку с
+  `github-actions-deploy`.
+- Порядок: слить PR → дождаться зелёного CI на коммите `main` → запустить
+  `cd.yml` на `main` → проверить шаг health. Не деплоить в 01:30 UTC (бэкап) и
+  03:00–04:00 UTC (скрапер). Postgres deploy не пересоздаёт.
+
+### Ограничения облачной сессии Claude
+
+- Из сессии недоступны `tax-advisor.ge`, `matsne.gov.ge`, `infohub(api).rs.ge`
+  и `sonarcloud.io` (прокси 403). Данные корпуса получаем так: владелец
+  запускает на сервере read-only `psql` через
+  `docker exec -i infohub-postgres psql -U infohub_user -d infohub_ai` и
+  присылает вывод.
+- ID документов корпуса: Налоговый кодекс `7413ae69-672c-4c48-b3d5-8c04b09dfb43`
+  (№3591, source `800cbef0-…`); приказ №996 `54d15b6c-e8a1-465a-bc56-8c20498588b8`;
+  приказ №415 от 2010 «სპეციალური დაბეგვრის რეჟიმების შესახებ»
+  `f71d2b53-e401-43f1-9252-a1a92b566289`. Осторожно: под номером 415 есть и
+  приказ 2023 года `e48938ad-…` — это изменения в №996, а не спецрежимы.
+- SonarCloud: подробности замечаний видны только владельцу. Ссылка на
+  замечания безопасности PR:
+  `https://sonarcloud.io/project/issues?id=G357M_Warp-AI-Tax-Advisor-System&pullRequest=<N>&issueStatuses=OPEN,CONFIRMED&sinceLeakPeriod=true&impactSoftwareQualities=SECURITY`.
+  Quality gate падает только по рейтингу Security; Reliability-замечания его
+  не валят.
+- Комментарий Strix «trial has ended» на каждом PR — не ошибка CI, игнорировать
+  (или оплатить/отключить приложение).
+
+### Юридическая очередь (decision facts)
+
+- Пакет: `/root/infohub/.state/decision-facts-full-expert-review/20260820T181855Z-555749c/`.
+  Рабочий файл дублей — `duplicate_groups.technical-prefill-v1.csv` (в нём уже
+  технические доказательства и решение владельца из августа), рабочая копия
+  `duplicate_groups.working-v2.xlsx`. Остальные `duplicate_groups.*` —
+  промежуточные августовские шаги; `review_items.completed.csv` = копия
+  `review_items.csv`.
+- Приоритетная очередь (11 групп):
+  `/root/infohub/.state/infohub-duplicate-verification/20260820T221249Z-b43d81c-full/duplicate_confirmation_queue.csv`.
+- Состояние на 2026-10-30: решена 1 группа — `DFG-FD720C69C05B4FBC`
+  (№11623, `true_duplicate`, canonical `736a2ebe-…`, исключение `d02fe984-…`),
+  ждёт второго проверяющего; 462 группы и все 192 записи фактов пустые.
+- Решение владельца 2026-10-30: правило второго проверяющего не ослаблять;
+  владелец заполняет группы сам, строки `true_duplicate`/`mixed_group`
+  остаются `pending` до подписи второго человека.
+- Как скачать: на сервере `tar czf /root/legal-review.tgz <пакет> <сверка>`,
+  на Windows `scp root@46.224.145.5:/root/legal-review.tgz $HOME\Downloads\`,
+  затем `shred -u` архива на сервере. Открывать в Excel через
+  Data → From Text/CSV → Transform Data → все столбцы Text (импортёр принимает
+  только текстовые ячейки). Инструкция для юриста: `docs/LEGAL_REVIEW_GUIDE.md`.
+- После загрузки `.xlsx` обратно: `import_decision_facts_review_workbook.py`
+  (dry-run, затем `--execute` с хешами) и
+  `validate_decision_facts_expert_review.py` без `--require-complete`.
+
+### Ожидается от владельца
+
+- Договор с TBC — ожидается примерно в середине ноября 2026; дальше
+  `docs/TBC_RELEASE.md`.
+- Заполнение приоритетных групп дублей и поиск второго проверяющего.
+
