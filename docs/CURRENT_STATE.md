@@ -4,9 +4,10 @@
 
 Этот файл — краткое актуальное описание production-состояния проекта `tax-advisor.ge`.
 
-**Обновлено:** 2026-10-29 (main `dc37bc1`). Живые счётчики корпуса ниже
-последний раз проверялись 2026-08-24/26; изменения сентября–октября описаны в
-разделе «Изменения с 2026-08-26» и пунктах 38–43 Operational notes.
+**Обновлено:** 2026-10-30 (main `9a75b47`, развёрнут в production). Живое
+состояние проверено 2026-10-30 — раздел «Verified live state (2026-10-30)»;
+изменения сентября–октября описаны в разделе «Изменения с 2026-08-26» и
+пунктах 38–43 Operational notes.
 
 Если другие документы в репозитории противоречат этому файлу, приоритет такой:
 1. `docs/CURRENT_STATE.md`
@@ -69,6 +70,22 @@ infohub.rs.ge / infohubapi.rs.ge
 - Hetzner
 
 ---
+
+## Verified live state (2026-10-30)
+
+Снято на сервере после ручного запуска `scripts/deploy_production.sh`:
+
+- deployed commit → `9a75b47` (`main`);
+- frontend `next` → `16.4.3`;
+- `GET /api/v1/public/health` → `healthy`; `database`, `redis`, `embeddings`,
+  `vector_store`, `llm` → `true`; `embedding_model_source = cache`,
+  `embedding_dimension = 768`;
+- `total_documents = 15540`, `total_chunks = 282655`;
+- `last_document_ingested_at = 2026-10-29T15:17:36Z`,
+  `documents_last_24h = 7`, `documents_last_7d = 44`.
+
+Health не возвращает отдельные счётчики `court_decision` и `decision_facts`;
+последние значения для них — в разделе ниже (2026-08-24).
 
 ## Verified live and recovery state (2026-08-24)
 
@@ -328,7 +345,6 @@ plan, CSV, audit и manifest отдельными SHA-256 без записи в
 - договор с TBC, sandbox-прогон и включение TBC Checkout по `docs/TBC_RELEASE.md`; операторская сверка уже в `main`;
 - пересоздать production postgres в плановое окно, чтобы вступил в силу `shm_size: 1g`;
 - после проверки свежего ночного дампа удалить `document_chunks_backup_20260630` через `ops/drop-stale-chunks-backup.sh --apply`;
-- повторно снять live-счётчики корпуса и health для этого файла (последний снимок — 2026-08-24/26);
 - реальные Business organizations/seats до возврата обещаний про командный доступ;
 - квартальный повтор recovery drill с новым pinned evidence, чтобы подтверждённое восстановление не стало одноразовым историческим фактом.
 
