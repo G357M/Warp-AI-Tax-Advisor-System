@@ -354,18 +354,56 @@ TAX_FAQ_MATRIX: List[TaxFaqEntry] = [
         article_ref="90",
         question_class="canonical_law_lookup",
         response_kind="tiered_rate",
-        note="1% standard rate for small business status; 3% when annual income exceeds the code threshold for the relevant period.",
+        note=(
+            "Tax Code art. 90: 1% until aggregate income from economic activity in the calendar year exceeds "
+            "GEL 500,000 (GEL 700,000 for wine-tourism and agritourism subjects), then 3% from the start of the "
+            "month the excess is recorded to year end; art. 89(2)(a): status cancelled from the next year after "
+            "two such years; MoF Order No. 415 (31.12.2010), annex 5: income excluded from the threshold."
+        ),
         sample_queries={
             "ru": "Какой налог для ИП со статусом малого бизнеса в Грузии?",
             "en": "What is the small business tax rate in Georgia?",
             "ka": "მცირე ბიზნესის სტატუსის გადასახადი რამდენია საქართველოში?",
         },
         response_by_lang={
-            "ru": "Для ИП со статусом малого бизнеса в Грузии стандартная ставка — 1% от налогооблагаемого дохода. Если годовой доход превышает установленный кодексом порог, на соответствующий период применяется ставка 3%.",
-            "en": "For an individual entrepreneur with small business status in Georgia, the standard tax rate is 1% of taxable income. If annual income exceeds the threshold set by the code, the rate becomes 3% for the relevant period.",
-            "ka": "საქართველოში მცირე ბიზნესის სტატუსის მქონე მეწარმე ფიზიკური პირისთვის სტანდარტული განაკვეთი დასაბეგრი შემოსავლის 1%-ია. თუ წლიური შემოსავალი კოდექსით დადგენილ ზღვარს გადააჭარბებს, შესაბამის პერიოდში განაკვეთი 3% ხდება.",
+            "ru": (
+                "Для ИП со статусом малого бизнеса в Грузии налогооблагаемый доход облагается по ставке 1%, "
+                "пока совокупный доход от экономической деятельности за календарный год не превысил 500 000 лари "
+                "(для субъектов винного туризма и агротуризма — 700 000 лари). С начала месяца, в котором "
+                "зафиксировано превышение, и до конца календарного года применяется ставка 3% (статья 90 "
+                "Налогового кодекса). Если порог превышен в каждом из двух календарных лет, статус малого бизнеса "
+                "отменяется с начала следующего года (статья 89). Доходы, которые не учитываются при расчёте "
+                "порога, перечислены в приложении №5 к приказу министра финансов №415 от 31 декабря 2010 года "
+                "«О специальных режимах налогообложения»."
+            ),
+            "en": (
+                "For an individual entrepreneur with small business status in Georgia, taxable income is taxed at 1% "
+                "until aggregate income from economic activity in the calendar year exceeds GEL 500 000 "
+                "(GEL 700 000 for wine-tourism and agritourism subjects). From the start of the month in which the "
+                "excess is recorded until the end of the calendar year, the rate is 3% (Article 90 of the Tax Code). "
+                "If the threshold is exceeded in each of two calendar years, small business status is cancelled from "
+                "the start of the following year (Article 89). Income excluded from the threshold calculation is "
+                "listed in Annex 5 to Order No. 415 of the Minister of Finance of 31 December 2010 "
+                "\"On Special Taxation Regimes\"."
+            ),
+            "ka": (
+                "საქართველოში მცირე ბიზნესის სტატუსის მქონე მეწარმე ფიზიკური პირის დასაბეგრი შემოსავალი 1%-ით "
+                "იბეგრება, სანამ ეკონომიკური საქმიანობიდან მიღებული ერთობლივი შემოსავალი კალენდარული წლის "
+                "განმავლობაში 500 000 ლარს, ხოლო ღვინის ტურიზმის საქმიანობის სუბიექტისა და აგროტურისტული "
+                "საქმიანობის სუბიექტის შემთხვევაში − 700 000 ლარს არ გადააჭარბებს. ზღვრის გადაჭარბების "
+                "დაფიქსირების თვის დასაწყისიდან კალენდარული წლის დასრულებამდე განაკვეთი 3%-ია (საგადასახადო "
+                "კოდექსის მე-90 მუხლი). თუ ზღვარი 2 კალენდარული წლის თითოეულ წელს გადაჭარბებულია, მცირე "
+                "ბიზნესის სტატუსი მომდევნო წლის დასაწყისიდან უქმდება (89-ე მუხლი). შემოსავლის სახეები, "
+                "რომლებიც ზღვრის გაანგარიშებისას არ გაითვალისწინება, განსაზღვრულია „სპეციალური დაბეგვრის "
+                "რეჟიმების შესახებ“ საქართველოს ფინანსთა მინისტრის 2010 წლის 31 დეკემბრის №415 ბრძანების "
+                "დანართი №5-ით."
+            ),
         },
-        smoke_contains={"ru": ["1%", "3%"], "en": ["1%", "3%"], "ka": ["1%", "3%"]},
+        smoke_contains={
+            "ru": ["1%", "3%", "500 000"],
+            "en": ["1%", "3%", "500 000"],
+            "ka": ["1%", "3%", "500 000"],
+        },
     ),
     TaxFaqEntry(
         slug="interest",
