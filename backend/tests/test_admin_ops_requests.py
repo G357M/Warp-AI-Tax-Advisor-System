@@ -120,6 +120,15 @@ def test_canary_guard(dirs, finished_at, exit_code, blocked):
         assert _run(dirs, "canary")["state"] == "queued"
 
 
+@pytest.mark.parametrize("job", ["restore_drill", "../canary", "canary.json", ""])
+def test_unknown_job_is_rejected_before_any_file_or_journal_row(dirs, job):
+    db = FakeDb()
+    with pytest.raises(HTTPException) as caught:
+        _run(dirs, job, db)
+    assert caught.value.status_code == 404 and caught.value.detail["code"] == "unknown_job"
+    assert db.added == [] and list(dirs[1].iterdir()) == []
+
+
 def test_commit_failure_removes_the_request_file(dirs):
     with pytest.raises(RuntimeError):
         _run(dirs, "canary", FakeDb(fail_commit=True))

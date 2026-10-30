@@ -13,12 +13,21 @@ from pathlib import Path
 from uuid import uuid4
 
 from core.admin_audit import record_admin_action
-from core.admin_system import ACTIVE_STATES, load_status, naive_utc, request_status
+from core.admin_system import ACTIVE_STATES, MANUAL_JOBS, load_status, naive_utc, request_status
 from core.admin_users import admin_error
 
 BACKUP_MIN_GAP = timedelta(hours=6)
 CANARY_MIN_GAP = timedelta(minutes=10)
 SCRAPER_JOBS = ("scraper_ingest", "scraper_full")
+
+
+def trusted_job(job: str) -> str:
+    """The whitelisted constant equal to job. File names and paths are built only
+    from this constant, never from the request value itself."""
+    for known in MANUAL_JOBS:
+        if known == job:
+            return known
+    raise admin_error(404, "unknown_job", "Unknown job")
 
 
 def _active(status_dir: Path, request_dir: Path, job: str) -> bool:
@@ -60,6 +69,7 @@ def request_job(db, *, actor, job: str, status_dir: Path, request_dir: Path, now
     """Journal row first (flushed, so an insert failure stops us before any file
     exists), then the request file, then the commit. A failed commit removes the
     file again, so the dispatcher never runs a request the journal lacks."""
+    job = trusted_job(job)
     check_request(job, status_dir, request_dir, now)
     request_id = str(uuid4())
     record_admin_action(db, actor=actor, action="ops.job_requested", target_type="ops_job",
